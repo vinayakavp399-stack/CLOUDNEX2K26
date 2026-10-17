@@ -47,6 +47,21 @@ app.include_router(admin.router, prefix=settings.API_V1_STR)
 app.include_router(leaderboard.router, prefix=settings.API_V1_STR)
 
 
+@app.get("/")
+def root():
+    return {
+        "status": "online",
+        "service": "CLOUDNEX 2K26 Racing Telemetry Engine API",
+        "docs": f"{settings.API_V1_STR}/docs",
+        "version": "1.0.0"
+    }
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
+
 def _check_round_deadlines_sync():
     rounds_col = db_manager.get_collection("rounds")
     problems_col = db_manager.get_collection("problem_statements")
