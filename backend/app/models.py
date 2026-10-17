@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 class UserRole(str, Enum):
@@ -51,7 +51,7 @@ class RegisterParticipantRequest(BaseModel):
     team_id: str
     team_name: str
     leader_name: str
-    email: EmailStr
+    email: str
     password: str
     institution: str
     members: List[str] = []
