@@ -77,15 +77,23 @@ export function RaceSocketProvider({ children }) {
     let unmounted = false;
 
     function getWsUrls() {
+      const customApiUrl = import.meta.env.VITE_API_URL;
+      const query = teamId ? `?team_id=${encodeURIComponent(teamId)}` : '';
+      const urls = [];
+
+      if (customApiUrl) {
+        const wsProtocol = customApiUrl.startsWith('https') ? 'wss:' : 'ws:';
+        const cleanHost = customApiUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        urls.push(`${wsProtocol}//${cleanHost}/ws${query}`);
+        urls.push(`${wsProtocol}//${cleanHost}/api/v1/ws${query}`);
+      }
+
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.host;
       const hostname = window.location.hostname;
-      const query = teamId ? `?team_id=${encodeURIComponent(teamId)}` : '';
 
-      const urls = [
-        `${protocol}//${host}/ws${query}`,
-        `${protocol}//${host}/api/v1/ws${query}`
-      ];
+      urls.push(`${protocol}//${host}/ws${query}`);
+      urls.push(`${protocol}//${host}/api/v1/ws${query}`);
 
       // If running on standard dev port 5173, also include direct backend connection fallback
       if (window.location.port === '5173') {
