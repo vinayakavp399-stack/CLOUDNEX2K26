@@ -77,7 +77,7 @@ export function RaceSocketProvider({ children }) {
     let unmounted = false;
 
     function getWsUrls() {
-      const customApiUrl = import.meta.env.VITE_API_URL;
+      const customApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://cloudnex-backend.onrender.com' : null);
       const query = teamId ? `?team_id=${encodeURIComponent(teamId)}` : '';
       const urls = [];
 
