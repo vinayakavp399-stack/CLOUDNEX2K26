@@ -1,0 +1,12 @@
+[
+  {
+    "_id": "global_allocation_config",
+    "is_automatic_enabled": true,
+    "max_teams_per_problem": 5,
+    "allocation_deadline": null,
+    "is_finalized": false,
+    "batch_id": null,
+    "last_allocated_at": null,
+    "updated_at": "2026-10-13T17:15:39.062402"
+  }
+]

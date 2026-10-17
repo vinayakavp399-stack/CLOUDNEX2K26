@@ -1,0 +1,781 @@
+from datetime import datetime, timedelta
+import logging
+from app.auth import get_password_hash
+from app.config import settings
+from app.database import db_manager
+from app.models import RoundState, TeamStatus, UserRole
+
+logger = logging.getLogger("cloudnex.seed")
+
+def seed_database(force: bool = False):
+    users_col = db_manager.get_collection("users")
+    teams_col = db_manager.get_collection("teams")
+    rounds_col = db_manager.get_collection("rounds")
+    problems_col = db_manager.get_collection("problem_statements")
+    audit_col = db_manager.get_collection("audit_logs")
+    submissions_col = db_manager.get_collection("submissions")
+    evaluations_col = db_manager.get_collection("evaluations")
+
+    now = datetime.utcnow()
+
+    # 1. Seed Race Director (Admin) if missing
+    existing_admin = users_col.find_one({"role": UserRole.ADMIN})
+    if force or not existing_admin:
+        admin_user = {
+            "username": settings.DEFAULT_ADMIN_USERNAME,
+            "email": settings.DEFAULT_ADMIN_EMAIL,
+            "role": UserRole.ADMIN,
+            "team_id": None,
+            "team_name": "Race Control HQ",
+            "hashed_password": get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
+            "created_at": now.isoformat()
+        }
+        users_col.insert_one(admin_user)
+        logger.info("Admin user seeded.")
+    else:
+        # Automatically keep admin in sync with .env settings
+        users_col.update_one(
+            {"_id": existing_admin["_id"]},
+            {"$set": {
+                "username": settings.DEFAULT_ADMIN_USERNAME,
+                "email": settings.DEFAULT_ADMIN_EMAIL,
+                "hashed_password": get_password_hash(settings.DEFAULT_ADMIN_PASSWORD)
+            }}
+        )
+        logger.info("Admin user synchronized with environment configuration.")
+
+    # 2. Seed Participant Teams
+    teams_data = [
+        {
+            "team_id": "TEAM-RED-BULL-01",
+            "team_name": "Red Bull Telemetry Ops",
+            "leader_name": "Aarav Sharma",
+            "email": "aarav@redbull.f1cloud.io",
+            "password": "Password@123",
+            "institution": "GM University, Davangere",
+            "members": [
+                "Aarav Sharma (Lead Cloud Architect)",
+                "Karthik V (Kubernetes Specialist)",
+                "Divya R (DevOps Engineer)"
+            ],
+            "status": TeamStatus.ACTIVE,
+            "is_qualified_r3": True,
+            "is_eliminated": False,
+            "total_score": 88.5,
+            "scores_by_round": {"1": 42.0, "2": 46.5}
+        },
+        {
+            "team_id": "TEAM-MCLAREN-02",
+            "team_name": "McLaren Cloud Velocity",
+            "leader_name": "Sneha Patil",
+            "email": "sneha@mclaren.f1cloud.io",
+            "password": "Password@123",
+            "institution": "RV College of Engineering, Bengaluru",
+            "members": [
+                "Sneha Patil (Backend Lead)",
+                "Rohan Naik (Cloud Security Specialist)",
+                "Varun Hegde (Site Reliability Engineer)"
+            ],
+            "status": TeamStatus.ACTIVE,
+            "is_qualified_r3": True,
+            "is_eliminated": False,
+            "total_score": 92.0,
+            "scores_by_round": {"1": 45.0, "2": 47.0}
+        },
+        {
+            "team_id": "TEAM-FERRARI-03",
+            "team_name": "Scuderia Grid Systems",
+            "leader_name": "Vikramaditya Hegde",
+            "email": "vikram@scuderia.f1cloud.io",
+            "password": "Password@123",
+            "institution": "National Institute of Technology Karnataka (NITK)",
+            "members": [
+                "Vikramaditya Hegde (Infrastructure Lead)",
+                "Priya M (Data Platform Engineer)",
+                "Tejas Gowda (Cloud Native Dev)"
+            ],
+            "status": TeamStatus.ACTIVE,
+            "is_qualified_r3": True,
+            "is_eliminated": False,
+            "total_score": 84.0,
+            "scores_by_round": {"1": 40.0, "2": 44.0}
+        },
+        {
+            "team_id": "TEAM-MERCEDES-04",
+            "team_name": "Silver Arrows AutoScale",
+            "leader_name": "Ananya Rao",
+            "email": "ananya@mercedes.f1cloud.io",
+            "password": "Password@123",
+            "institution": "BMS College of Engineering, Bengaluru",
+            "members": [
+                "Ananya Rao (Tech Lead)",
+                "Aditya K (IaC Terraform Lead)",
+                "Nidhi Deshmukh (Full Stack Dev)"
+            ],
+            "status": TeamStatus.ACTIVE,
+            "is_qualified_r3": False,
+            "is_eliminated": False,
+            "total_score": 76.5,
+            "scores_by_round": {"1": 38.0, "2": 38.5}
+        },
+        {
+            "team_id": "TEAM-ASTON-05",
+            "team_name": "Aston Cloud Racing",
+            "leader_name": "Rahul Kulkarni",
+            "email": "rahul@aston.f1cloud.io",
+            "password": "Password@123",
+            "institution": "PES University, Bengaluru",
+            "members": [
+                "Rahul Kulkarni (Full Stack Lead)",
+                "Deepak Joshi (Platform Engineer)"
+            ],
+            "status": TeamStatus.ACTIVE,
+            "is_qualified_r3": False,
+            "is_eliminated": False,
+            "total_score": 71.0,
+            "scores_by_round": {"1": 35.0, "2": 36.0}
+        },
+        {
+            "team_id": "TEAM-WILLIAMS-06",
+            "team_name": "Williams Edge Compute",
+            "leader_name": "Pooja Biradar",
+            "email": "pooja@williams.f1cloud.io",
+            "password": "Password@123",
+            "institution": "GM University, Davangere",
+            "members": [
+                "Pooja Biradar (Lead)",
+                "Manjunath G (DevOps)"
+            ],
+            "status": TeamStatus.ELIMINATED,
+            "is_qualified_r3": False,
+            "is_eliminated": True,
+            "total_score": 58.0,
+            "scores_by_round": {"1": 28.0, "2": 30.0}
+        }
+    ]
+
+    # 2. Participant Teams: Do NOT auto-seed teams when empty; teams must only be created by actual user registration.
+    if force:
+        logger.info("Force seeding participant teams...")
+        for t in teams_data:
+            t_copy = dict(t)
+            pwd = t_copy.pop("password", "Password@123")
+            t_copy["created_at"] = (now - timedelta(days=2)).isoformat()
+            teams_col.insert_one(t_copy)
+
+            user_doc = {
+                "username": t_copy["team_id"].lower(),
+                "email": t_copy["email"],
+                "role": UserRole.PARTICIPANT,
+                "team_id": t_copy["team_id"],
+                "team_name": t_copy["team_name"],
+                "hashed_password": get_password_hash(pwd),
+                "created_at": t_copy["created_at"]
+            }
+            if not users_col.find_one({"username": user_doc["username"]}):
+                users_col.insert_one(user_doc)
+
+    # 3. Seed Rounds
+    if force or rounds_col.count_documents({}) == 0:
+        logger.info("Seeding competition rounds...")
+        r1_start = now - timedelta(hours=3)
+        r1_deadline = now + timedelta(hours=5)
+
+        rounds_data = [
+            {
+                "round_number": 1,
+                "title": "Round 1 — Architecture Design",
+                "subtitle": "Polesitter Circuit Blueprint: Scalable Cloud Architecture",
+                "icon": "Cpu",
+                "status": RoundState.LIVE,
+                "start_time": r1_start.isoformat(),
+                "deadline": r1_deadline.isoformat(),
+                "is_active": True,
+                "problem_published": False,
+                "created_at": now.isoformat(),
+                "updated_at": now.isoformat()
+            },
+            {
+                "round_number": 2,
+                "title": "Round 2 — Build & Deploy",
+                "subtitle": "Grand Prix Sprint: Production Microservices & Pit-Wall API",
+                "icon": "Rocket",
+                "status": RoundState.LOCKED,
+                "start_time": None,
+                "deadline": None,
+                "is_active": False,
+                "problem_published": False,
+                "created_at": now.isoformat(),
+                "updated_at": now.isoformat()
+            },
+            {
+                "round_number": 3,
+                "title": "Round 3 — Cloud Crisis Challenge",
+                "subtitle": "Final Lap: Red Flag Emergency Recovery & Chaos Engineering",
+                "icon": "AlertTriangle",
+                "status": RoundState.LOCKED,
+                "start_time": None,
+                "deadline": None,
+                "is_active": False,
+                "problem_published": False,
+                "created_at": now.isoformat(),
+                "updated_at": now.isoformat()
+            }
+        ]
+
+        for r in rounds_data:
+            if not rounds_col.find_one({"round_number": r["round_number"]}):
+                rounds_col.insert_one(r)
+
+    # Clean up any duplicate rounds in the database
+    existing_rounds = rounds_col.find()
+    seen_rnd_nums = set()
+    for r in existing_rounds:
+        r_num = r.get("round_number")
+        if r_num in seen_rnd_nums:
+            rounds_col.delete_one({"_id": r["_id"]})
+            logger.info(f"Purged duplicate round entry for round {r_num}")
+        else:
+            seen_rnd_nums.add(r_num)
+
+    # 4. Seed 10 Official Problem Statements for CLOUDNEX 2K26 Competition
+    ten_problems_data = [
+        {
+            "problem_id": "PS-01",
+            "problem_number": 1,
+            "round_number": 1,
+            "title": "Global F1 Telemetry Ingestion Mesh & Live Fan Hub",
+            "tagline": "Architect an enterprise-grade cloud system handling 500k IoT events/sec with sub-15ms edge latency.",
+            "scenario": "During a live Formula 1 Grand Prix weekend, 20 high-speed cars stream real-time telemetry from over 300 sensors per vehicle (engine RPM, brake temperatures, tire wear, tire pressure, aerodynamics, GPS coordinates). The race organizers require a globally distributed, resilient cloud architecture to process, store, and stream this critical data to the race pit walls, TV broadcast graphics systems, and 12 million concurrent mobile app users worldwide.",
+            "description": "Your team is hired as Principal Cloud Architects for the CLOUDNEX Formula Racing Championship. Design an end-to-end cloud infrastructure that guarantees 99.999% uptime, zero telemetry data loss, and real-time visualization pipelines.",
+            "functional_requirements": [
+                "Ingest 500,000 real-time telemetry events/second across 20 F1 cars with p99 latency < 20ms.",
+                "Edge compute processing at circuit trackside pit-wall with low-latency local buffering.",
+                "Multi-region cloud synchronization (e.g. AWS us-east-1 and eu-central-1) for high availability.",
+                "Real-time pub/sub event streaming for live leaderboards, tire wear telemetry, and spectator apps.",
+                "Cold-tier automated archival into distributed object storage for post-race deep analytics.",
+                "Zero-trust security model with end-to-end telemetry encryption in transit (mTLS) and at rest (AES-256)."
+            ],
+            "technical_constraints": [
+                "Disaster recovery objectives: Recovery Time Objective (RTO) < 30 seconds, Recovery Point Objective (RPO) = 0.",
+                "Maximum allocated cloud infrastructure cost must remain under $650 / race weekend.",
+                "Stateless application tier deployed on managed Kubernetes (EKS/GKE) with horizontal pod autoscaling (HPA).",
+                "Automated CI/CD GitOps deployment pipeline using Terraform/OpenTofu or CloudFormation."
+            ],
+            "deliverables": [
+                "System Architecture Diagram (Cloud components, networking VPCs, edge nodes, security boundaries).",
+                "Data Flow & Event-Streaming Pipeline Specification (Kafka/Kinesis, Redis, Time-series DB).",
+                "Cloud Service Matrix detailing each selected service, pricing tier, and architectural justification.",
+                "Security & Cost Optimization Strategy Document."
+            ],
+            "evaluation_criteria": [
+                {"name": "Architectural Innovation & Clarity", "max_points": 20},
+                {"name": "Scalability, High Availability & Disaster Recovery", "max_points": 25},
+                {"name": "Security Posture & Cost Optimization", "max_points": 20},
+                {"name": "Technical Depth & Component Justification", "max_points": 20},
+                {"name": "Presentation & Documentation Structure", "max_points": 15}
+            ],
+            "max_capacity": 5,
+            "is_published": True,
+            "attachments": ["f1_telemetry_schema_v2.json", "circuit_pitwall_network_topology.png"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        },
+        {
+            "problem_id": "PS-02",
+            "problem_number": 2,
+            "round_number": 1,
+            "title": "Pit-Wall Real-Time Race Strategy & AI Telemetry Copilot",
+            "tagline": "High-throughput in-memory state engine computing undercut/overcut pit strategies under 25ms.",
+            "scenario": "Teams require millisecond-precise tactical computing during safety cars and changing track temperatures. Build an in-memory streaming computation layer aggregating sector splits, competitor interval gaps, tire degradation curves, and predicting optimal pit stop laps with zero lag under extreme traffic.",
+            "description": "Architect a low-latency streaming analytics backbone that powers the chief strategist's live tactical pit wall dashboard. Must integrate live car telemetry, rival team gaps, pit window modeling, and race delta projections.",
+            "functional_requirements": [
+                "Process incoming vehicle lap deltas and compute dynamic undercut/overcut success probability in < 25ms.",
+                "In-memory caching and stateful stream processing using Redis Enterprise / Apache Flink.",
+                "Interactive WebSocket pit-wall telemetry feed with sub-second bi-directional sync.",
+                "Predictive pit-window recommendations with configurable confidence intervals."
+            ],
+            "technical_constraints": [
+                "Strict memory budget: In-memory cluster must operate under 32 GB RAM with deterministic GC pauses.",
+                "High availability cluster failover without dropping in-flight lap calculation transactions.",
+                "Role-based access control isolating individual team strategies from opposing teams."
+            ],
+            "deliverables": [
+                "End-to-End Stream Analytics Architecture Diagram.",
+                "State Management & Cache Eviction Topology Document.",
+                "API Schema Specification for Strategy Telemetry Feeds.",
+                "Fault Tolerance and Node Failure Recovery Blueprint."
+            ],
+            "evaluation_criteria": [
+                {"name": "Stream Processing Architecture & Low Latency", "max_points": 25},
+                {"name": "Strategy Engine Design & Algorithms", "max_points": 25},
+                {"name": "Data Consistency & State Management", "max_points": 25},
+                {"name": "Security & Multi-Tenancy Isolation", "max_points": 25}
+            ],
+            "max_capacity": 5,
+            "is_published": True,
+            "attachments": ["pit_strategy_model_spec.json"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        },
+        {
+            "problem_id": "PS-03",
+            "problem_number": 3,
+            "round_number": 1,
+            "title": "High-Frequency Grand Prix Lap Timing & Multi-Region Synchronization",
+            "tagline": "Distributed consensus and active-active multi-region synchronization with sub-millisecond precision.",
+            "scenario": "FIA race stewards require sub-millisecond precision timing across 3 sectors, 20 speed traps, and pit lane transponders. Design an active-active, conflict-free multi-region database topology guaranteeing zero split-brain, strict monotonic clock synchronization, and instant consistency across global clusters.",
+            "description": "Design the official FIA-grade high-frequency timing and scoring backbone. Telemetry pulses from RFID transponders buried in asphalt must be recorded, verified, and propagated globally without drift or duplicate timestamps.",
+            "functional_requirements": [
+                "Sub-millisecond transponder event timestamping with NTP/PTP precision synchronization.",
+                "Active-active multi-region synchronization across 3 global cloud zones with conflict resolution (CRDTs).",
+                "Idempotent event ingestion preventing duplicate lap counts under unreliable trackside uplinks.",
+                "Auditable immutable log of all qualifying lap times and steward penalty adjustments."
+            ],
+            "technical_constraints": [
+                "Zero data loss (RPO = 0) even if an entire cloud region suffers catastrophic loss.",
+                "Clock skew tolerance must be strictly bound under 2 milliseconds across distributed nodes.",
+                "Read latency for timing query APIs must remain < 10ms for global broadcast stations."
+            ],
+            "deliverables": [
+                "Multi-Region Database Synchronization Architecture Diagram.",
+                "Conflict Resolution & Consensus Protocol Specification.",
+                "Disaster Recovery & Split-Brain Mitigation Runbook.",
+                "Comprehensive High-Precision Benchmarking Plan."
+            ],
+            "evaluation_criteria": [
+                {"name": "Distributed Consensus & Consistency Model", "max_points": 30},
+                {"name": "Latency Optimization & Multi-Region Design", "max_points": 25},
+                {"name": "Reliability & Anti-Entropy Mechanics", "max_points": 25},
+                {"name": "Precision Verification & Security", "max_points": 20}
+            ],
+            "max_capacity": 5,
+            "is_published": True,
+            "attachments": ["timing_transponder_payload.json"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        },
+        {
+            "problem_id": "PS-04",
+            "problem_number": 4,
+            "round_number": 1,
+            "title": "Autonomous Aerodynamic Simulation & Cloud HPC Grid",
+            "tagline": "Elastic cloud compute grid orchestrating high-performance Computational Fluid Dynamics (CFD).",
+            "scenario": "Between practice sessions, aerodynamicists run massive 3D mesh simulations (500 million mesh cells) to optimize front-wing downforce and drag coefficients. Architect an on-demand HPC cloud cluster (AWS Batch / Slurm / EKS) with spot-instance orchestration, automatic node provisioning, GPU acceleration, and cost-controlled autoscaling.",
+            "description": "Build an elastic High Performance Computing (HPC) cloud pipeline that ingests complex STL/STEP aerodynamic meshes, distributes parallel CFD solvers, and delivers post-processed pressure distribution heatmaps within a 45-minute window.",
+            "functional_requirements": [
+                "Automated ingestion pipeline for multi-gigabyte aerodynamic CAD/mesh archives.",
+                "Elastic orchestration of 500+ parallel compute worker cores on Spot/Preemptible instances.",
+                "Automated checkpointing and job resumption when spot instances are reclaimed by cloud providers.",
+                "Fast distributed scratch storage (Lustre / EFS / NVMe) achieving > 2 GB/s read throughput."
+            ],
+            "technical_constraints": [
+                "FIA Cost Cap constraint: Simulation run cannot exceed $120 total compute expenditure per iteration.",
+                "Job turnaround SLA: Complete end-to-end CFD solve and visualization rendering within 45 minutes.",
+                "Zero data corruption on preempted compute worker nodes."
+            ],
+            "deliverables": [
+                "Cloud HPC Grid Architecture & Storage Topology Diagram.",
+                "Spot Preemption Handling & Checkpointing Design Document.",
+                "Cost Governance & Automated Resource Termination Strategy.",
+                "Worker Autoscaling & Queue Management Pipeline Specification."
+            ],
+            "evaluation_criteria": [
+                {"name": "HPC Architecture & Job Orchestration", "max_points": 30},
+                {"name": "Spot Resilience & Fault Tolerance", "max_points": 25},
+                {"name": "Storage Throughput & Distributed IO", "max_points": 25},
+                {"name": "Cost Cap Optimization & Compliance", "max_points": 20}
+            ],
+            "max_capacity": 5,
+            "is_published": True,
+            "attachments": ["cfd_batch_job_manifest.yaml"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        },
+        {
+            "problem_id": "PS-05",
+            "problem_number": 5,
+            "round_number": 1,
+            "title": "Zero-Trust Pit Lane Edge Security & Telemetry Encryption Mesh",
+            "tagline": "Military-grade mTLS service mesh, secret rotation, and anti-espionage cloud perimeter defenses.",
+            "scenario": "Formula 1 telemetry is top-secret intellectual property targeted by industrial espionage and unauthorized radio sniffing. Implement a comprehensive Zero-Trust architecture featuring Envoy/Istio service mesh, automated mTLS key rotation via HashiCorp Vault / AWS KMS, and cryptographic hardware token authentication.",
+            "description": "Design an airtight zero-trust communication backbone securing trackside edge nodes, pit-wall strategists, and cloud headquarters. All telemetry payloads must remain cryptographically unreadable to rogue actors even during compromised Wi-Fi/LTE circuits.",
+            "functional_requirements": [
+                "Strict mutual TLS (mTLS) with automated certificate rotation every 60 minutes across all services.",
+                "Hardware security module (HSM) or KMS integration for envelope encryption of telemetry in transit and at rest.",
+                "Fine-grained IAM policy engine enforcing least-privilege telemetry access based on engineer role.",
+                "Real-time intrusion detection and behavioral anomaly monitoring flagging unauthorized extraction attempts."
+            ],
+            "technical_constraints": [
+                "Cryptographic overhead must not introduce more than 4ms latency to telemetry ingestion.",
+                "Fail-secure architecture: If authentication cluster is unreachable, edge nodes buffer securely without exposing plaintext.",
+                "Compliance with NIST 800-207 Zero Trust Architecture standards."
+            ],
+            "deliverables": [
+                "Zero-Trust Architecture Diagram & Trust Boundary Map.",
+                "Automated Key Management & Certificate Lifecycle Specification.",
+                "Intrusion Detection & Incident Response Playbook.",
+                "Security Hardening & Threat Model Assessment (STRIDE)."
+            ],
+            "evaluation_criteria": [
+                {"name": "Cryptographic Rigor & Zero-Trust Architecture", "max_points": 30},
+                {"name": "Key Lifecycle & HSM/KMS Integration", "max_points": 25},
+                {"name": "Performance Overhead & Low Latency", "max_points": 25},
+                {"name": "Threat Modeling & Attack Defense", "max_points": 20}
+            ],
+            "max_capacity": 5,
+            "is_published": True,
+            "attachments": ["zero_trust_mesh_policy.json"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        },
+        {
+            "problem_id": "PS-06",
+            "problem_number": 6,
+            "round_number": 1,
+            "title": "Chaos Engineering & Red-Flag Circuit Disaster Recovery",
+            "tagline": "Active-active cross-cloud disaster recovery with automated failover and RTO under 10 seconds.",
+            "scenario": "When a major cloud availability zone fails during the Monaco Grand Prix, race control telemetry cannot drop a single frame. Develop an active-active cross-cloud disaster recovery framework with Chaos Mesh / Gremlin automated chaos injection, testing real-time failovers with RPO=0 and RTO < 10 seconds.",
+            "description": "Design a resilient disaster recovery architecture tested through continuous chaos engineering. Your solution must survive severed fiber connections, database leader crashes, and DNS outages with zero manual human intervention.",
+            "functional_requirements": [
+                "Active-active multi-cloud failover (e.g. AWS + Azure/GCP) orchestrated via Anycast BGP / Route 53.",
+                "Automated chaos injection engine simulating network partitions, packet loss, and CPU throttling during live loads.",
+                "Self-healing database replication with automated leader election and zero split-brain.",
+                "Live health telemetry dashboard displaying circuit status, replication lag, and automated healing events."
+            ],
+            "technical_constraints": [
+                "Recovery Time Objective (RTO) must remain strictly under 10 seconds across all failure modes.",
+                "Recovery Point Objective (RPO) = 0 (zero telemetry records lost during disaster switchover).",
+                "Chaos experiments must execute safely with automated abort switches if stability degrades beyond SLA."
+            ],
+            "deliverables": [
+                "Active-Active Multi-Cloud Disaster Recovery Topology Diagram.",
+                "Chaos Engineering Experiment Matrix and Automated Inoculation Scripts.",
+                "Failover Orchestration & Consensus Verification Document.",
+                "Disaster Simulation Verification and Post-Mortem Report."
+            ],
+            "evaluation_criteria": [
+                {"name": "Resilience & Cross-Cloud Failover Design", "max_points": 30},
+                {"name": "Chaos Engineering Methodology & Safety", "max_points": 25},
+                {"name": "RTO / RPO Verification & Data Integrity", "max_points": 25},
+                {"name": "Self-Healing Automation & Telemetry", "max_points": 20}
+            ],
+            "max_capacity": 5,
+            "is_published": True,
+            "attachments": ["chaos_experiment_manifest.yaml"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        },
+        {
+            "problem_id": "PS-07",
+            "problem_number": 7,
+            "round_number": 1,
+            "title": "Live 4K Ultra-HD Onboard Video Streaming & Edge CDN Fabric",
+            "tagline": "Low-latency HLS/WebRTC video distribution to 50M concurrent global spectators.",
+            "scenario": "Stream 20 simultaneous 4K 60fps cockpit onboard cameras with sub-second glass-to-glass latency to millions of viewers. Architect a distributed edge transcoding and CDN routing mesh leveraging Cloudflare Workers / CloudFront, dynamic bitrate adaptation, and multi-camera synchronized playback.",
+            "description": "Build an ultra-low latency video streaming fabric. Fans watching in mobile apps must be able to switch driver angles with instant audio-video-telemetry alignment and zero buffering stalls.",
+            "functional_requirements": [
+                "Ingest 20 uncompressed 4K video streams from pit-wall transceivers via SRT/RTMP.",
+                "Distributed edge transcoding producing adaptive bitrate HLS/LL-HLS and WebRTC packages.",
+                "Timecode synchronization aligning video frames precisely with vehicle sensor telemetry graphs.",
+                "Edge CDN caching fabric with dynamic origin shielding handling massive viewer spikes."
+            ],
+            "technical_constraints": [
+                "Glass-to-glass latency must be under 1.5 seconds for live onboard streams.",
+                "Buffer ratio must remain below 0.1% across all supported edge pops globally.",
+                "Bandwidth cost optimization utilizing peer-assisted delivery or origin-shield compression."
+            ],
+            "deliverables": [
+                "Edge Video Transcoding & CDN Fabric Architecture Diagram.",
+                "Audio-Video-Telemetry Synchronization Protocol Specification.",
+                "Adaptive Bitrate (ABR) Ladder & Origin Shielding Topology Document.",
+                "Load Shedding and Massive Concurrency Stress Plan."
+            ],
+            "evaluation_criteria": [
+                {"name": "Ultra-Low Latency Video Architecture", "max_points": 30},
+                {"name": "Telemetry-Video Timecode Synchronization", "max_points": 25},
+                {"name": "Edge CDN Optimization & Origin Shielding", "max_points": 25},
+                {"name": "Scalability to 50M Concurrency", "max_points": 20}
+            ],
+            "max_capacity": 5,
+            "is_published": True,
+            "attachments": ["video_abr_profile.json"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        },
+        {
+            "problem_id": "PS-08",
+            "problem_number": 8,
+            "round_number": 1,
+            "title": "Sustainable Cloud FinOps & Dynamic Green Compute Autoscaler",
+            "tagline": "Carbon-aware cloud workload placement with automated cost governor keeping sprint spend below $500.",
+            "scenario": "In alignment with the FIA Net Zero Carbon by 2030 directive, all cloud engineering workloads must automatically track carbon intensity and schedule heavy batch processing in regions powered by renewable energy, while enforcing strict budget circuit breakers under $500/month.",
+            "description": "Architect a carbon-intelligent FinOps platform that monitors cloud resource utilization, queries regional electric grid carbon APIs, dynamically migrates container workloads to greenest cloud regions, and terminates idle resources.",
+            "functional_requirements": [
+                "Real-time carbon intensity telemetry ingestion from regional energy grid APIs (e.g. Electricity Maps / WattTime).",
+                "Dynamic Kubernetes scheduler plugin placing pods in low-carbon data centers.",
+                "Automated cost governor enforcing hard budget caps with proactive anomaly alerts and automated resource right-sizing.",
+                "Transparent carbon footprint and cloud expenditure audit dashboard for regulatory submission."
+            ],
+            "technical_constraints": [
+                "Workload migration must incur zero downtime for production telemetry services.",
+                "Total compute cost must not breach $500 threshold under continuous 48-hour operation.",
+                "Audit logs of carbon calculations must be cryptographically signed for verifiable compliance."
+            ],
+            "deliverables": [
+                "Carbon-Aware Scheduling & FinOps Architecture Diagram.",
+                "Workload Relocation & Dynamic Kubernetes Scheduling Algorithm Specification.",
+                "Automated Cost Governance & Right-Sizing Rule Matrix.",
+                "Green Cloud KPI & FIA Sustainability Compliance Report Template."
+            ],
+            "evaluation_criteria": [
+                {"name": "Carbon-Aware Placement Logic & Innovation", "max_points": 30},
+                {"name": "FinOps Cost Governance & Circuit Breakers", "max_points": 25},
+                {"name": "Zero-Downtime Migration Architecture", "max_points": 25},
+                {"name": "Verifiable Auditability & Green Metrics", "max_points": 20}
+            ],
+            "max_capacity": 5,
+            "is_published": True,
+            "attachments": ["finops_budget_policy.json"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        },
+        {
+            "problem_id": "PS-09",
+            "problem_number": 9,
+            "round_number": 1,
+            "title": "AI-Driven Tire Degradation & Weather Predictive Microservices",
+            "tagline": "MLOps pipeline serving real-time micro-climate rain radar and Pirelli compound degradation models.",
+            "scenario": "Track conditions change by the minute as rain clouds approach Turn 4. Build an automated MLOps inference pipeline serving sub-second tire degradation curves and rain radar probability forecasts directly to live race telemetry dashboards with continuous model drift monitoring.",
+            "description": "Develop an end-to-end MLOps architecture that ingests weather station radar, asphalt temperature probes, and car telemetry to deliver real-time predictive microservices for race engineers.",
+            "functional_requirements": [
+                "Feature store (Feast / Hopsworks) ingesting asphalt temperature, car cornering G-force, and lap telemetry.",
+                "Low-latency model serving cluster (Triton / TorchServe) delivering sub-20ms inference responses.",
+                "Automated continuous training pipeline triggered when model drift exceeds 5% error margin.",
+                "Ensemble model predicting tire degradation percentage and rain arrival countdown by track sector."
+            ],
+            "technical_constraints": [
+                "P99 model inference latency must be under 20ms under 5,000 queries per second.",
+                "Model redeployment must occur with zero downtime via canary rollout or shadow routing.",
+                "Strict model reproducibility and lineage tracking (MLflow / DVC)."
+            ],
+            "deliverables": [
+                "MLOps Architecture Diagram (Feature Store, Training Pipeline, Inference Cluster).",
+                "Real-Time Feature Engineering & Drift Monitoring Specification.",
+                "Zero-Downtime Model Deployment & Canary Strategy Document.",
+                "Inference Latency & Model Accuracy Benchmark Report."
+            ],
+            "evaluation_criteria": [
+                {"name": "MLOps Pipeline Design & Low-Latency Serving", "max_points": 30},
+                {"name": "Feature Store Architecture & Data Pipeline", "max_points": 25},
+                {"name": "Model Drift Detection & Automated Retraining", "max_points": 25},
+                {"name": "Canary Rollout & High Availability", "max_points": 20}
+            ],
+            "max_capacity": 5,
+            "is_published": True,
+            "attachments": ["tire_telemetry_features.json"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        },
+        {
+            "problem_id": "PS-10",
+            "problem_number": 10,
+            "round_number": 1,
+            "title": "Grand Prix Ticket Rush: DDoS-Resilient Serverless Microservices",
+            "tagline": "Ultra-scalable serverless booking fabric handling 1M transactions/sec with zero double-booking.",
+            "scenario": "Over 500,000 fans rush to book Grand Prix grandstand seats within 90 seconds of release. Design a serverless, event-driven ticketing architecture with distributed locking, Redis token bucket rate limiters, optimistic concurrency control, and bot-mitigating Web Application Firewalls.",
+            "description": "Build an unbreachable, ultra-scalable transactional booking platform that prevents seat over-subscription, sheds automated scalper bot armies, and maintains sub-100ms response times under astronomical traffic bursts.",
+            "functional_requirements": [
+                "Serverless event-driven architecture (AWS Lambda / Cloud Run / EventBridge) scaling instantaneously to 100k RPS.",
+                "Distributed lock manager (Redlock / DynamoDB conditional writes) guaranteeing zero seat overbooking.",
+                "Virtual waiting room queueing system (FIFO) regulating incoming checkouts without crashing backends.",
+                "Anti-bot WAF layer enforcing rate-limits, Proof-of-Work puzzles, and IP reputation scores."
+            ],
+            "technical_constraints": [
+                "Zero double-bookings permitted under extreme race conditions (ACID guarantees).",
+                "Checkout process latency must remain < 150ms even during peak 100,000 RPS burst.",
+                "Cost optimization: Idle cost must be zero when ticket rush concludes."
+            ],
+            "deliverables": [
+                "Serverless High-Concurrency Architecture Diagram.",
+                "Distributed Locking & Concurrency Control Specification.",
+                "Virtual Waiting Room & Anti-Bot Defense Topology.",
+                "Stress-Testing Methodology & Idempotency Verification Plan."
+            ],
+            "evaluation_criteria": [
+                {"name": "High-Concurrency Serverless Architecture", "max_points": 30},
+                {"name": "Concurrency Control & Zero Double-Booking", "max_points": 25},
+                {"name": "Anti-Scalper & Virtual Waiting Room Design", "max_points": 25},
+                {"name": "Cost Efficiency & Cold-Start Optimization", "max_points": 20}
+            ],
+            "max_capacity": 5,
+            "is_published": True,
+            "attachments": ["ticketing_concurrency_spec.json"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        }
+    ]
+
+    # Seed the 10 problem statements
+    existing_r1_problems = problems_col.find({"round_number": 1})
+    if force or len(existing_r1_problems) < 10:
+        logger.info("Seeding the 10 official CLOUDNEX 2K26 problem statements...")
+        # Clean existing round 1 problems to avoid duplicates
+        problems_col.delete_many({"round_number": 1})
+        for p in ten_problems_data:
+            problems_col.insert_one(p)
+
+    # Seed Round 2 & Round 3 scenario definitions if missing
+    r2_doc = problems_col.find_one({"round_number": 2})
+    if not r2_doc or force:
+        problems_col.delete_many({"round_number": 2})
+        problems_col.insert_one({
+            "problem_id": "PS-R2",
+            "problem_number": 1,
+            "round_number": 2,
+            "title": "Grand Prix Sprint: Containerized Telemetry Microservices & Pit-Wall API",
+            "tagline": "Build, containerize, and deploy a resilient live telemetry streaming backend with health checks.",
+            "scenario": "The qualifying session has concluded and the main Grand Prix race has begun. The race director needs a functional, deployed microservices engine that receives simulated vehicle sensor telemetry via REST/WebSocket, caches the fastest lap data, and serves live pit-wall telemetry metrics to race strategists.",
+            "description": "Develop and deploy a complete backend service with containerization (Docker), live endpoints, Redis caching, structured logging, and automated health checks.",
+            "functional_requirements": [
+                "RESTful and WebSocket endpoints to submit and stream live race car telemetry payloads.",
+                "High-performance in-memory caching for current lap times, interval gaps, and leader position.",
+                "Production Dockerfile and Docker Compose configuration for multi-container orchestration.",
+                "Health check probe endpoints (/healthz, /ready) reporting database and cache connectivity.",
+                "Live public deployment URL accessible to the judging panel."
+            ],
+            "technical_constraints": [
+                "Response latency for /api/telemetry/latest must be < 50ms under load.",
+                "All secrets and API keys must be loaded via environment variables—no hardcoded credentials.",
+                "CORS configured securely for specified race control domains."
+            ],
+            "deliverables": [
+                "Public GitHub Repository link with clean git commit history.",
+                "Live deployed application URL (Render, Railway, Fly.io, AWS, Azure, GCP).",
+                "Comprehensive deployment instructions and API documentation (Swagger/Postman).",
+                "Project source code archive (ZIP)."
+            ],
+            "evaluation_criteria": [
+                {"name": "Functionality & API Design", "max_points": 25},
+                {"name": "Containerization & Deployment Quality", "max_points": 25},
+                {"name": "Code Cleanliness & Error Handling", "max_points": 20},
+                {"name": "Performance & Caching Efficiency", "max_points": 15},
+                {"name": "Documentation & Setup Clarity", "max_points": 15}
+            ],
+            "max_capacity": 50,
+            "is_published": False,
+            "attachments": ["sample_f1_car_telemetry_stream.csv", "api_specification.yaml"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        })
+
+    r3_doc = problems_col.find_one({"round_number": 3})
+    if not r3_doc or force:
+        problems_col.delete_many({"round_number": 3})
+        problems_col.insert_one({
+            "problem_id": "PS-R3",
+            "problem_number": 1,
+            "round_number": 3,
+            "title": "Final Lap: Red Flag Emergency Protocol & Zero-Downtime Chaos Mitigation",
+            "tagline": "Resolve sudden 10x traffic surges, database replica desync, and pit-wall network failures in real time.",
+            "scenario": "CRISIS EVENT: Lap 52 of 57. A safety car is deployed, triggering an unexpected 10x surge of 2,000,000 concurrent fans rushing to the pit strategy dashboard. The Redis cache cluster suffered memory exhaustion (OOM), leading to a cache stampede directly hitting the primary PostgreSQL database, causing connection pool saturation, severe query latency spikes, and simulated DDoS on the API gateway.",
+            "description": "Your team is thrust into the Race Control Hotseat. You have 90 minutes to diagnose the bottlenecks, activate circuit breakers, implement caching mitigations, scale the deployment, and restore live telemetry streaming with zero loss of critical telemetry data.",
+            "functional_requirements": [
+                "Implement adaptive circuit breaker and rate limiting to shed non-essential traffic gracefully.",
+                "Resolve cache stampede with probabilistic early expiration (XFetch) or stale-while-revalidate pattern.",
+                "Provide rapid horizontal scaling policy and database connection pooling mitigation.",
+                "Automated chaos recovery script or configuration patch.",
+                "Post-mortem incident response analysis report detailing root cause, timeline, and permanent fixes."
+            ],
+            "technical_constraints": [
+                "Mean Time to Recovery (MTTR) must be demonstrated under test.",
+                "Zero race-car safety telemetry packets lost during failover.",
+                "Graceful degradation: spectator dashboards can show cached telemetry, but pit-wall safety alerts must never delay."
+            ],
+            "deliverables": [
+                "Mitigation Code / Configuration Patch submitted to repository.",
+                "Verified Deployed URL with restored operational status.",
+                "Root-Cause Analysis (RCA) & Chaos Recovery Strategy Document.",
+                "Live demonstration video or walkthrough explaining recovery."
+            ],
+            "evaluation_criteria": [
+                {"name": "Crisis Resolution & System Recovery", "max_points": 25},
+                {"name": "Resilience Patterns (Circuit Breakers, Throttling)", "max_points": 25},
+                {"name": "Root Cause Analysis & Architectural Insight", "max_points": 20},
+                {"name": "Execution Speed & Incident Response Speed", "max_points": 15},
+                {"name": "Presentation & Technical Explanation", "max_points": 15}
+            ],
+            "max_capacity": 50,
+            "is_published": False,
+            "attachments": ["incident_log_crashdump.log", "traffic_spike_profile.json"],
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        })
+
+    # Seed Allocation Configuration if missing
+    config_col = db_manager.get_collection("allocation_config")
+    existing_cfg = config_col.find_one({"_id": "global_allocation_config"})
+    if not existing_cfg or force:
+        config_col.delete_many({"_id": "global_allocation_config"})
+        config_col.insert_one({
+            "_id": "global_allocation_config",
+            "is_automatic_enabled": True,
+            "max_teams_per_problem": 5,
+            "allocation_deadline": None,
+            "is_finalized": False,
+            "batch_id": None,
+            "last_allocated_at": None,
+            "updated_at": now.isoformat()
+        })
+
+    # 5. Seed Initial Audit Log
+    if force or audit_col.count_documents({}) == 0:
+        audit_col.insert_one({
+            "action": "SYSTEM_INITIALIZED",
+            "actor": "system",
+            "details": {"message": "CLOUDNEX 2K26 championship initialized with 6 teams and 3 rounds."},
+            "timestamp": now.isoformat()
+        })
+
+    # 6. Seed Sample Submissions for Round 1
+    if force or submissions_col.count_documents({}) == 0:
+        logger.info("Seeding sample submissions...")
+        sample_sub = {
+            "team_id": "TEAM-RED-BULL-01",
+            "team_name": "Red Bull Telemetry Ops",
+            "round_number": 1,
+            "github_url": "https://github.com/redbull-telemetry/cloudnex-blueprint-2026",
+            "deployed_url": "https://telemetry-mesh.cloudnex.redbull.io",
+            "deployment_instructions": "Deploy terraform modules in /infra directory using terraform apply -var-file=prod.tfvars",
+            "implementation_summary": "Architected a dual-region event mesh using Apache Kafka on AWS EKS, AWS WAF with rate-limiting, and TimescaleDB for ultra-fast time series telemetry indexing.",
+            "architecture_notes": "Edge node running K3s on Pit-Wall servers buffer telemetry locally for 120 seconds during WAN disconnects.",
+            "recovery_strategy": "Automated Route 53 DNS failover to secondary region within 14 seconds.",
+            "file_path": None,
+            "file_name": "redbull_f1_architecture_blueprint_v1.pdf",
+            "submitted_at": (now - timedelta(hours=1)).isoformat(),
+            "is_late": False,
+            "score": 42.0,
+            "feedback": "Exceptional edge computing design with clear disaster recovery thresholds."
+        }
+        submissions_col.insert_one(sample_sub)
+
+        sample_sub2 = {
+            "team_id": "TEAM-MCLAREN-02",
+            "team_name": "McLaren Cloud Velocity",
+            "round_number": 1,
+            "github_url": "https://github.com/mclaren-velocity/cloudnex-architecture",
+            "deployed_url": "https://velocity-pitwall.mclaren.cloudnex.io",
+            "deployment_instructions": "Review README.md for Helm chart values and Kubernetes ingress manifests.",
+            "implementation_summary": "Multi-region Google Cloud Architecture utilizing Google Pub/Sub, Cloud Run, and Bigtable for telemetry storage with Google Cloud Armor for security.",
+            "architecture_notes": "Pub/Sub geo-routing ensures European and Asian spectators connect to closest regional edge pop.",
+            "recovery_strategy": "Active-active multi-region deployment with zero RPO.",
+            "file_path": None,
+            "file_name": "mclaren_cloud_blueprint.pdf",
+            "submitted_at": (now - timedelta(minutes=45)).isoformat(),
+            "is_late": False,
+            "score": 45.0,
+            "feedback": "Outstanding cost breakdown and resilient Pub/Sub event mesh."
+        }
+        submissions_col.insert_one(sample_sub2)
+
+    logger.info("Database seeding successfully completed!")

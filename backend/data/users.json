@@ -1,0 +1,15 @@
+[
+  {
+    "_id": "6acdcc4baf18d70877ffb300",
+    "username": "cloudnex2k26",
+    "email": "cloudnex2k26@gmail.com",
+    "role": "admin",
+    "team_id": null,
+    "team_name": "Race Control HQ",
+    "hashed_password": "$2b$12$2fvuk/H6U4siSJdjdtdSJ.JAyBbk5LO.Bb94Cq7JhDv.Wqn.36qpm",
+    "created_at": "2026-10-13T06:14:35.535492",
+    "active_session": false,
+    "active_session_token": null,
+    "last_active": "2026-10-17T20:27:19.041420"
+  }
+]

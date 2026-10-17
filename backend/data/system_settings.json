@@ -1,0 +1,27 @@
+[
+  {
+    "_id": "6ad1b8f5349c56c7b6de08e4",
+    "key": "leaderboard_config",
+    "updated_at": "2026-10-17T20:14:09.684745",
+    "visibility_mode": "PUBLIC",
+    "freeze_message": ""
+  },
+  {
+    "_id": "6ad1babf349c56c7b6de096a",
+    "key": "winner_announcement",
+    "announcement_time": null,
+    "held": false,
+    "is_announced": false,
+    "is_timer_active": false,
+    "runner_up": null,
+    "timer_seconds": 5,
+    "updated_at": "2026-10-17T20:14:25.284480",
+    "winner": null,
+    "podium": [],
+    "timer_active": false,
+    "timer_duration_seconds": 0,
+    "timer_end_time": null,
+    "title": "Championship Winners Announcement",
+    "winners": []
+  }
+]
