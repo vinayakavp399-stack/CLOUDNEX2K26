@@ -86,6 +86,20 @@ export default function Navbar({ currentView, setView }) {
                 </button>
               </>
             )}
+
+            {!isAdmin && isAuthenticated && (
+              <button
+                onClick={() => setView('participant')}
+                className={`flex items-center space-x-1.5 px-3.5 py-2 text-sm font-semibold rounded-md transition-colors ${
+                  currentView === 'participant'
+                    ? 'text-white bg-cyan-600/30 border-b-2 border-cyan-400'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Gauge className="w-4 h-4 text-cyan-400" />
+                <span>Team Paddock</span>
+              </button>
+            )}
           </nav>
 
           {/* Right side: IGNITRON logo, GM University name & Login */}

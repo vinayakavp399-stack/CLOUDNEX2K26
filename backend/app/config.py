@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str = os.getenv("SECRET_KEY", "f1-cloudnex-secret-key-super-secure-token-2026-ignitron")
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 365  # 1 year (session persists indefinitely until explicit logout)
     
     # MongoDB settings
     MONGODB_URI: str = os.getenv("MONGODB_URI", "")

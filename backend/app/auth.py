@@ -72,7 +72,9 @@ def _get_user_from_cache_or_db(username: str) -> Optional[dict]:
         "email": user.get("email"),
         "role": user.get("role"),
         "team_id": user.get("team_id"),
-        "team_name": user.get("team_name")
+        "team_name": user.get("team_name"),
+        "active_session": user.get("active_session", True),
+        "active_session_token": user.get("active_session_token")
     }
     _user_cache[username] = (clean_user, now)
     return clean_user
@@ -115,6 +117,7 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
 
     username: str = payload.get("sub")
     role: str = payload.get("role")
+    session_id: Optional[str] = payload.get("session_id")
     if username is None or role is None:
         raise credentials_exception
 
@@ -129,11 +132,33 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
                 "email": admin_doc.get("email"),
                 "role": admin_doc.get("role"),
                 "team_id": admin_doc.get("team_id"),
-                "team_name": admin_doc.get("team_name")
+                "team_name": admin_doc.get("team_name"),
+                "active_session": admin_doc.get("active_session", True),
+                "active_session_token": admin_doc.get("active_session_token")
             }
 
     if user is None:
         raise credentials_exception
+
+    # Enforce single device login for participants:
+    # Admin can access from multiple devices (no single device restriction).
+    # Participants can only have 1 active device session.
+    if user.get("role") == UserRole.PARTICIPANT:
+        active_token = user.get("active_session_token")
+        # If user explicitly logged out
+        if user.get("active_session") is False:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session has been logged out. Please sign in again.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        # If account has an active session token and another device logged in (session_ids do not match)
+        if active_token and session_id and active_token != session_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Your session was terminated because this account was logged into on another device.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     return user
 

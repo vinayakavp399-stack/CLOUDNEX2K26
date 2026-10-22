@@ -2,13 +2,14 @@ import React from 'react';
 import { Cpu, Rocket, AlertTriangle, Trophy, Shield, CheckCircle2, ChevronRight, Award, Zap, Layers, Server, Activity } from 'lucide-react';
 import F1CarHero from '../components/F1CarHero';
 
-export default function LandingPage({ onParticipantLogin, onAdminLogin }) {
+export default function LandingPage({ onParticipantLogin, onAdminLogin, onGoToDashboard }) {
   return (
     <div className="min-h-screen bg-[#080a0f]">
       {/* Hero Section */}
       <F1CarHero
         onParticipantLogin={onParticipantLogin}
         onAdminLogin={onAdminLogin}
+        onGoToDashboard={onGoToDashboard}
       />
 
       {/* Three-Round Race Track Breakdown */}

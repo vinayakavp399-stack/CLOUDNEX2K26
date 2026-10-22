@@ -1,8 +1,10 @@
 import React from 'react';
-import { Zap, Shield, ChevronRight, Phone } from 'lucide-react';
+import { Zap, Shield, ChevronRight, Phone, Gauge } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import heroImage from '../assets/hero.png';
 
-export default function F1CarHero({ onParticipantLogin, onAdminLogin }) {
+export default function F1CarHero({ onParticipantLogin, onAdminLogin, onGoToDashboard }) {
+  const { user, isAuthenticated, isAdmin, teamId } = useAuth();
   return (
     <div className="relative overflow-hidden min-h-screen flex flex-col">
       {/* Full-bleed CLOUDNEX hero image background */}
@@ -92,46 +94,73 @@ export default function F1CarHero({ onParticipantLogin, onAdminLogin }) {
           </div>
 
           {/* Right side bottom: Login options one by one as separate cards */}
+          {/* Right side bottom: Login options one by one as separate cards */}
           <div className="flex flex-col gap-3 w-full sm:w-80 lg:w-96">
             <div className="text-[11px] font-race font-bold tracking-widest text-cyan-400 uppercase flex items-center justify-between px-1">
-              <span>ACCESS COMPETITION DASHBOARD</span>
+              <span>{isAuthenticated ? 'ACTIVE SESSION' : 'ACCESS COMPETITION DASHBOARD'}</span>
             </div>
 
-            {/* Option 1: Participant Login */}
-            <button
-              id="btn-participant-login"
-              onClick={onParticipantLogin}
-              className="group flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-cyan-900/80 via-blue-900/80 to-slate-900/90 hover:from-cyan-600 hover:to-blue-600 backdrop-blur-md border border-cyan-400/40 hover:border-cyan-300 shadow-xl shadow-cyan-950/60 hover:shadow-cyan-500/25 transition-all duration-75 transform hover:-translate-y-0.5 active:scale-95 text-left w-full cursor-pointer"
-            >
-              <div className="flex items-center space-x-3.5">
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-110 group-hover:bg-cyan-400 group-hover:text-black transition-all duration-75 shrink-0">
-                  <Zap className="w-5 h-5" />
+            {isAuthenticated ? (
+              <button
+                id="btn-active-dashboard"
+                onClick={onGoToDashboard}
+                className="group flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-900/80 via-cyan-900/80 to-slate-900/90 hover:from-emerald-600 hover:to-cyan-600 backdrop-blur-md border border-emerald-400/50 hover:border-emerald-300 shadow-xl shadow-emerald-950/60 hover:shadow-emerald-500/25 transition-all duration-75 transform hover:-translate-y-0.5 active:scale-95 text-left w-full cursor-pointer"
+              >
+                <div className="flex items-center space-x-3.5">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-75 shrink-0">
+                    <Gauge className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-race font-black text-sm tracking-wider text-white uppercase flex items-center space-x-2">
+                      <span>{isAdmin ? 'Race Control' : 'Enter Paddock'}</span>
+                      <span className="text-[9px] font-mono-code px-1.5 py-0.5 bg-emerald-500/30 text-emerald-200 rounded">ACTIVE</span>
+                    </div>
+                    <p className="text-[10px] font-mono-code text-cyan-300 truncate max-w-[170px]">
+                      {isAdmin ? 'Chief Steward' : user?.team_name || teamId}
+                    </p>
+                  </div>
                 </div>
-                <div className="font-race font-black text-sm tracking-wider text-white uppercase flex items-center space-x-2">
-                  <span>Participant Login</span>
-                  <span className="text-[10px] font-mono-code px-1.5 py-0.5 bg-cyan-500/30 text-cyan-200 rounded">TEAM</span>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-cyan-300 group-hover:text-white group-hover:translate-x-1 transition-all duration-75 shrink-0 ml-2" />
-            </button>
+                <ChevronRight className="w-5 h-5 text-emerald-300 group-hover:text-white group-hover:translate-x-1 transition-all duration-75 shrink-0 ml-2" />
+              </button>
+            ) : (
+              <>
+                {/* Option 1: Participant Login */}
+                <button
+                  id="btn-participant-login"
+                  onClick={onParticipantLogin}
+                  className="group flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-cyan-900/80 via-blue-900/80 to-slate-900/90 hover:from-cyan-600 hover:to-blue-600 backdrop-blur-md border border-cyan-400/40 hover:border-cyan-300 shadow-xl shadow-cyan-950/60 hover:shadow-cyan-500/25 transition-all duration-75 transform hover:-translate-y-0.5 active:scale-95 text-left w-full cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-110 group-hover:bg-cyan-400 group-hover:text-black transition-all duration-75 shrink-0">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div className="font-race font-black text-sm tracking-wider text-white uppercase flex items-center space-x-2">
+                      <span>Participant Login</span>
+                      <span className="text-[10px] font-mono-code px-1.5 py-0.5 bg-cyan-500/30 text-cyan-200 rounded">TEAM</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-cyan-300 group-hover:text-white group-hover:translate-x-1 transition-all duration-75 shrink-0 ml-2" />
+                </button>
 
-            {/* Option 2: Organizer Login */}
-            <button
-              id="btn-admin-login"
-              onClick={onAdminLogin}
-              className="group flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 hover:bg-slate-900/90 backdrop-blur-md border border-white/15 hover:border-red-500/50 shadow-xl transition-all duration-75 transform hover:-translate-y-0.5 active:scale-95 text-left w-full cursor-pointer"
-            >
-              <div className="flex items-center space-x-3.5">
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-red-950/40 border border-red-500/40 flex items-center justify-center text-red-400 group-hover:scale-110 group-hover:bg-red-600 group-hover:text-white transition-all duration-75 shrink-0">
-                  <Shield className="w-5 h-5" />
-                </div>
-                <div className="font-race font-black text-sm tracking-wider text-white uppercase flex items-center space-x-2">
-                  <span>Organizer Login</span>
-                  <span className="text-[10px] font-mono-code px-1.5 py-0.5 bg-red-500/30 text-red-300 rounded">ADMIN</span>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-red-400 group-hover:translate-x-1 transition-all duration-75 shrink-0 ml-2" />
-            </button>
+                {/* Option 2: Organizer Login */}
+                <button
+                  id="btn-admin-login"
+                  onClick={onAdminLogin}
+                  className="group flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 hover:bg-slate-900/90 backdrop-blur-md border border-white/15 hover:border-red-500/50 shadow-xl transition-all duration-75 transform hover:-translate-y-0.5 active:scale-95 text-left w-full cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-red-950/40 border border-red-500/40 flex items-center justify-center text-red-400 group-hover:scale-110 group-hover:bg-red-600 group-hover:text-white transition-all duration-75 shrink-0">
+                      <Shield className="w-5 h-5" />
+                    </div>
+                    <div className="font-race font-black text-sm tracking-wider text-white uppercase flex items-center space-x-2">
+                      <span>Organizer Login</span>
+                      <span className="text-[10px] font-mono-code px-1.5 py-0.5 bg-red-500/30 text-red-300 rounded">ADMIN</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-red-400 group-hover:translate-x-1 transition-all duration-75 shrink-0 ml-2" />
+                </button>
+              </>
+            )}
           </div>
 
         </div>

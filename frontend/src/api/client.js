@@ -28,76 +28,51 @@ export function getAuthToken(roleOrEndpoint) {
     ? getContextRole(roleOrEndpoint)
     : roleOrEndpoint;
 
-  // Check tab-scoped sessionStorage first
-  const sessionToken = sessionStorage.getItem('cloudnex_token');
   if (role === 'admin') {
-    const adminSession = sessionStorage.getItem('cloudnex_admin_token');
-    if (adminSession) return adminSession;
-    if (sessionToken && isSessionAdmin()) return sessionToken;
-    const adminLocal = localStorage.getItem('cloudnex_admin_token');
-    if (adminLocal) return adminLocal;
+    return localStorage.getItem('cloudnex_admin_token') || sessionStorage.getItem('cloudnex_admin_token') || localStorage.getItem('cloudnex_token') || sessionStorage.getItem('cloudnex_token');
   } else if (role === 'participant') {
-    const partSession = sessionStorage.getItem('cloudnex_participant_token');
-    if (partSession) return partSession;
-    if (sessionToken && !isSessionAdmin()) return sessionToken;
-    const partLocal = localStorage.getItem('cloudnex_participant_token');
-    if (partLocal) return partLocal;
+    return localStorage.getItem('cloudnex_participant_token') || sessionStorage.getItem('cloudnex_participant_token') || localStorage.getItem('cloudnex_token') || sessionStorage.getItem('cloudnex_token');
   }
 
-  if (sessionToken) return sessionToken;
-
-  if (typeof window !== 'undefined' && window.location.pathname.toLowerCase().includes('/admin')) {
-    return localStorage.getItem('cloudnex_admin_token') || localStorage.getItem('cloudnex_token');
-  }
-  return localStorage.getItem('cloudnex_participant_token') || localStorage.getItem('cloudnex_token');
+  return localStorage.getItem('cloudnex_token') || sessionStorage.getItem('cloudnex_token') || localStorage.getItem('cloudnex_admin_token') || localStorage.getItem('cloudnex_participant_token');
 }
 
 export function setAuthToken(token, role) {
   if (token) {
+    localStorage.setItem('cloudnex_token', token);
     sessionStorage.setItem('cloudnex_token', token);
     if (role === 'admin') {
-      sessionStorage.setItem('cloudnex_admin_token', token);
       localStorage.setItem('cloudnex_admin_token', token);
+      sessionStorage.setItem('cloudnex_admin_token', token);
     } else if (role === 'participant') {
-      sessionStorage.setItem('cloudnex_participant_token', token);
       localStorage.setItem('cloudnex_participant_token', token);
+      sessionStorage.setItem('cloudnex_participant_token', token);
     }
-    localStorage.setItem('cloudnex_token', token);
   } else {
-    sessionStorage.removeItem('cloudnex_token');
     localStorage.removeItem('cloudnex_token');
+    sessionStorage.removeItem('cloudnex_token');
     if (role === 'admin' || !role) {
-      sessionStorage.removeItem('cloudnex_admin_token');
       localStorage.removeItem('cloudnex_admin_token');
+      sessionStorage.removeItem('cloudnex_admin_token');
     }
     if (role === 'participant' || !role) {
-      sessionStorage.removeItem('cloudnex_participant_token');
       localStorage.removeItem('cloudnex_participant_token');
+      sessionStorage.removeItem('cloudnex_participant_token');
     }
   }
 }
 
 export function getUserData(role) {
   try {
-    const isAdminPath = typeof window !== 'undefined' && window.location.pathname.toLowerCase().includes('/admin');
-    const targetRole = role || (isAdminPath ? 'admin' : null);
-
-    if (targetRole === 'admin') {
-      const adminSession = sessionStorage.getItem('cloudnex_admin_user');
-      if (adminSession) return JSON.parse(adminSession);
-      const adminLocal = localStorage.getItem('cloudnex_admin_user');
-      if (adminLocal) return JSON.parse(adminLocal);
-    } else if (targetRole === 'participant') {
-      const partSession = sessionStorage.getItem('cloudnex_participant_user');
-      if (partSession) return JSON.parse(partSession);
-      const partLocal = localStorage.getItem('cloudnex_participant_user');
-      if (partLocal) return JSON.parse(partLocal);
+    if (role === 'admin') {
+      const adminRaw = localStorage.getItem('cloudnex_admin_user') || sessionStorage.getItem('cloudnex_admin_user');
+      if (adminRaw) return JSON.parse(adminRaw);
+    } else if (role === 'participant') {
+      const partRaw = localStorage.getItem('cloudnex_participant_user') || sessionStorage.getItem('cloudnex_participant_user');
+      if (partRaw) return JSON.parse(partRaw);
     }
 
-    const sessionRaw = sessionStorage.getItem('cloudnex_user');
-    if (sessionRaw) return JSON.parse(sessionRaw);
-
-    const localRaw = localStorage.getItem('cloudnex_user');
+    const localRaw = localStorage.getItem('cloudnex_user') || sessionStorage.getItem('cloudnex_user');
     return localRaw ? JSON.parse(localRaw) : null;
   } catch {
     return null;
@@ -107,22 +82,22 @@ export function getUserData(role) {
 export function setUserData(user) {
   if (user) {
     const str = JSON.stringify(user);
+    localStorage.setItem('cloudnex_user', str);
     sessionStorage.setItem('cloudnex_user', str);
     if (user.role === 'admin') {
-      sessionStorage.setItem('cloudnex_admin_user', str);
       localStorage.setItem('cloudnex_admin_user', str);
+      sessionStorage.setItem('cloudnex_admin_user', str);
     } else {
-      sessionStorage.setItem('cloudnex_participant_user', str);
       localStorage.setItem('cloudnex_participant_user', str);
+      sessionStorage.setItem('cloudnex_participant_user', str);
     }
-    localStorage.setItem('cloudnex_user', str);
   } else {
-    sessionStorage.removeItem('cloudnex_user');
-    sessionStorage.removeItem('cloudnex_admin_user');
-    sessionStorage.removeItem('cloudnex_participant_user');
     localStorage.removeItem('cloudnex_user');
+    sessionStorage.removeItem('cloudnex_user');
     localStorage.removeItem('cloudnex_admin_user');
+    sessionStorage.removeItem('cloudnex_admin_user');
     localStorage.removeItem('cloudnex_participant_user');
+    sessionStorage.removeItem('cloudnex_participant_user');
   }
 }
 
@@ -156,16 +131,10 @@ async function request(endpoint, options = {}) {
 
   if (!response.ok) {
     const errorMsg = (data && data.detail) || (typeof data === 'string' ? data : 'API Request failed');
-    if (response.status === 401) {
-      const endpointRole = getContextRole(endpoint);
-      if (endpointRole === 'admin') {
-        sessionStorage.removeItem('cloudnex_admin_token');
-        localStorage.removeItem('cloudnex_admin_token');
-        sessionStorage.removeItem('cloudnex_admin_user');
-        localStorage.removeItem('cloudnex_admin_user');
-      }
-    }
-    throw new Error(errorMsg);
+    const err = new Error(errorMsg);
+    err.status = response.status;
+    err.data = data;
+    throw err;
   }
 
   return data;
@@ -173,10 +142,10 @@ async function request(endpoint, options = {}) {
 
 export const api = {
   auth: {
-    login: async (username, password) => {
+    login: async (username, password, force = false) => {
       return request('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password, force })
       });
     },
     register: async (teamData) => {

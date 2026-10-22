@@ -45,6 +45,7 @@ class TokenData(BaseModel):
 class LoginRequest(BaseModel):
     username: str  # Can be username or email or team_id
     password: str
+    force: bool = False
 
 
 class RegisterParticipantRequest(BaseModel):

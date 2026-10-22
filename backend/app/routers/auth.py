@@ -5,7 +5,14 @@ import re
 import uuid
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from app.auth import create_access_token, get_current_user, get_password_hash, set_cached_user, verify_password
+from app.auth import (
+    create_access_token,
+    get_current_user,
+    get_password_hash,
+    invalidate_user_cache,
+    set_cached_user,
+    verify_password
+)
 from app.database import db_manager
 from app.websocket_manager import ws_manager
 from app.models import (
@@ -79,50 +86,52 @@ async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
             detail="Invalid credentials. Check your username, email, team ID, or password."
         )
 
-    # 3. Enforce single device login: Prevent multiple logins from the same team
+    # 3. Enforce single device login: Prevent multiple logins from the same participant team
+    # (Admins can have multiple devices/sessions concurrently)
     if user.get("role") == UserRole.PARTICIPANT and user.get("team_id"):
         team_id = user["team_id"]
-        # Check active live websocket connection
+        has_active_session = bool(user.get("active_session"))
         has_live_ws = team_id in ws_manager.team_connections and len(ws_manager.team_connections[team_id]) > 0
-        
-        # Check active session recorded in database with recent activity (within 90 seconds)
-        has_recent_session = False
-        if user.get("active_session") and user.get("last_active"):
-            try:
-                last_dt = datetime.fromisoformat(user["last_active"])
-                if (datetime.utcnow() - last_dt).total_seconds() < 90:
-                    has_recent_session = True
-            except Exception:
-                pass
 
-        if has_live_ws or has_recent_session:
+        # Block if active on another device and user has not confirmed force takeover
+        if (has_active_session or has_live_ws) and not getattr(credentials, "force", False):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Team '{team_id}' is already logged in on another device. Multiple logins from the same team are not allowed."
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Team '{team_id}' is already logged in on another device. Participants can only access from one device at a time."
             )
+
+        # If another device was active and force=True, kick the old device out via WebSocket
+        if has_active_session or has_live_ws:
+            logger.info(f"Terminating old session for team '{team_id}' to activate new device")
+            try:
+                asyncio.create_task(
+                    ws_manager.send_team_message(
+                        team_id,
+                        "FORCE_LOGOUT",
+                        {"message": "Your session has been terminated because this account was logged into on another device."}
+                    )
+                )
+            except Exception as e:
+                logger.warning(f"Failed to broadcast FORCE_LOGOUT: {e}")
 
     # 4. Generate token and session id
     session_id = str(uuid.uuid4())
     now_iso = datetime.utcnow().isoformat()
 
-    # Register active session in background task so HTTP response returns instantly
+    # Synchronously register active session in database and refresh cache
     user_id = user["_id"]
-    def _update_session_task():
-        try:
-            users_col.update_one(
-                {"_id": user_id},
-                {
-                    "$set": {
-                        "active_session": True,
-                        "active_session_token": session_id,
-                        "last_active": now_iso
-                    }
-                }
-            )
-        except Exception as e:
-            logger.warning(f"Failed to record session update in background: {e}")
-
-    background_tasks.add_task(_update_session_task)
+    await asyncio.to_thread(
+        users_col.update_one,
+        {"_id": user_id},
+        {
+            "$set": {
+                "active_session": True,
+                "active_session_token": session_id,
+                "last_active": now_iso
+            }
+        }
+    )
+    invalidate_user_cache(user["username"])
 
     # 5. Populate in-memory user cache immediately
     clean_user = {
@@ -130,7 +139,9 @@ async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
         "email": user.get("email"),
         "role": user["role"],
         "team_id": user.get("team_id"),
-        "team_name": user.get("team_name")
+        "team_name": user.get("team_name"),
+        "active_session": True,
+        "active_session_token": session_id
     }
     set_cached_user(user["username"], clean_user)
 
@@ -184,14 +195,22 @@ async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
 
 @router.post("/logout")
 async def logout(current_user: dict = Depends(get_current_user)):
-    """Ends the active session and allows login on another device."""
-    if current_user.get("team_id"):
-        team_id = current_user["team_id"]
-        users_col = db_manager.get_collection("users")
-        users_col.update_one(
-            {"team_id": team_id},
+    """Ends the active session and allows login on another device for participants."""
+    username = current_user.get("username")
+    team_id = current_user.get("team_id")
+    users_col = db_manager.get_collection("users")
+
+    # Only participants enforce single-device active session clearing
+    if current_user.get("role") == UserRole.PARTICIPANT:
+        query = {"team_id": team_id} if team_id else {"username": username}
+        await asyncio.to_thread(
+            users_col.update_one,
+            query,
             {"$set": {"active_session": False, "active_session_token": None}}
         )
+        if username:
+            invalidate_user_cache(username)
+
     return {"message": "Logged out successfully"}
 
 

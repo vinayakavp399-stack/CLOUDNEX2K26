@@ -20,17 +20,19 @@ export default function LoginPage({ initialRole = 'participant', onSuccess, onBa
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [conflictError, setConflictError] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
   const { login } = useAuth();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async (e, force = false) => {
+    if (e && e.preventDefault) e.preventDefault();
     setError('');
+    setConflictError(false);
     setLoading(true);
 
     try {
-      const profile = await login(username, password);
+      const profile = await login(username, password, force);
       if (activeTab === 'admin' && profile.role !== 'admin') {
         setError('This portal is restricted to authorized Race Directors (Admins).');
         setLoading(false);
@@ -40,7 +42,11 @@ export default function LoginPage({ initialRole = 'participant', onSuccess, onBa
         onSuccess(profile);
       }
     } catch (err) {
-      setError(err.message || 'Login failed. Please verify your credentials.');
+      if (err.status === 409 || err.message?.toLowerCase().includes('already logged in on another device') || err.message?.toLowerCase().includes('one device at a time')) {
+        setConflictError(true);
+      } else {
+        setError(err.message || 'Login failed. Please verify your credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -183,7 +189,37 @@ export default function LoginPage({ initialRole = 'participant', onSuccess, onBa
             </button>
           </div>
 
-          {/* Error / Success Alerts */}
+          {/* Error / Success / Conflict Alerts */}
+          {conflictError && (
+            <div className="mb-4 p-4 rounded-xl bg-amber-950/70 border border-amber-500/50 text-amber-200 text-xs shadow-lg">
+              <div className="flex items-center space-x-2 font-race font-bold text-amber-400 text-sm mb-1.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>Single Device Limit (Participant)</span>
+              </div>
+              <p className="text-slate-300 mb-3 leading-relaxed">
+                Team <strong>{username.toUpperCase()}</strong> is currently logged in on another device.
+                For participants, only 1 device can be accessed at a time.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => handleLogin(e, true)}
+                  disabled={loading}
+                  className="flex-1 py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-race font-bold text-xs uppercase tracking-wider transition-colors shadow-md shadow-amber-950/60 cursor-pointer"
+                >
+                  {loading ? 'Switching Device...' : 'Sign Out Other Device & Log In Here'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConflictError(false)}
+                  className="py-2 px-3 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-red-950/60 border border-red-600/50 text-red-300 text-xs font-mono-code flex items-start space-x-2">
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />

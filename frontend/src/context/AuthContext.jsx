@@ -16,10 +16,18 @@ export function AuthProvider({ children }) {
           setUser(profile);
           setUserData(profile);
         } catch (err) {
-          console.warn('Session expired or invalid token', err);
-          setAuthToken(null);
-          setUserData(null);
-          setUser(null);
+          // Only clear session if explicitly rejected with 401 (invalidated credentials or single device takeover)
+          if (err?.status === 401 || err?.message?.includes('401') || err?.message?.includes('Could not validate') || err?.message?.includes('logged out') || err?.message?.includes('terminated')) {
+            console.warn('Session expired or invalidated by another device', err);
+            setAuthToken(null);
+            setUserData(null);
+            setUser(null);
+            localStorage.removeItem('cloudnex_view');
+          } else {
+            // Network delay, server cold start on Render, or temporary glitch:
+            // Do NOT log out the user! Keep existing session active.
+            console.warn('Backend server waking up or temporary network lag; retaining active login session.', err);
+          }
         }
       }
       setLoading(false);
@@ -27,8 +35,8 @@ export function AuthProvider({ children }) {
     initUser();
   }, []);
 
-  const login = async (username, password) => {
-    const data = await api.auth.login(username, password);
+  const login = async (username, password, force = false) => {
+    const data = await api.auth.login(username, password, force);
     
     // Fast login path: Use profile returned directly by login endpoint
     const profile = data.user || {
@@ -62,6 +70,7 @@ export function AuthProvider({ children }) {
     setAuthToken(null, user?.role);
     setUserData(null);
     setUser(null);
+    localStorage.removeItem('cloudnex_view');
   };
 
   const refreshProfile = async () => {
