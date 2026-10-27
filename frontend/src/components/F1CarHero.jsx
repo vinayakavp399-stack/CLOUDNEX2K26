@@ -112,7 +112,7 @@ export default function F1CarHero({ onParticipantLogin, onAdminLogin, onGoToDash
                   </div>
                   <div>
                     <div className="font-race font-black text-sm tracking-wider text-white uppercase flex items-center space-x-2">
-                      <span>{isAdmin ? 'Race Control' : 'Enter Paddock'}</span>
+                      <span>{isAdmin ? 'Race Control' : 'Enter Dashboard'}</span>
                       <span className="text-[9px] font-mono-code px-1.5 py-0.5 bg-emerald-500/30 text-emerald-200 rounded">ACTIVE</span>
                     </div>
                     <p className="text-[10px] font-mono-code text-cyan-300 truncate max-w-[170px]">

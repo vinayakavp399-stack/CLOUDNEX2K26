@@ -10,11 +10,14 @@ import { useRaceSocket } from '../context/RaceSocketContext';
 import { api } from '../api/client';
 import CircuitTrack from '../components/CircuitTrack';
 import Round3Celebration from '../components/Round3Celebration';
+import RulesAndRegulationsModal from '../components/RulesAndRegulationsModal';
 import dashboardBg from '../assets/dashboard_bg.jpg';
+
 export default function ParticipantDashboard() {
   const { user, teamId, team, refreshProfile } = useAuth();
   const { registerListener, isConnected } = useRaceSocket();
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [rulesModalTab, setRulesModalTab] = useState('pdf');
 
   const [rounds, setRounds] = useState(() => {
     try {
@@ -825,8 +828,8 @@ export default function ParticipantDashboard() {
             {/* Controls */}
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => setShowRulesModal(true)}
-                title="View Rules & Code of Conduct"
+                onClick={() => { setRulesModalTab('pdf'); setShowRulesModal(true); }}
+                title="View Rules & Code of Conduct (PDF)"
                 className="p-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-white/10 transition-colors flex items-center space-x-1.5 text-xs font-mono-code cursor-pointer"
               >
                 <Shield className="w-4 h-4 text-red-400" />
@@ -1510,110 +1513,11 @@ export default function ParticipantDashboard() {
       )}
 
       {/* Rules & Regulations Modal for Participants */}
-      {showRulesModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-          <div className="relative max-w-3xl w-full rounded-2xl bg-slate-950 border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="p-5 sm:p-6 border-b border-white/10 flex items-center justify-between bg-slate-900/60">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-red-950/60 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0">
-                  <Shield className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-race font-bold uppercase tracking-wider text-red-400 block">
-                    CODE OF CONDUCT &bull; COMPETITION RULES
-                  </span>
-                  <h3 className="font-race text-lg sm:text-xl font-black text-white">
-                    CLOUDNEX HACKATHON &ndash; RULES &amp; REGULATIONS
-                  </h3>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowRulesModal(false)}
-                className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 font-mono-code text-xs sm:text-sm text-slate-200">
-              <div className="space-y-4 divide-y divide-white/10">
-                <div className="pt-2 first:pt-0">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="w-5 h-5 rounded-full bg-red-600/20 text-red-400 border border-red-500/40 flex items-center justify-center font-mono-code font-bold text-[10px] shrink-0">01</span>
-                    <strong className="font-race text-white uppercase text-sm sm:text-base font-black">Team Participation</strong>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-200 pl-7 leading-relaxed font-bold">
-                    Each team must have a fixed number of members as decided by the organizers. All members must participate actively. <span className="text-amber-300 font-black">Team size: 3 to 4 registered participants</span> representing a recognized academic institution.
-                  </p>
-                </div>
-
-                <div className="pt-4">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="w-5 h-5 rounded-full bg-red-600/20 text-red-400 border border-red-500/40 flex items-center justify-center font-mono-code font-bold text-[10px] shrink-0">02</span>
-                    <strong className="font-race text-white uppercase text-sm sm:text-base font-black">Architecture &amp; Workflow (Round 1)</strong>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-200 pl-7 leading-relaxed font-bold">
-                    Teams must design and present a clear system architecture and workflow within the allotted time. <span className="text-cyan-300 font-black">Submissions must consist of original architectural diagrams</span> and system blueprints.
-                  </p>
-                </div>
-
-                <div className="pt-4">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="w-5 h-5 rounded-full bg-red-600/20 text-red-400 border border-red-500/40 flex items-center justify-center font-mono-code font-bold text-[10px] shrink-0">03</span>
-                    <strong className="font-race text-white uppercase text-sm sm:text-base font-black">Implementation &amp; Cloud Deployment (Round 2)</strong>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-200 pl-7 leading-relaxed font-bold">
-                    Teams must implement their solution, test the code, and deploy the application to the cloud within the specified time limit. Submissions must consist of verifiable GitHub code and live deployments.
-                  </p>
-                  <div className="ml-7 mt-2 p-2.5 rounded-lg bg-amber-950/60 border border-amber-500/40 text-[11px] font-mono-code text-amber-200 font-bold">
-                    <strong className="text-amber-400 font-black block mb-0.5">⚠️ CLOUD ACCOUNT NOTICE:</strong>
-                    Organizers are not responsible for cloud account creation; participants must create and configure their cloud accounts (GCP, Microsoft Azure, AWS, etc.) prior to early event start.
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="w-5 h-5 rounded-full bg-cyan-600/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center font-mono-code font-bold text-[10px] shrink-0">04</span>
-                    <strong className="font-race text-white uppercase text-sm sm:text-base font-black">Crisis Challenge (Round 3)</strong>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-200 pl-7 leading-relaxed font-bold">
-                    Teams must solve the surprise crisis challenge assigned by the organizers and explain their solution during the presentation under controlled pressure.
-                  </p>
-                </div>
-
-                <div className="pt-4">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="w-5 h-5 rounded-full bg-cyan-600/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center font-mono-code font-bold text-[10px] shrink-0">05</span>
-                    <strong className="font-race text-white uppercase text-sm sm:text-base font-black">Presentation &amp; Evaluation</strong>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-200 pl-7 leading-relaxed font-bold">
-                    Teams must present their work and answer judges' questions. <span className="text-cyan-300 font-black">Elimination threshold after Round 2: Only top-scoring teams advance to Round 3.</span> Judging decisions are final.
-                  </p>
-                </div>
-
-                <div className="pt-4">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="w-5 h-5 rounded-full bg-cyan-600/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center font-mono-code font-bold text-[10px] shrink-0">06</span>
-                    <strong className="font-race text-white uppercase text-sm sm:text-base font-black">Fair Play &amp; Originality</strong>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-200 pl-7 leading-relaxed font-bold">
-                    Plagiarism, unfair practices, and disruption of other teams are strictly prohibited. Teams must follow the organizers' instructions and complete all rounds within the given time limits.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-white/10 bg-slate-900/60 flex justify-end">
-              <button
-                onClick={() => setShowRulesModal(false)}
-                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-race font-bold text-xs uppercase tracking-wider cursor-pointer"
-              >
-                Understood &bull; Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RulesAndRegulationsModal
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+        defaultTab={rulesModalTab}
+      />
 
       {/* Winner Podium Celebration Modal for Participants */}
       {showWinnerModal && winnerAnnouncement?.is_announced && (

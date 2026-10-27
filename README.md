@@ -145,8 +145,32 @@ npm run dev
 
 ---
 
+## 📜 Official Rule Book & Competition Guidelines
+
+The complete, official 9-page Rule Book for the **CLOUDNEX Hackathon (IGNITRON 2K26)** is integrated into the participant console with an embedded interactive viewer:
+- **Downloadable PDF Path**: `/CLOUDNEX_HACKATHON_RULE_BOOK.pdf`
+- **Features**:
+  - Embedded PDF viewer with scrollbar visibility hidden and background scrolling locked while viewing.
+  - Interactive searchable guide covering all 14 official rules.
+  - Direct download and external tab viewing options.
+  - Accessible directly via the **Rules & Regulations** button in the Participant Cockpit header.
+
+### 👥 Event Coordinators
+
+| Role | Coordinator | Contact Number |
+|---|---|---|
+| **Student Coordinator** | Mr. Vinayak Pujar | +91 8088079573 |
+| **Student Coordinator** | Mr. Darshan G M | +91 7676566133 |
+| **Faculty Coordinator** | Ms. Usha T M | +91 6361736961 |
+| **Faculty Coordinator** | Ms. Pooja K R | +91 6363725690 |
+
+- **Venue**: GM Business School Auditorium, New Building, GM University, Davangere, Karnataka.
+
+---
+
 ## 🏛️ Credits & Institutional Affiliation
 
 - **Department of Cloud Computing**, GM University, Davangere, Karnataka.
 - **IGNITRON 2K26 Annual National Technical Symposium**.
 - **Student Affairs Council**, GM University Campus, P.B. Road, Davangere - 577006.
+

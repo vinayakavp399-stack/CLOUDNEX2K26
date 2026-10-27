@@ -8,7 +8,7 @@ export default function LoginPage({ initialRole = 'participant', onSuccess, onBa
   const [activeTab, setActiveTab] = useState(initialRole); // 'participant', 'admin', 'register'
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  
+
   // Registration form state
   const [regTeamId, setRegTeamId] = useState('');
   const [regTeamName, setRegTeamName] = useState('');
@@ -142,8 +142,8 @@ export default function LoginPage({ initialRole = 'participant', onSuccess, onBa
             {activeTab === 'admin'
               ? 'RACE DIRECTOR CONTROL'
               : activeTab === 'register'
-              ? 'REGISTER TEAM GRID'
-              : 'PARTICIPANT COCKPIT'}
+                ? 'REGISTER TEAM GRID'
+                : 'PARTICIPANT COCKPIT'}
           </h2>
           <p className="text-xs text-slate-400 mt-2">
             Formula 1 Racing Competition &bull; <strong className="text-cyan-300">GM University, Davangere</strong>
@@ -157,33 +157,30 @@ export default function LoginPage({ initialRole = 'participant', onSuccess, onBa
             <button
               type="button"
               onClick={() => { setActiveTab('participant'); setError(''); setSuccessMsg(''); }}
-              className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${
-                activeTab === 'participant'
+              className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'participant'
                   ? 'bg-slate-800 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
-              }`}
+                }`}
             >
               Participant
             </button>
             <button
               type="button"
               onClick={() => { setActiveTab('admin'); setError(''); setSuccessMsg(''); }}
-              className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${
-                activeTab === 'admin'
+              className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'admin'
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
-              }`}
+                }`}
             >
               Race Director
             </button>
             <button
               type="button"
               onClick={() => { setActiveTab('register'); setError(''); setSuccessMsg(''); }}
-              className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${
-                activeTab === 'register'
+              className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'register'
                   ? 'bg-cyan-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
-              }`}
+                }`}
             >
               Register Team
             </button>
@@ -274,11 +271,10 @@ export default function LoginPage({ initialRole = 'participant', onSuccess, onBa
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full py-3 rounded-xl font-race font-bold text-sm tracking-wider uppercase text-white shadow-lg transition-all flex items-center justify-center space-x-2 mt-6 ${
-                  activeTab === 'admin'
+                className={`w-full py-3 rounded-xl font-race font-bold text-sm tracking-wider uppercase text-white shadow-lg transition-all flex items-center justify-center space-x-2 mt-6 ${activeTab === 'admin'
                     ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 shadow-red-950/60'
                     : 'bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600'
-                }`}
+                  }`}
               >
                 {loading ? (
                   <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
