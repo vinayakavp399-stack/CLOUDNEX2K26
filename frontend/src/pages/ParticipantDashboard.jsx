@@ -335,6 +335,31 @@ export default function ParticipantDashboard() {
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { teamRef.current = team; }, [team]);
 
+  // Proactive session heartbeat to immediately enforce single-device limit
+  useEffect(() => {
+    let unmounted = false;
+    const verifySession = async () => {
+      if (unmounted) return;
+      try {
+        await api.auth.me();
+      } catch (err) {
+        if (err?.status === 401) {
+          console.warn('Participant session invalidated by another device:', err.message);
+        }
+      }
+    };
+
+    const intervalId = setInterval(verifySession, 5000);
+    const handleFocus = () => { verifySession(); };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      unmounted = true;
+      clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
   useEffect(() => {
     fetchData();
 
@@ -448,26 +473,13 @@ export default function ParticipantDashboard() {
         refreshProfile();
       }
 
-      // 6. INSTANT QUALIFICATIONS UPDATE (0ms)
+      // 6. QUALIFICATIONS UPDATE
       if (event.type === 'QUALIFICATIONS_UPDATED' && event.data?.updated) {
-        const myTeamId = userRef.current?.team_id || teamRef.current?.team_id || teamId;
-        const myUpdate = event.data.updated.find(u => u.team_id === myTeamId);
-        if (myUpdate) {
-          setRounds(prevRounds => {
-            if (!Array.isArray(prevRounds)) return prevRounds;
-            const updated = prevRounds.map(r => {
-              if (Number(r.round_number) === 3) {
-                return {
-                  ...r,
-                  user_access: myUpdate.qualified ? 'QUALIFIED' : 'ELIMINATED',
-                  selection_status: myUpdate.qualified ? 'QUALIFIED' : 'ELIMINATED'
-                };
-              }
-              return r;
-            });
-            try { sessionStorage.setItem('cloudnex_cached_rounds', JSON.stringify(updated)); } catch {}
-            return updated;
-          });
+        // Only refresh if selection has officially been revealed or announced by admin
+        const curR3 = (roundsRef.current || []).find(r => Number(r.round_number) === 3);
+        const isRevealed = Boolean(curR3 && !curR3.results_held && (curR3.selection_revealed || curR3.results_announced));
+        if (isRevealed) {
+          fetchData();
           refreshProfile();
         }
       }
@@ -979,8 +991,8 @@ export default function ParticipantDashboard() {
           /* Round 3: Submission Removed. Full-Width Animated Video-Style Celebration or Countdown Notice */
           <div ref={round3SectionRef} id="round3-announcement-section" className="w-full scroll-mt-8">
             <Round3Celebration
-              isQualified={isTeamMarkedQualified}
-              isEliminated={isTeamMarkedEliminated}
+              isQualified={isQualifiedR3}
+              isEliminated={isEliminated}
               team={team}
               user={user}
               teamId={teamId}

@@ -4,10 +4,25 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 import dashboardBg from '../assets/dashboard_bg.jpg';
 
-export default function LoginPage({ initialRole = 'participant', onSuccess, onBack }) {
-  const [activeTab, setActiveTab] = useState(initialRole); // 'participant', 'admin', 'register'
+export default function LoginPage({ initialRole = 'participant', lockedPortal = null, onSuccess, onBack, onSwitchPortal }) {
+  const [activeTab, setActiveTab] = useState(() => {
+    if (lockedPortal === 'admin') return 'admin';
+    if (lockedPortal === 'participant') {
+      return initialRole === 'register' ? 'register' : 'participant';
+    }
+    return initialRole;
+  });
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  // Synchronize tab if lockedPortal changes
+  React.useEffect(() => {
+    if (lockedPortal === 'admin') {
+      setActiveTab('admin');
+    } else if (lockedPortal === 'participant') {
+      setActiveTab(prev => (prev === 'register' ? 'register' : 'participant'));
+    }
+  }, [lockedPortal]);
 
   // Registration form state
   const [regTeamId, setRegTeamId] = useState('');
@@ -31,10 +46,17 @@ export default function LoginPage({ initialRole = 'participant', onSuccess, onBa
     setConflictError(false);
     setLoading(true);
 
+    const expectedRole = activeTab === 'admin' ? 'admin' : 'participant';
+
     try {
-      const profile = await login(username, password, force);
-      if (activeTab === 'admin' && profile.role !== 'admin') {
-        setError('This portal is restricted to authorized Race Directors (Admins).');
+      const profile = await login(username, password, force, expectedRole);
+      if (expectedRole === 'admin' && profile.role !== 'admin') {
+        setError('Access denied: Participant credentials cannot be used for Race Director (Admin) login.');
+        setLoading(false);
+        return;
+      }
+      if (expectedRole === 'participant' && profile.role !== 'participant') {
+        setError('Access denied: Race Director credentials cannot be used for Participant login.');
         setLoading(false);
         return;
       }
@@ -130,12 +152,16 @@ export default function LoginPage({ initialRole = 'participant', onSuccess, onBa
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
-            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded-full text-xs font-race font-bold tracking-wider flex items-center space-x-1.5 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span className={`px-3 py-1 border rounded-full text-xs font-race font-bold tracking-wider flex items-center space-x-1.5 shadow-sm ${
+              activeTab === 'admin'
+                ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${activeTab === 'admin' ? 'bg-red-400' : 'bg-cyan-400'}`} />
               <span>GM UNIVERSITY</span>
             </span>
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-red-950/60 border border-red-500/40 text-red-300 text-xs font-mono-code font-bold">
-              <span>CLOUDNEX 2K26</span>
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-white/10 text-slate-300 text-xs font-mono-code font-bold">
+              <span>{activeTab === 'admin' ? 'CHIEF STEWARDS & RACE CONTROL' : 'CLOUDNEX 2K26 GRID'}</span>
             </div>
           </div>
           <h2 className="font-race text-3xl font-black text-white tracking-wider">
@@ -146,45 +172,82 @@ export default function LoginPage({ initialRole = 'participant', onSuccess, onBa
                 : 'PARTICIPANT COCKPIT'}
           </h2>
           <p className="text-xs text-slate-400 mt-2">
-            Formula 1 Racing Competition &bull; <strong className="text-cyan-300">GM University, Davangere</strong>
+            {activeTab === 'admin' ? (
+              <>Restricted Organizer Portal &bull; <strong className="text-red-400">Chief Steward Authorization Required</strong></>
+            ) : (
+              <>Formula 1 Racing Competition &bull; <strong className="text-cyan-300">GM University, Davangere</strong></>
+            )}
           </p>
         </div>
 
         {/* Card */}
         <div className="racing-card rounded-2xl p-6 sm:p-8 shadow-2xl border border-white/10">
-          {/* Tab selector */}
-          <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl mb-6 border border-white/5 text-xs font-race font-bold">
-            <button
-              type="button"
-              onClick={() => { setActiveTab('participant'); setError(''); setSuccessMsg(''); }}
-              className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'participant'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-                }`}
-            >
-              Participant
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('admin'); setError(''); setSuccessMsg(''); }}
-              className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'admin'
-                  ? 'bg-red-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-                }`}
-            >
-              Race Director
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('register'); setError(''); setSuccessMsg(''); }}
-              className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'register'
-                  ? 'bg-cyan-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-                }`}
-            >
-              Register Team
-            </button>
-          </div>
+          {/* Tab selector or Portal indicator */}
+          {lockedPortal === 'participant' ? (
+            <div className="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl mb-6 border border-white/5 text-xs font-race font-bold">
+              <button
+                type="button"
+                onClick={() => { setActiveTab('participant'); setError(''); setSuccessMsg(''); }}
+                className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'participant'
+                    ? 'bg-cyan-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                  }`}
+              >
+                Participant Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('register'); setError(''); setSuccessMsg(''); }}
+                className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'register'
+                    ? 'bg-cyan-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                  }`}
+              >
+                Register Team
+              </button>
+            </div>
+          ) : lockedPortal === 'admin' ? (
+            <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-xs font-race font-bold mb-6">
+              <div className="flex items-center space-x-2 text-red-400">
+                <Shield className="w-4 h-4 text-red-500" />
+                <span>RESTRICTED ORGANIZER ACCESS</span>
+              </div>
+              <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-red-500/20 text-red-300 font-bold">ADMIN ONLY</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl mb-6 border border-white/5 text-xs font-race font-bold">
+              <button
+                type="button"
+                onClick={() => { setActiveTab('participant'); setError(''); setSuccessMsg(''); }}
+                className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'participant'
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                  }`}
+              >
+                Participant
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('admin'); setError(''); setSuccessMsg(''); }}
+                className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'admin'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                  }`}
+              >
+                Race Director
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('register'); setError(''); setSuccessMsg(''); }}
+                className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'register'
+                    ? 'bg-cyan-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                  }`}
+              >
+                Register Team
+              </button>
+            </div>
+          )}
 
           {/* Error / Success / Conflict Alerts */}
           {conflictError && (
@@ -271,16 +334,16 @@ export default function LoginPage({ initialRole = 'participant', onSuccess, onBa
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full py-3 rounded-xl font-race font-bold text-sm tracking-wider uppercase text-white shadow-lg transition-all flex items-center justify-center space-x-2 mt-6 ${activeTab === 'admin'
+                className={`w-full py-3 rounded-xl font-race font-bold text-sm tracking-wider uppercase text-white shadow-lg transition-all flex items-center justify-center space-x-2 mt-6 cursor-pointer ${activeTab === 'admin'
                     ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 shadow-red-950/60'
-                    : 'bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600'
+                    : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 shadow-cyan-950/60'
                   }`}
               >
                 {loading ? (
                   <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>Enter Cockpit</span>
+                    <span>{activeTab === 'admin' ? 'Enter Race Control' : 'Enter Cockpit'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

@@ -79,4 +79,19 @@ class ConnectionManager:
             if dead_conn in self.team_connections[team_id]:
                 self.team_connections[team_id].remove(dead_conn)
 
+    async def close_team_connections(self, team_id: str, reason: str = "LOGGED_IN_ON_ANOTHER_DEVICE"):
+        """Close and terminate all active websocket connections for a team."""
+        if team_id not in self.team_connections or not self.team_connections[team_id]:
+            return
+
+        conns = list(self.team_connections[team_id])
+        self.team_connections[team_id] = []
+        for ws in conns:
+            if ws in self.active_connections:
+                self.active_connections.remove(ws)
+            try:
+                await ws.close(code=4001, reason=reason)
+            except Exception:
+                pass
+
 ws_manager = ConnectionManager()

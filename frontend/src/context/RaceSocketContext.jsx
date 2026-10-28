@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { getAuthToken } from '../api/client';
 
 const RaceSocketContext = createContext(null);
 
@@ -77,9 +78,13 @@ export function RaceSocketProvider({ children }) {
     let unmounted = false;
 
     function getWsUrls() {
-      const customApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://cloudnex-backend.onrender.com' : null);
-      const query = teamId ? `?team_id=${encodeURIComponent(teamId)}` : '';
+      const token = getAuthToken('participant');
+      const params = [];
+      if (teamId) params.push(`team_id=${encodeURIComponent(teamId)}`);
+      if (token) params.push(`token=${encodeURIComponent(token)}`);
+      const query = params.length > 0 ? `?${params.join('&')}` : '';
       const urls = [];
+      const customApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://cloudnex-backend.onrender.com' : null);
 
       if (customApiUrl) {
         const wsProtocol = customApiUrl.startsWith('https') ? 'wss:' : 'ws:';
@@ -138,9 +143,17 @@ export function RaceSocketProvider({ children }) {
           }
         };
 
-        ws.onclose = () => {
+        ws.onclose = (event) => {
           if (!unmounted) {
             setIsConnected(false);
+            if (event && event.code === 4001) {
+              console.warn('WebSocket closed: single device takeover.');
+              dispatchEvent({
+                type: 'FORCE_LOGOUT',
+                data: { message: 'Your session has been terminated because this account was logged into on another device.' }
+              }, 'ws');
+              return;
+            }
             urlIndex++;
             retryCountRef.current++;
             // Fast exponential backoff capped at 2000ms

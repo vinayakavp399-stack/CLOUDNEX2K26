@@ -1,4 +1,4 @@
-import { Shield, Trophy, LogOut, Gauge } from 'lucide-react';
+import { Shield, Trophy, LogOut, Gauge, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import ignitronLogo from '../assets/ignitron_logo.jpg';
 
@@ -73,19 +73,19 @@ export default function Navbar({ currentView, setView }) {
                   <span>Admin Console</span>
                 </button>
                 <button
-                  onClick={() => setView('leaderboard')}
+                  onClick={() => setView('teams')}
                   className={`flex items-center space-x-1.5 px-3.5 py-2 text-sm font-semibold rounded-md transition-colors ${
-                    currentView === 'leaderboard'
-                      ? 'text-white bg-white/10 border-b-2 border-amber-400'
+                    currentView === 'teams'
+                      ? 'text-white bg-cyan-600/30 border-b-2 border-cyan-400'
                       : 'text-slate-300 hover:text-white hover:bg-white/5'
                   }`}
                 >
-                  <Trophy className="w-4 h-4 text-amber-400" />
-                  <span>Leaderboard</span>
+                  <Users className="w-4 h-4 text-cyan-400" />
+                  <span>Teams</span>
                 </button>
               </>
             )}
-            </nav>
+          </nav>
 
           {/* Right side: IGNITRON logo, GM University name & Login */}
           <div className="flex items-center space-x-3 sm:space-x-4">

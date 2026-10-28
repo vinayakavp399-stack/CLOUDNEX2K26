@@ -46,6 +46,7 @@ class LoginRequest(BaseModel):
     username: str  # Can be username or email or team_id
     password: str
     force: bool = False
+    required_role: Optional[UserRole] = None
 
 
 class RegisterParticipantRequest(BaseModel):

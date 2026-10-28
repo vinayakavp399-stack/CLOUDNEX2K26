@@ -20,7 +20,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-    salt = bcrypt.gensalt(rounds=12)
+    salt = bcrypt.gensalt(rounds=10)
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 
@@ -140,20 +140,29 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
     if user is None:
         raise credentials_exception
 
-    # Enforce single device login for participants:
-    # Admin can access from multiple devices (no single device restriction).
-    # Participants can only have 1 active device session.
+    # Enforce strict single-device login for participants:
+    # Admins can access concurrently across multiple devices/tabs.
+    # Participants are strictly limited to 1 valid active device session.
     if user.get("role") == UserRole.PARTICIPANT:
-        active_token = user.get("active_session_token")
-        # If user explicitly logged out
-        if user.get("active_session") is False:
+        # Check live DB state directly to ensure 0ms cache lag on device takeovers
+        users_col = db_manager.get_collection("users")
+        live_user = users_col.find_one({"username": user["username"]})
+        if not live_user:
+            raise credentials_exception
+
+        active_token = live_user.get("active_session_token")
+        is_active = live_user.get("active_session")
+
+        # If session was explicitly ended or set to inactive
+        if is_active is False or not active_token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Session has been logged out. Please sign in again.",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        # If account has an active session token and another device logged in (session_ids do not match)
-        if active_token and session_id and active_token != session_id:
+
+        # If another device logged in (session_ids do not match or token is missing session_id)
+        if not session_id or active_token != session_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Your session was terminated because this account was logged into on another device.",

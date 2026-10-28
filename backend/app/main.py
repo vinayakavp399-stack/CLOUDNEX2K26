@@ -7,8 +7,10 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.auth import decode_token
 from app.config import settings
 from app.database import db_manager
+from app.models import UserRole
 from app.routers import admin, auth, leaderboard, rounds, submissions
 from app.seed_data import seed_database
 from app.websocket_manager import ws_manager
@@ -210,14 +212,35 @@ async def update_session_async(team_id: str, active: bool):
 
 
 # WebSocket handler for real-time race telemetry and round updates
-async def handle_websocket(websocket: WebSocket, team_id: Optional[str] = None):
+async def handle_websocket(websocket: WebSocket, team_id: Optional[str] = None, token: Optional[str] = None):
+    # If participant connects with a token, verify that their session is currently the active one
+    sess_id = None
+    if team_id and token:
+        try:
+            payload = decode_token(token)
+            if payload and payload.get("role") == UserRole.PARTICIPANT:
+                sess_id = payload.get("session_id")
+                users_col = db_manager.get_collection("users")
+                u = users_col.find_one({"team_id": team_id})
+                active_token = u.get("active_session_token") if u else None
+                if u and active_token and sess_id and active_token != sess_id:
+                    # An older session was terminated by a newer login
+                    await websocket.accept()
+                    await websocket.send_text(json.dumps({
+                        "type": "FORCE_LOGOUT",
+                        "data": {"message": "Your session has been terminated because this account was logged into on another device."}
+                    }))
+                    await websocket.close(code=4001, reason="LOGGED_IN_ON_ANOTHER_DEVICE")
+                    return
+        except Exception as e:
+            logger.debug(f"WebSocket token validation error: {e}")
+
     await ws_manager.connect(websocket, team_id=team_id)
     if team_id:
         asyncio.create_task(update_session_async(team_id, True))
 
     # Send initial welcome packet so client immediately confirms active link
     try:
-        import json
         await websocket.send_text(json.dumps({
             "type": "CONNECTION_ESTABLISHED",
             "data": {
@@ -234,25 +257,34 @@ async def handle_websocket(websocket: WebSocket, team_id: Optional[str] = None):
             # Keep connection alive and receive client telemetry pings
             data = await websocket.receive_text()
             if data == "ping":
-                if team_id:
-                    asyncio.create_task(update_session_async(team_id, True))
+                # Check if session was superseded by another device in the meantime
+                if team_id and sess_id:
+                    try:
+                        users_col = db_manager.get_collection("users")
+                        u = users_col.find_one({"team_id": team_id})
+                        if u and u.get("active_session_token") and u.get("active_session_token") != sess_id:
+                            await websocket.send_text(json.dumps({
+                                "type": "FORCE_LOGOUT",
+                                "data": {"message": "Your session has been terminated because this account was logged into on another device."}
+                            }))
+                            await websocket.close(code=4001, reason="LOGGED_IN_ON_ANOTHER_DEVICE")
+                            break
+                    except Exception:
+                        pass
+
                 await websocket.send_text('{"type": "PONG"}')
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket, team_id=team_id)
-        if team_id and (team_id not in ws_manager.team_connections or not ws_manager.team_connections[team_id]):
-            asyncio.create_task(update_session_async(team_id, False))
     except Exception:
         ws_manager.disconnect(websocket, team_id=team_id)
-        if team_id and (team_id not in ws_manager.team_connections or not ws_manager.team_connections[team_id]):
-            asyncio.create_task(update_session_async(team_id, False))
 
 
 @app.websocket("/ws")
-async def websocket_ws(websocket: WebSocket, team_id: Optional[str] = None):
-    await handle_websocket(websocket, team_id=team_id)
+async def websocket_ws(websocket: WebSocket, team_id: Optional[str] = None, token: Optional[str] = None):
+    await handle_websocket(websocket, team_id=team_id, token=token)
 
 
 @app.websocket("/api/v1/ws")
-async def websocket_api_ws(websocket: WebSocket, team_id: Optional[str] = None):
-    await handle_websocket(websocket, team_id=team_id)
+async def websocket_api_ws(websocket: WebSocket, team_id: Optional[str] = None, token: Optional[str] = None):
+    await handle_websocket(websocket, team_id=team_id, token=token)
 

@@ -67,19 +67,23 @@ export default function Round3Celebration({
     return false;
   };
 
-  // Check qualification status of team independently of whether selection has unlocked yet
+  // Check qualification status of team only if explicitly qualified or results are announced
   const isTeamQualified = Boolean(
     isQualified ||
-    team?.is_qualified_r3 ||
-    user?.is_qualified_r3 ||
-    team?.status === 'QUALIFIED_FOR_FINAL'
+    (isAnnounced && (
+      team?.is_qualified_r3 ||
+      user?.is_qualified_r3 ||
+      team?.status === 'QUALIFIED_FOR_FINAL'
+    ))
   );
 
   const isTeamEliminated = Boolean(
     isEliminated ||
-    team?.is_eliminated ||
-    user?.is_eliminated ||
-    team?.status === 'ELIMINATED'
+    (isAnnounced && (
+      team?.is_eliminated ||
+      user?.is_eliminated ||
+      team?.status === 'ELIMINATED'
+    ))
   );
 
   // Strip points and marks from steward commendation so participants do not see points

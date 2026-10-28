@@ -4,7 +4,8 @@ import {
   Lock, Unlock, Clock, FileText, Award, Eye, EyeOff, Edit3, Save, RefreshCw,
   TrendingUp, Activity, Terminal, ArrowUpRight, ShieldAlert, Radio,
   Shuffle, Upload, Download, Layers, BarChart3, Sparkles, Check, X,
-  PlusCircle, Database, HelpCircle, RotateCcw, Trophy, XCircle, ArrowLeft
+  PlusCircle, Database, HelpCircle, RotateCcw, Trophy, XCircle, ArrowLeft,
+  Search, LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useRaceSocket } from '../context/RaceSocketContext';
@@ -12,7 +13,7 @@ import { api } from '../api/client';
 import CountdownTimer from '../components/CountdownTimer';
 import dashboardBg from '../assets/dashboard_bg.jpg';
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ initialTab = 'rounds' }) {
   const { user } = useAuth();
   const { registerListener, isConnected, broadcastLocalEvent } = useRaceSocket();
 
@@ -60,11 +61,18 @@ export default function AdminDashboard() {
       return true;
     }
   });
-  const [activeTab, setActiveTab] = useState('rounds'); // 'rounds', 'problems', 'teams', 'evaluation', 'final_round', 'winner_announcement'
+  const [activeTab, setActiveTab] = useState(initialTab); // 'rounds', 'problems', 'teams', 'evaluation', 'final_round', 'winner_announcement'
 
-  // Notification state
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [searchTeamQuery, setSearchTeamQuery] = useState('');
+  const [loggingOutTeamId, setLoggingOutTeamId] = useState(null);
 
   // Problem Allocation & Studio State
   const [allocationStats, setAllocationStats] = useState(null);
@@ -274,6 +282,20 @@ export default function AdminDashboard() {
         });
         setOverview(prev => prev ? ({ ...prev, total_submissions: (prev.total_submissions || 0) + 1 }) : prev);
         scheduleLoadData(150);
+        return;
+      }
+
+      if (event.type === 'TEAM_STATUS_CHANGED' && event.data) {
+        const { team_id, is_online } = event.data;
+        if (team_id) {
+          setTeams(prevTeams => (Array.isArray(prevTeams) ? prevTeams : []).map(t => {
+            if (t.team_id === team_id) {
+              return { ...t, is_online: !!is_online };
+            }
+            return t;
+          }));
+        }
+        scheduleLoadData(200);
         return;
       }
 
@@ -1313,6 +1335,28 @@ export default function AdminDashboard() {
     }
   };
 
+  // Remote Participant Session Logout Handler
+  const handleForceLogoutTeam = async (teamId) => {
+    if (!teamId) return;
+    const confirmLogout = window.confirm(`Terminate session for ${teamId}?\nThis will immediately log out the team from their participant dashboard on their device.`);
+    if (!confirmLogout) return;
+
+    setLoggingOutTeamId(teamId);
+    try {
+      // Optimistically update online status
+      setTeams(prev => (Array.isArray(prev) ? prev : []).map(t => t.team_id === teamId ? { ...t, is_online: false } : t));
+
+      await api.admin.forceLogoutTeam(teamId);
+      setSuccessMsg(`Team ${teamId} participant session has been terminated successfully.`);
+      scheduleLoadData(250);
+    } catch (err) {
+      setErrorMsg(err.message || `Failed to log out team ${teamId}`);
+      scheduleLoadData(100);
+    } finally {
+      setLoggingOutTeamId(null);
+    }
+  };
+
   // Elimination Handlers (Instant Optimistic Updates)
   const handleToggleQualification = async (teamId, currentStatus) => {
     return handleSetTeamQualification(teamId, !currentStatus);
@@ -1327,17 +1371,23 @@ export default function AdminDashboard() {
       const totalR12 = (r1 + r2) > 0 ? (r1 + r2) : parseFloat(targetTeam?.total_score || 0);
 
       // OPTIMISTIC UPDATE IMMEDIATELY
-      setTeams(prevTeams =>
-        (prevTeams || []).map(t => {
+      let updatedList = [];
+      setTeams(prevTeams => {
+        const next = (prevTeams || []).map(t => {
           if (t.team_id !== teamId) return t;
           return {
             ...t,
             is_qualified_r3: shouldQualify,
             is_eliminated: !shouldQualify,
-            status: shouldQualify ? 'QUALIFIED_R3' : 'ELIMINATED'
+            status: shouldQualify ? 'QUALIFIED_R3' : 'ELIMINATED',
+            decision_locked: true
           };
-        })
-      );
+        });
+        updatedList = next;
+        try { sessionStorage.setItem('cloudnex_admin_teams', JSON.stringify(next)); } catch {}
+        return next;
+      });
+
       setOverview(prev => {
         if (!prev) return prev;
         const currentQualified = (teams || []).filter(t => t.team_id === teamId ? shouldQualify : t.is_qualified_r3).length;
@@ -1351,8 +1401,8 @@ export default function AdminDashboard() {
 
       setSuccessMsg(
         shouldQualify
-          ? `🏆 Team "${targetTeam?.team_name || teamId}" (${targetTeam?.institution || 'GM'}) is now QUALIFIED for the Final Round with ${totalR12.toFixed(1)} pts (Round 1: ${r1} pts + Round 2: ${r2} pts)!`
-          : `Team ${targetTeam?.team_name || teamId} marked as ELIMINATED.`
+          ? `🏆 Team "${targetTeam?.team_name || teamId}" marked as QUALIFIED for Final Round (Decision Confirmed).`
+          : `Team "${targetTeam?.team_name || teamId}" marked as ELIMINATED from Final Round (Decision Confirmed).`
       );
 
       const payload = {
@@ -1367,12 +1417,7 @@ export default function AdminDashboard() {
         ]
       };
 
-      if (typeof broadcastLocalEvent === 'function') {
-        broadcastLocalEvent('QUALIFICATIONS_UPDATED', {
-          updated: [{ team_id: teamId, qualified: shouldQualify }]
-        });
-      }
-
+      // Qualifications remain sealed and private to Race Control until admin starts the announcement timer or clicks reveal in Round Control (Lap 03).
       api.admin.qualify(payload)
         .then(() => scheduleLoadData(400))
         .catch(err => {
@@ -1384,69 +1429,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Batch Qualify Top N Teams based on Rounds 1 & 2 points
-  const handleBatchQualifyTop = async (topCount = 3) => {
-    try {
-      setErrorMsg('');
-      // Sort teams by points earned in Rounds 1 & 2 descending
-      const sorted = [...teams].sort((a, b) => {
-        const r1A = parseFloat(a.scores_by_round?.['1'] || 0);
-        const r2A = parseFloat(a.scores_by_round?.['2'] || 0);
-        const scoreA = (r1A + r2A) > 0 ? (r1A + r2A) : parseFloat(a.total_score || 0);
-
-        const r1B = parseFloat(b.scores_by_round?.['1'] || 0);
-        const r2B = parseFloat(b.scores_by_round?.['2'] || 0);
-        const scoreB = (r1B + r2B) > 0 ? (r1B + r2B) : parseFloat(b.total_score || 0);
-
-        return scoreB - scoreA;
-      });
-
-      const topIds = new Set(sorted.slice(0, topCount).map(t => t.team_id));
-
-      // OPTIMISTIC UPDATE IMMEDIATELY
-      setTeams(prevTeams =>
-        (prevTeams || []).map(t => {
-          const isTop = topIds.has(t.team_id);
-          return {
-            ...t,
-            is_qualified_r3: isTop,
-            is_eliminated: !isTop,
-            status: isTop ? 'QUALIFIED_R3' : 'ELIMINATED'
-          };
-        })
-      );
-      setOverview(prev => prev ? ({
-        ...prev,
-        qualified_teams: Math.min(topCount, sorted.length),
-        eliminated_teams: Math.max(0, sorted.length - topCount)
-      }) : prev);
-
-      setSuccessMsg(`Applied Top ${topCount} Qualification decisions!`);
-
-      const qualifications = sorted.map((t, idx) => ({
-        team_id: t.team_id,
-        qualified: idx < topCount,
-        feedback: idx < topCount
-          ? `Top ${topCount} Qualifier for Round 3 (Final Lap).`
-          : 'Race completed post-Round 2.'
-      }));
-
-      if (typeof broadcastLocalEvent === 'function') {
-        broadcastLocalEvent('QUALIFICATIONS_UPDATED', {
-          updated: qualifications.map(q => ({ team_id: q.team_id, qualified: q.qualified }))
-        });
-      }
-
-      api.admin.qualify({ qualifications })
-        .then(() => scheduleLoadData(400))
-        .catch(err => {
-          setErrorMsg(err.message || 'Failed to apply batch qualifications');
-          loadData(true);
-        });
-    } catch (err) {
-      setErrorMsg(err.message);
-    }
-  };
 
   // Helper to open Evaluation Modal for ANY Live Team (Rounds 1, 2, or 3)
   const handleOpenEvaluationForTeam = (team, roundNum = null) => {
@@ -1828,12 +1810,12 @@ export default function AdminDashboard() {
           </button>
 
           <button
-            onClick={() => setActiveTab('teams')}
-            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 ${activeTab === 'teams' || activeTab === 'elimination' ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'
+            onClick={() => setActiveTab('qualification')}
+            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 ${activeTab === 'qualification' ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'
               }`}
           >
-            <Users className="w-4 h-4" />
-            <span>Teams &amp; Elimination ({teams.length})</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>R3 Qualification ({teams.filter((t) => t.is_qualified_r3).length} Qualified)</span>
           </button>
 
           <button
@@ -2830,55 +2812,134 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* TAB 3: TEAMS GRID & POST-ROUND 2 ELIMINATION MANAGEMENT */}
-        {(activeTab === 'teams' || activeTab === 'elimination') && (
+        {/* TAB 3: ROUND 3 SELECTION & QUALIFICATION DESK */}
+        {(activeTab === 'qualification' || activeTab === 'elimination' || activeTab === 'teams') && (
           <div className="racing-card rounded-2xl p-6 sm:p-8 border border-white/10 shadow-2xl space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+            {/* Header & Context */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/10">
               <div>
-                <h3 className="font-race text-xl font-bold text-white">
-                  TEAMS GRID &amp; ELIMINATION DESK
+                <div className="flex items-center space-x-2 text-xs font-race uppercase tracking-widest text-emerald-400 font-bold mb-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>F1 RACE CONTROL • ROUND 3 DESK</span>
+                </div>
+                <h3 className="font-race text-xl sm:text-2xl font-black text-white flex items-center space-x-3">
+                  <span>ROUND 3 SELECTION &amp; QUALIFICATION DESK</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-mono-code font-bold">
+                    {teams.filter((t) => t.is_qualified_r3).length} Qualified
+                  </span>
                 </h3>
-                <p className="text-xs text-slate-400 font-mono-code mt-1">
-                  Qualify top-performing engineering teams to the Final Lap (Round 3). Eliminated teams receive structured feedback.
+                <p className="text-xs text-slate-400 font-mono-code mt-1 max-w-3xl">
+                  Qualify or eliminate participating teams for the Final Lap (Round 3) strictly based on their combined Round 1 &amp; Round 2 marks. Decisions broadcast live instantly to participant dashboards.
                 </p>
               </div>
 
-              {/* Batch Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2">
-
-                <button
-                  onClick={() => handleBatchQualifyTop(3)}
-                  className="px-4 py-2 rounded-xl bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 text-xs font-race font-bold"
-                >
-                  Qualify Top 3
-                </button>
-                <button
-                  onClick={() => handleBatchQualifyTop(4)}
-                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 text-slate-300 text-xs font-race font-bold"
-                >
-                  Qualify Top 4
-                </button>
+              {/* Telemetry Summary Counters */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-center">
+                  <span className="text-[10px] font-mono-code text-emerald-300 uppercase block">R3 QUALIFIED</span>
+                  <span className="font-race text-lg sm:text-xl font-black text-emerald-400">
+                    {teams.filter((t) => t.is_qualified_r3).length}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/30 text-center">
+                  <span className="text-[10px] font-mono-code text-red-300 uppercase block">ELIMINATED</span>
+                  <span className="font-race text-lg sm:text-xl font-black text-red-400">
+                    {teams.filter((t) => t.is_eliminated).length}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900 border border-white/10 text-center">
+                  <span className="text-[10px] font-mono-code text-slate-400 uppercase block">PENDING</span>
+                  <span className="font-race text-lg sm:text-xl font-black text-slate-300">
+                    {teams.filter((t) => !t.is_qualified_r3 && !t.is_eliminated).length}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Teams Grid Table */}
+            {/* Action Bar: Notice & Search Filter */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center space-x-2 text-xs font-mono-code text-amber-300/90 bg-amber-950/30 border border-amber-500/20 px-3.5 py-2 rounded-xl">
+                <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>
+                  <strong>Steward Note:</strong> Qualify or eliminate teams below based on Round 1 &amp; 2 marks. Results remain private to Race Control until you trigger the announcement timer in Round Control (Lap 03).
+                </span>
+              </div>
+
+              {/* Search Option by Team ID / Name */}
+              <div className="relative w-full sm:w-80 shrink-0">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchTeamQuery}
+                  onChange={(e) => setSearchTeamQuery(e.target.value)}
+                  placeholder="Search by Team ID (e.g. TEAM-01), name..."
+                  className="w-full pl-10 pr-9 py-2 bg-slate-950/90 border border-cyan-500/30 focus:border-cyan-400 rounded-xl text-xs font-mono-code text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 shadow-inner transition-all"
+                />
+                {searchTeamQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTeamQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Teams Qualification Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono-code">
                 <thead>
                   <tr className="border-b border-white/10 text-slate-400 uppercase font-race">
                     <th className="py-3 px-4">Rank</th>
-                    <th className="py-3 px-4">Team</th>
+                    <th className="py-3 px-4">Team &amp; ID</th>
                     <th className="py-3 px-4">Institution</th>
-                    <th className="py-3 px-4">Round 1</th>
-                    <th className="py-3 px-4">Round 2</th>
-                    <th className="py-3 px-4">Total Score</th>
-                    <th className="py-3 px-4">R3 Status</th>
-                    <th className="py-3 px-4 text-right">Action</th>
+                    <th className="py-3 px-4">Round 1 Marks</th>
+                    <th className="py-3 px-4">Round 2 Marks</th>
+                    <th className="py-3 px-4">Combined (R1+R2)</th>
+                    <th className="py-3 px-4 text-center">Round 3 Status</th>
+                    <th className="py-3 px-4 text-right">R3 Qualification Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {(() => {
-                    const sortedTeams = [...teams].sort((a, b) => {
+                    const filteredTeams = teams.filter((t) => {
+                      if (!searchTeamQuery) return true;
+                      const q = searchTeamQuery.toLowerCase().trim();
+                      return (
+                        (t.team_id && t.team_id.toLowerCase().includes(q)) ||
+                        (t.team_name && t.team_name.toLowerCase().includes(q)) ||
+                        (t.leader_name && t.leader_name.toLowerCase().includes(q)) ||
+                        (t.institution && t.institution.toLowerCase().includes(q))
+                      );
+                    });
+
+                    if (filteredTeams.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan="8" className="py-12 text-center text-slate-400 font-mono-code bg-slate-950/30">
+                            <div className="flex flex-col items-center justify-center space-y-3">
+                              <Search className="w-8 h-8 text-slate-600" />
+                              <p className="text-sm">No registered teams found matching &ldquo;{searchTeamQuery}&rdquo;</p>
+                              {searchTeamQuery && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSearchTeamQuery('')}
+                                  className="px-4 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 text-xs font-race font-bold uppercase transition-all"
+                                >
+                                  Clear Search Filter
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    // Sort strictly by combined Round 1 & Round 2 score descending
+                    const sortedTeams = [...filteredTeams].sort((a, b) => {
                       const r1A = parseFloat(a.scores_by_round?.['1'] || 0);
                       const r2A = parseFloat(a.scores_by_round?.['2'] || 0);
                       const scoreA = (r1A + r2A) > 0 ? (r1A + r2A) : parseFloat(a.total_score || 0);
@@ -2897,57 +2958,137 @@ export default function AdminDashboard() {
                         ? (parseFloat(r1Pts || 0) + parseFloat(r2Pts || 0))
                         : parseFloat(t.total_score || 0);
 
+                      const isQualified = Boolean(t.is_qualified_r3);
+                      const isEliminated = Boolean(t.is_eliminated);
+
                       return (
-                        <tr key={t.team_id} className="hover:bg-white/5 transition-colors">
-                          <td className="py-3 px-4 font-bold font-race text-white">P{idx + 1}</td>
-                          <td className="py-3 px-4">
-                            <strong className="text-white block font-sans font-bold">{t.team_name}</strong>
-                            <span className="text-slate-500 text-[11px]">{t.team_id}</span>
+                        <tr
+                          key={t.team_id}
+                          className={`transition-colors ${
+                            isQualified
+                              ? 'bg-emerald-950/15 hover:bg-emerald-950/25 border-l-2 border-emerald-500'
+                              : isEliminated
+                              ? 'bg-red-950/15 hover:bg-red-950/25 border-l-2 border-red-500/60 opacity-80'
+                              : 'hover:bg-white/5'
+                          }`}
+                        >
+                          {/* Rank */}
+                          <td className="py-3 px-4 font-bold font-race text-white">
+                            <span
+                              className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-black ${
+                                idx === 0
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                                  : idx === 1
+                                  ? 'bg-slate-300/20 text-slate-200 border border-slate-300/40'
+                                  : idx === 2
+                                  ? 'bg-amber-700/20 text-amber-500 border border-amber-700/40'
+                                  : 'text-slate-400'
+                              }`}
+                            >
+                              P{idx + 1}
+                            </span>
                           </td>
-                          <td className="py-3 px-4 text-slate-300">{t.institution}</td>
-                          <td className="py-3 px-4 text-cyan-400 font-bold">{r1Pts !== undefined ? `${r1Pts} pts` : '-'}</td>
-                          <td className="py-3 px-4 text-red-400 font-bold">{r2Pts !== undefined ? `${r2Pts} pts` : '-'}</td>
-                          <td className="py-3 px-4 font-bold text-amber-400 text-sm">{combinedScore.toFixed(1)} Pts</td>
+
+                          {/* Team & ID */}
                           <td className="py-3 px-4">
-                            {t.is_qualified_r3 ? (
-                              <span className="px-2.5 py-1 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/50 font-bold">
-                                QUALIFIED
+                            <strong className="text-white block font-sans font-bold text-sm">
+                              {t.team_name}
+                            </strong>
+                            <div className="flex items-center space-x-1.5 mt-0.5">
+                              <span className="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold">
+                                {t.team_id}
                               </span>
-                            ) : t.is_eliminated ? (
-                              <span className="px-2.5 py-1 rounded bg-red-950 text-red-400 border border-red-500/50 font-bold">
-                                ELIMINATED
+                              <span className="text-slate-400 text-[11px] truncate max-w-[130px]">
+                                {t.leader_name ? `Lead: ${t.leader_name}` : ''}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Institution */}
+                          <td className="py-3 px-4 text-slate-300 text-xs">
+                            {t.institution || 'Independent'}
+                          </td>
+
+                          {/* Round 1 Marks */}
+                          <td className="py-3 px-4">
+                            {r1Pts !== undefined ? (
+                              <span className="px-2 py-1 rounded-md bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 text-xs font-bold">
+                                {parseFloat(r1Pts).toFixed(1)} pts
                               </span>
                             ) : (
-                              <span className="px-2.5 py-1 rounded bg-slate-900 text-slate-400 border border-white/10">
-                                PENDING
+                              <span className="text-slate-500 italic">-</span>
+                            )}
+                          </td>
+
+                          {/* Round 2 Marks */}
+                          <td className="py-3 px-4">
+                            {r2Pts !== undefined ? (
+                              <span className="px-2 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-500/40 text-xs font-bold">
+                                {parseFloat(r2Pts).toFixed(1)} pts
+                              </span>
+                            ) : (
+                              <span className="text-slate-500 italic">-</span>
+                            )}
+                          </td>
+
+                          {/* Combined Marks (R1 + R2) */}
+                          <td className="py-3 px-4 font-bold text-amber-400 text-sm">
+                            <span className="px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-500/40 font-mono-code">
+                              {combinedScore.toFixed(1)} Pts
+                            </span>
+                          </td>
+
+                          {/* R3 Status Badge */}
+                          <td className="py-3 px-4 text-center">
+                            {isQualified ? (
+                              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-mono-code font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/60 shadow-sm shadow-emerald-950/60">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>QUALIFIED (R3)</span>
+                              </span>
+                            ) : isEliminated ? (
+                              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-mono-code font-bold bg-red-950 text-red-300 border border-red-500/60 shadow-sm shadow-red-950/60">
+                                <XCircle className="w-3.5 h-3.5 text-red-400" />
+                                <span>ELIMINATED</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-mono-code font-bold bg-slate-900 text-slate-400 border border-white/10">
+                                <Clock className="w-3.5 h-3.5 text-slate-500" />
+                                <span>PENDING</span>
                               </span>
                             )}
                           </td>
+
+                          {/* Qualify / Eliminate Controls */}
                           <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end space-x-1.5">
+                            <div className="flex items-center justify-end space-x-2">
+                              {/* Qualify Button */}
                               <button
                                 type="button"
                                 onClick={() => handleSetTeamQualification(t.team_id, true)}
-                                className={`px-2.5 py-1.5 rounded text-xs font-race font-bold uppercase transition-all flex items-center space-x-1 ${t.is_qualified_r3
-                                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/60 ring-1 ring-emerald-400'
-                                  : 'bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/50'
-                                  }`}
-                                title="Qualify team for Final Lap (Round 3)"
+                                className={`px-3 py-1.5 rounded-lg text-xs font-race font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer ${
+                                  isQualified
+                                    ? 'bg-emerald-600 text-white border border-emerald-400 shadow-emerald-900/50 glow-green'
+                                    : 'bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-600/50'
+                                }`}
+                                title="Qualify team for Round 3 (Final Lap)"
                               >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>Qualify</span>
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>{isQualified ? 'Qualified ✓' : 'Qualify'}</span>
                               </button>
+
+                              {/* Eliminate Button */}
                               <button
                                 type="button"
                                 onClick={() => handleSetTeamQualification(t.team_id, false)}
-                                className={`px-2.5 py-1.5 rounded text-xs font-race font-bold uppercase transition-all flex items-center space-x-1 ${t.is_eliminated
-                                  ? 'bg-red-600 text-white shadow-md shadow-red-950/60 ring-1 ring-red-400'
-                                  : 'bg-red-950/70 hover:bg-red-900 text-red-300 border border-red-700/50'
-                                  }`}
-                                title="Eliminate team from competition"
+                                className={`px-3 py-1.5 rounded-lg text-xs font-race font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer ${
+                                  isEliminated
+                                    ? 'bg-red-600 text-white border border-red-400 shadow-red-900/50 glow-red'
+                                    : 'bg-red-950/70 hover:bg-red-900 text-red-300 hover:text-white border border-red-600/50'
+                                }`}
+                                title="Eliminate team from competing in Round 3"
                               >
-                                <XCircle className="w-3.5 h-3.5" />
-                                <span>Eliminate</span>
+                                <XCircle className="w-3.5 h-3.5 text-red-400" />
+                                <span>{isEliminated ? 'Eliminated ✗' : 'Eliminate'}</span>
                               </button>
                             </div>
                           </td>
@@ -3030,97 +3171,117 @@ export default function AdminDashboard() {
 
             {/* Live Teams Evaluation Table */}
             {evalRoundFilter === 'all' ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-mono-code">
-                  <thead>
-                    <tr className="border-b border-white/10 text-slate-400 uppercase font-race">
-                      <th className="py-3 px-4">Championship Team</th>
-                      <th className="py-3 px-4 text-center">Lap 01 Marks (Max 50)</th>
-                      <th className="py-3 px-4 text-center">Lap 02 Marks (Max 100)</th>
-                      <th className="py-3 px-4 text-center">Total Points</th>
-                      <th className="py-3 px-4 text-right">Quick Grade</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {teams.map((t) => {
-                      const r1Score = t.scores_by_round?.['1'];
-                      const r2Score = t.scores_by_round?.['2'];
-                      const curRound = overview?.current_live_round && overview.current_live_round <= 2 ? overview.current_live_round : 1;
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-xs font-mono-code text-slate-400 bg-slate-950/60 border border-white/5 px-4 py-2.5 rounded-xl">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                    <span>All Laps Overview displays live marks for all rounds. To review submission artifacts and allocate marks, select <strong>Lap 01</strong> or <strong>Lap 02</strong> above.</span>
+                  </div>
+                </div>
 
-                      return (
-                        <tr key={t.team_id} className="hover:bg-white/5 transition-colors">
-                          <td className="py-3.5 px-4">
-                            <div className="flex items-center space-x-2">
-                              <strong className="text-white font-sans text-sm font-bold">{t.team_name}</strong>
-                              {t.is_qualified_r3 && (
-                                <span className="px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/40 text-[10px] text-emerald-300 font-bold">
-                                  FINALIST
-                                </span>
-                              )}
-                              {t.is_eliminated && (
-                                <span className="px-1.5 py-0.5 rounded bg-red-950/80 border border-red-700/40 text-[10px] text-red-400">
-                                  ELIMINATED
-                                </span>
-                              )}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-mono-code">
+                    <thead>
+                      <tr className="border-b border-white/10 text-slate-400 uppercase font-race">
+                        <th className="py-3 px-4">Championship Team</th>
+                        <th className="py-3 px-4 text-center">Lap 01 Marks (Max 50)</th>
+                        <th className="py-3 px-4 text-center">Lap 02 Marks (Max 100)</th>
+                        <th className="py-3 px-4 text-center">Total Points</th>
+                        <th className="py-3 px-4 text-right">Round 3 Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {teams.length === 0 ? (
+                        <tr>
+                          <td colSpan="5" className="py-12 text-center text-slate-400 font-mono-code bg-slate-950/30">
+                            <div className="flex flex-col items-center justify-center space-y-2">
+                              <Award className="w-8 h-8 text-slate-600" />
+                              <p className="text-sm">No registered teams on the grid yet.</p>
+                              <p className="text-xs text-slate-500">Registered teams will appear here once they register on the platform.</p>
                             </div>
-                            <div className="text-slate-400 text-[11px] mt-0.5">
-                              {t.team_id} &bull; {t.institution || 'GM University'} &bull; Leader: {t.leader_name}
-                            </div>
-                          </td>
-
-                          {/* Lap 1 */}
-                          <td className="py-3.5 px-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEvaluationForTeam(t, 1)}
-                              className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/10 transition-all"
-                              title="Click to allocate or update Lap 1 marks"
-                            >
-                              <span className={r1Score !== undefined ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
-                                {r1Score !== undefined ? `${r1Score} / 50` : 'Grade Lap 1'}
-                              </span>
-                              <Edit3 className="w-3 h-3 text-slate-500" />
-                            </button>
-                          </td>
-
-                          {/* Lap 2 */}
-                          <td className="py-3.5 px-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEvaluationForTeam(t, 2)}
-                              className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/10 transition-all"
-                              title="Click to allocate or update Lap 2 marks"
-                            >
-                              <span className={r2Score !== undefined ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
-                                {r2Score !== undefined ? `${r2Score} pts` : 'Grade Lap 2'}
-                              </span>
-                              <Edit3 className="w-3 h-3 text-slate-500" />
-                            </button>
-                          </td>
-
-                          {/* Total Score */}
-                          <td className="py-3.5 px-4 text-center">
-                            <span className="font-race font-bold text-sm text-white">
-                              {t.total_score || 0} Pts
-                            </span>
-                          </td>
-
-                          {/* Quick Action */}
-                          <td className="py-3.5 px-4 text-right">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEvaluationForTeam(t, curRound)}
-                              className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-race font-bold text-xs uppercase shadow-md shadow-red-950/50 transition-all flex items-center space-x-1.5 ml-auto"
-                            >
-                              <Award className="w-3.5 h-3.5" />
-                              <span>Allocate Marks</span>
-                            </button>
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      ) : (
+                        teams.map((t) => {
+                          const r1Score = t.scores_by_round?.['1'];
+                          const r2Score = t.scores_by_round?.['2'];
+
+                          return (
+                            <tr key={t.team_id} className="hover:bg-white/5 transition-colors">
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center space-x-2">
+                                  <strong className="text-white font-sans text-sm font-bold">{t.team_name}</strong>
+                                  {t.is_qualified_r3 && (
+                                    <span className="px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/40 text-[10px] text-emerald-300 font-bold">
+                                      FINALIST
+                                    </span>
+                                  )}
+                                  {t.is_eliminated && (
+                                    <span className="px-1.5 py-0.5 rounded bg-red-950/80 border border-red-700/40 text-[10px] text-red-400">
+                                      ELIMINATED
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-slate-400 text-[11px] mt-0.5">
+                                  {t.team_id} &bull; {t.institution || 'GM University'} &bull; Leader: {t.leader_name}
+                                </div>
+                              </td>
+
+                              {/* Lap 1 Marks (Read Only) */}
+                              <td className="py-3.5 px-4 text-center">
+                                {r1Score !== undefined ? (
+                                  <span className="inline-block px-3 py-1 rounded-lg bg-emerald-950/80 text-emerald-300 font-bold border border-emerald-500/30">
+                                    {parseFloat(r1Score).toFixed(1)} / 50 Marks
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-500 italic">Not Graded</span>
+                                )}
+                              </td>
+
+                              {/* Lap 2 Marks (Read Only) */}
+                              <td className="py-3.5 px-4 text-center">
+                                {r2Score !== undefined ? (
+                                  <span className="inline-block px-3 py-1 rounded-lg bg-emerald-950/80 text-emerald-300 font-bold border border-emerald-500/30">
+                                    {parseFloat(r2Score).toFixed(1)} / 100 Marks
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-500 italic">Not Graded</span>
+                                )}
+                              </td>
+
+                              {/* Total Score */}
+                              <td className="py-3.5 px-4 text-center">
+                                <span className="font-race font-bold text-sm text-amber-400">
+                                  {parseFloat(t.total_score || 0).toFixed(1)} Pts
+                                </span>
+                              </td>
+
+                              {/* Round 3 Status */}
+                              <td className="py-3.5 px-4 text-right">
+                                {t.is_qualified_r3 ? (
+                                  <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono-code font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/60 shadow-sm">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                    <span>QUALIFIED</span>
+                                  </span>
+                                ) : t.is_eliminated ? (
+                                  <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono-code font-bold bg-red-950 text-red-300 border border-red-500/60 shadow-sm">
+                                    <XCircle className="w-3 h-3 text-red-400" />
+                                    <span>ELIMINATED</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] font-mono-code text-slate-400 bg-slate-900 border border-white/10">
+                                    <Clock className="w-3 h-3 text-slate-500" />
+                                    <span>PENDING</span>
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -3328,11 +3489,11 @@ export default function AdminDashboard() {
                     <div className="flex flex-wrap items-center justify-center gap-3">
                       <button
                         type="button"
-                        onClick={() => handleBatchQualifyTop(3)}
+                        onClick={() => setActiveTab('qualification')}
                         className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-race font-bold text-xs uppercase shadow-lg shadow-amber-950/50 transition-all flex items-center space-x-2"
                       >
-                        <Trophy className="w-4 h-4" />
-                        <span>Qualify Top 3 Teams Now</span>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Select Qualifiers in R3 Desk</span>
                       </button>
                       <button
                         type="button"

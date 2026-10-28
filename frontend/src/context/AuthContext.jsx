@@ -35,8 +35,8 @@ export function AuthProvider({ children }) {
     initUser();
   }, []);
 
-  const login = async (username, password, force = false) => {
-    const data = await api.auth.login(username, password, force);
+  const login = async (username, password, force = false, requiredRole = null) => {
+    const data = await api.auth.login(username, password, force, requiredRole);
     
     // Fast login path: Use profile returned directly by login endpoint
     const profile = data.user || {
@@ -46,6 +46,18 @@ export function AuthProvider({ children }) {
       team_name: data.team_name,
       team: data.team
     };
+
+    // Defense-in-depth: If a required role was specified and doesn't match the authenticated profile, abort
+    if (requiredRole && profile.role !== requiredRole) {
+      const err = new Error(
+        requiredRole === 'admin'
+          ? 'Access denied: Participant credentials cannot be used for Race Director (Admin) login.'
+          : 'Access denied: Race Director credentials cannot be used for Participant login.'
+      );
+      err.status = 403;
+      throw err;
+    }
+
     setAuthToken(data.access_token, profile?.role);
     setUser(profile);
     setUserData(profile);
@@ -62,15 +74,20 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    const role = user?.role;
+    // 1. Immediately clear state and token synchronously for 0ms instant UI response
+    setAuthToken(null, role);
+    setUserData(null);
+    setUser(null);
+    localStorage.removeItem('cloudnex_view');
+    sessionStorage.removeItem('cloudnex_view');
+
+    // 2. Fire backend session termination asynchronously in the background
     try {
       await api.auth.logout();
     } catch {
       // Ignore network errors on logout
     }
-    setAuthToken(null, user?.role);
-    setUserData(null);
-    setUser(null);
-    localStorage.removeItem('cloudnex_view');
   };
 
   const refreshProfile = async () => {

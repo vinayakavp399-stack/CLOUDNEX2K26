@@ -216,14 +216,17 @@ async def get_all_rounds(current_user: Optional[dict] = Depends(get_current_user
             can_see_problem = False
             
             if r_num in [1, 2]:
-                r1_doc = next((rd for rd in all_rounds if int(rd.get("round_number", 0)) == 1), {})
-                is_released = bool(
-                    r1_doc.get("problem_published", False) or
-                    r1_doc.get("status") == RoundState.LIVE or
-                    r.get("problem_published", False) or
-                    r.get("status") == RoundState.LIVE or
-                    (problem_doc and problem_doc.get("is_published", False))
-                )
+                if r_num == 1:
+                    is_released = bool(
+                        r.get("problem_published", False) or
+                        r.get("status") == RoundState.LIVE or
+                        (problem_doc and problem_doc.get("is_published", False))
+                    )
+                else:
+                    is_released = bool(
+                        (r.get("status") == RoundState.LIVE and r.get("problem_published", False)) or
+                        (problem_doc and problem_doc.get("is_published", False))
+                    )
 
                 if not is_released:
                     can_see_problem = False
@@ -450,25 +453,32 @@ async def get_round_detail(round_number: int, current_user: Optional[dict] = Dep
             if is_admin:
                 if team and team.get("is_qualified_r3"):
                     r_dict["selection_status"] = "QUALIFIED"
+                    r_dict["user_access"] = "QUALIFIED"
                     r_dict["lock_reason"] = "Your team is selected for Round 3 (Final Lap)!"
                 elif team and team.get("is_eliminated"):
                     r_dict["selection_status"] = "ELIMINATED"
+                    r_dict["user_access"] = "ELIMINATED"
                     r_dict["lock_reason"] = "Your team was not selected for Round 3."
                 else:
                     r_dict["selection_status"] = "PENDING"
+                    r_dict["user_access"] = "PENDING"
                     r_dict["lock_reason"] = "Round 3 qualifiers will be announced after Round 2 evaluations."
             elif is_selection_revealed:
                 if team and team.get("is_qualified_r3"):
                     r_dict["selection_status"] = "QUALIFIED"
+                    r_dict["user_access"] = "QUALIFIED"
                     r_dict["lock_reason"] = "Your team is selected for Round 3 (Final Lap)!"
                 elif team and team.get("is_eliminated"):
                     r_dict["selection_status"] = "ELIMINATED"
+                    r_dict["user_access"] = "ELIMINATED"
                     r_dict["lock_reason"] = "Your team was not selected for Round 3."
                 else:
                     r_dict["selection_status"] = "NOT_QUALIFIED"
+                    r_dict["user_access"] = "NOT_QUALIFIED"
                     r_dict["lock_reason"] = "Your team was not selected for Round 3."
             else:
                 r_dict["selection_status"] = "PENDING_ANNOUNCEMENT"
+                r_dict["user_access"] = "PENDING_ANNOUNCEMENT"
                 r_dict["lock_reason"] = "Round 3 selection announcement is currently sealed / held by race control."
 
         if can_see and problem_doc:

@@ -472,6 +472,39 @@ async def close_round(round_number: int, current_admin: dict = Depends(get_curre
         "submissions_open": False
     })
 
+    # Auto-open Round 2 when Round 1 completes
+    if round_number == 1:
+        r2_doc = rounds_col.find_one({"round_number": 2})
+        if r2_doc and r2_doc.get("status") not in [RoundState.LIVE, RoundState.CLOSED, RoundState.COMPLETED]:
+            r2_deadline = now + timedelta(minutes=210)
+            rounds_col.update_one(
+                {"round_number": 2},
+                {"$set": {
+                    "status": RoundState.LIVE,
+                    "is_active": True,
+                    "start_time": now.isoformat(),
+                    "deadline": r2_deadline.isoformat(),
+                    "duration_minutes": 210,
+                    "submissions_open": False,
+                    "problem_published": True,
+                    "updated_at": now.isoformat()
+                }}
+            )
+            problems_col = db_manager.get_collection("problem_statements")
+            problems_col.update_many({"round_number": 2}, {"$set": {"is_published": True, "updated_at": now.isoformat()}})
+            await ws_manager.broadcast("ROUND_STATUS_CHANGED", {
+                "round_number": 2,
+                "status": RoundState.LIVE,
+                "is_active": True,
+                "start_time": now.isoformat(),
+                "deadline": r2_deadline.isoformat(),
+                "duration_minutes": 210,
+                "submissions_open": False,
+                "problem_published": True
+            })
+
+    # Note: Round 3 does NOT start automatically. Admin must start it manually after announcing qualifiers.
+
     return {
         "message": f"Round {round_number} closed. Submissions are locked.",
         "round_number": round_number,
@@ -1027,10 +1060,13 @@ async def get_all_teams_admin(current_admin: dict = Depends(get_current_admin)):
     purge_test_grid_teams()
     teams_col = db_manager.get_collection("teams")
     submissions_col = db_manager.get_collection("submissions")
+    users_col = db_manager.get_collection("users")
 
     # Teams should never be auto-seeded; an empty grid is completely valid until participants register.
     teams = teams_col.find()
     all_subs = submissions_col.find()
+    all_users = users_col.find({"role": UserRole.PARTICIPANT})
+    users_by_team = {u.get("team_id"): u for u in all_users if u.get("team_id")}
 
     result = []
     for t in teams:
@@ -1039,10 +1075,78 @@ async def get_all_teams_admin(current_admin: dict = Depends(get_current_admin)):
         t_subs = [s for s in all_subs if s.get("team_id") == t_id]
         t_copy["submissions_count"] = len(t_subs)
         t_copy["submitted_rounds"] = [s.get("round_number") for s in t_subs]
+
+        # Live session and connection status
+        user_info = users_by_team.get(t_id) or {}
+        has_active_db_session = bool(user_info.get("active_session") and user_info.get("active_session_token"))
+        has_active_ws = bool(t_id and t_id in ws_manager.team_connections and len(ws_manager.team_connections[t_id]) > 0)
+
+        t_copy["is_online"] = has_active_db_session or has_active_ws
+        t_copy["email"] = t.get("email") or user_info.get("email", "")
+        raw_reg = t.get("registered_at") or t.get("created_at") or user_info.get("created_at") or ""
+        if raw_reg and isinstance(raw_reg, str) and not raw_reg.endswith("Z") and "+" not in raw_reg:
+            raw_reg += "Z"
+        t_copy["registered_at"] = raw_reg
+        t_copy["created_at"] = raw_reg
+        t_copy["last_active"] = user_info.get("last_active") or ""
+        t_copy["leader_name"] = t.get("leader_name") or user_info.get("full_name") or ""
+        t_copy["user_id"] = user_info.get("id") or ""
         result.append(t_copy)
 
     # Sort by total_score descending
     return sorted(result, key=lambda x: float(x.get("total_score") or 0.0), reverse=True)
+
+
+@router.post("/teams/{team_id}/logout")
+async def force_logout_team_admin(
+    team_id: str,
+    current_admin: dict = Depends(get_current_admin)
+):
+    users_col = db_manager.get_collection("users")
+    user = users_col.find_one({"team_id": team_id})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"Team {team_id} account not found.")
+
+    # 1. Clear session in DB
+    users_col.update_one(
+        {"team_id": team_id},
+        {"$set": {"active_session": False, "active_session_token": None}}
+    )
+
+    # 2. Invalidate cache
+    try:
+        from app.auth import invalidate_user_cache
+        invalidate_user_cache(user["id"])
+    except Exception:
+        pass
+
+    # 3. Notify team websocket with FORCE_LOGOUT packet
+    try:
+        await ws_manager.send_team_message(team_id, "FORCE_LOGOUT", {
+            "message": "Your session has been terminated by the Race Director / Administrator.",
+            "reason": "ADMIN_FORCED_LOGOUT"
+        })
+    except Exception:
+        pass
+
+    # 4. Forcefully disconnect active sockets
+    try:
+        await ws_manager.close_team_connections(team_id, reason="ADMIN_FORCED_LOGOUT")
+    except Exception:
+        pass
+
+    # 5. Broadcast status update to all connected admins and monitors
+    try:
+        await ws_manager.broadcast("TEAM_STATUS_CHANGED", {
+            "team_id": team_id,
+            "is_online": False,
+            "action": "FORCE_LOGOUT"
+        })
+    except Exception:
+        pass
+
+    return {"message": f"Team {team_id} successfully logged out.", "team_id": team_id, "is_online": False}
+
 
 
 @router.get("/submissions")
@@ -1250,8 +1354,14 @@ async def update_qualifications(
         "timestamp": now
     })
 
-    # Broadcast real-time qualification notification to teams
-    await ws_manager.broadcast("QUALIFICATIONS_UPDATED", {"updated": updated})
+    # Note: Qualifications remain sealed. Results are only revealed to participants when admin starts the announcement timer or clicks reveal in Round Control.
+    rounds_col = db_manager.get_collection("rounds")
+    r3 = rounds_col.find_one({"round_number": 3})
+    if r3 and not r3.get("results_timer_active") and not r3.get("results_announced"):
+        rounds_col.update_one(
+            {"round_number": 3},
+            {"$set": {"selection_revealed": False, "results_announced": False}}
+        )
 
     return {
         "message": f"Successfully updated qualification decisions for {len(updated)} teams.",

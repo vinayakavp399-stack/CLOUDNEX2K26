@@ -8,6 +8,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import ParticipantDashboard from './pages/ParticipantDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import TeamsPage from './pages/TeamsPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 
 function AppContent() {
@@ -48,17 +49,46 @@ function AppContent() {
     }
   }, [isAuthenticated, isAdmin]);
 
-  // Listen for single-device participant force logout event
+  // If user logs out or is unauthenticated, redirect to main dashboard (landing) immediately
   useEffect(() => {
-    if (!registerListener) return;
-    const unsubscribe = registerListener((event) => {
-      if (event && event.type === 'FORCE_LOGOUT') {
-        alert(event.data?.message || 'Your session has been terminated because this account was logged into on another device.');
-        logout();
+    if (!isAuthenticated) {
+      if (currentView === 'admin' || currentView === 'participant' || currentView === 'teams') {
         handleSetView('landing');
       }
-    });
-    return unsubscribe;
+    }
+  }, [isAuthenticated, currentView]);
+
+  // Listen for single-device participant force logout event from WebSocket and global 401 interception
+  useEffect(() => {
+    let isHandling = false;
+    const triggerLogout = (msg) => {
+      if (isHandling) return;
+      isHandling = true;
+      alert(msg || 'Your session has been terminated.');
+      logout();
+      handleSetView('landing');
+      setTimeout(() => { isHandling = false; }, 1000);
+    };
+
+    const handleCustomForceLogout = (e) => {
+      triggerLogout(e?.detail?.message);
+    };
+
+    window.addEventListener('cloudnex:force_logout', handleCustomForceLogout);
+
+    let unsubscribeWs = null;
+    if (registerListener) {
+      unsubscribeWs = registerListener((event) => {
+        if (event && event.type === 'FORCE_LOGOUT') {
+          triggerLogout(event.data?.message);
+        }
+      });
+    }
+
+    return () => {
+      window.removeEventListener('cloudnex:force_logout', handleCustomForceLogout);
+      if (unsubscribeWs) unsubscribeWs();
+    };
   }, [registerListener, logout]);
 
   // Handle successful login routing
@@ -86,6 +116,7 @@ function AppContent() {
         {currentView === 'login-participant' && (
           <LoginPage
             initialRole="participant"
+            lockedPortal="participant"
             onSuccess={handleLoginSuccess}
             onBack={() => handleSetView('landing')}
           />
@@ -94,17 +125,23 @@ function AppContent() {
         {currentView === 'login-admin' && (
           <LoginPage
             initialRole="admin"
+            lockedPortal="admin"
             onSuccess={handleLoginSuccess}
             onBack={() => handleSetView('landing')}
           />
         )}
 
         {currentView === 'participant' && (
-          isAuthenticated && isParticipant ? (
-            <ParticipantDashboard />
+          isAuthenticated ? (
+            isParticipant ? (
+              <ParticipantDashboard />
+            ) : (
+              <AdminDashboard />
+            )
           ) : (
             <LoginPage
               initialRole="participant"
+              lockedPortal="participant"
               onSuccess={handleLoginSuccess}
               onBack={() => handleSetView('landing')}
             />
@@ -112,11 +149,33 @@ function AppContent() {
         )}
 
         {currentView === 'admin' && (
-          isAuthenticated && isAdmin ? (
-            <AdminDashboard />
+          isAuthenticated ? (
+            isAdmin ? (
+              <AdminDashboard initialTab="rounds" />
+            ) : (
+              <ParticipantDashboard />
+            )
           ) : (
             <LoginPage
               initialRole="admin"
+              lockedPortal="admin"
+              onSuccess={handleLoginSuccess}
+              onBack={() => handleSetView('landing')}
+            />
+          )
+        )}
+
+        {currentView === 'teams' && (
+          isAuthenticated ? (
+            isAdmin ? (
+              <TeamsPage />
+            ) : (
+              <ParticipantDashboard />
+            )
+          ) : (
+            <LoginPage
+              initialRole="admin"
+              lockedPortal="admin"
               onSuccess={handleLoginSuccess}
               onBack={() => handleSetView('landing')}
             />
@@ -132,8 +191,8 @@ function AppContent() {
         )}
       </main>
 
-      {/* Hide footer on admin portal so announcement and race control stay clean */}
-      {currentView !== 'admin' && <Footer />}
+      {/* Hide footer on admin/teams console so announcement and race control stay clean */}
+      {currentView !== 'admin' && currentView !== 'teams' && <Footer />}
     </div>
   );
 }

@@ -134,6 +134,30 @@ async function request(endpoint, options = {}) {
     const err = new Error(errorMsg);
     err.status = response.status;
     err.data = data;
+
+    // Check for single-device participant termination or session invalidation
+    if (response.status === 401 && (
+      errorMsg.toLowerCase().includes('another device') ||
+      errorMsg.toLowerCase().includes('terminated') ||
+      errorMsg.toLowerCase().includes('logged out')
+    )) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('cloudnex_participant_token');
+        sessionStorage.removeItem('cloudnex_participant_token');
+        localStorage.removeItem('cloudnex_participant_user');
+        sessionStorage.removeItem('cloudnex_participant_user');
+        localStorage.removeItem('cloudnex_token');
+        sessionStorage.removeItem('cloudnex_token');
+        localStorage.removeItem('cloudnex_user');
+        sessionStorage.removeItem('cloudnex_user');
+        localStorage.removeItem('cloudnex_view');
+
+        window.dispatchEvent(new CustomEvent('cloudnex:force_logout', {
+          detail: { message: errorMsg }
+        }));
+      }
+    }
+
     throw err;
   }
 
@@ -142,10 +166,14 @@ async function request(endpoint, options = {}) {
 
 export const api = {
   auth: {
-    login: async (username, password, force = false) => {
+    login: async (username, password, force = false, required_role = null) => {
+      const payload = { username, password, force };
+      if (required_role) {
+        payload.required_role = required_role;
+      }
       return request('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ username, password, force })
+        body: JSON.stringify(payload)
       });
     },
     register: async (teamData) => {
@@ -229,6 +257,11 @@ export const api = {
     },
     getTeams: async () => {
       return request('/admin/teams');
+    },
+    forceLogoutTeam: async (teamId) => {
+      return request(`/admin/teams/${encodeURIComponent(teamId)}/logout`, {
+        method: 'POST'
+      });
     },
     getSubmissions: async (roundNumber = null) => {
       const query = roundNumber ? `?round_number=${roundNumber}` : '';
