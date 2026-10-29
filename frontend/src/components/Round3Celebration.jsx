@@ -67,28 +67,9 @@ export default function Round3Celebration({
     return false;
   };
 
-  // Check qualification status of team only if explicitly qualified or results are announced
-  const isTeamQualified = Boolean(
-    isQualified ||
-    (isAnnounced && (
-      team?.is_qualified_r3 ||
-      user?.is_qualified_r3 ||
-      team?.status === 'QUALIFIED_FOR_FINAL'
-    ))
-  );
-
-  const isTeamEliminated = Boolean(
-    isEliminated ||
-    (isAnnounced && (
-      team?.is_eliminated ||
-      user?.is_eliminated ||
-      team?.status === 'ELIMINATED'
-    ))
-  );
-
   // Strip points and marks from steward commendation so participants do not see points
   const cleanCommendation = (text) => {
-    if (!text) return '';
+    if (!text || typeof text !== 'string') return '';
     return text
       .replace(/\s*based on Round 1 & 2 score\s*\([^)]*\)/gi, ' based on Round 1 & 2 performance.')
       .replace(/\s*based on Round 1 & 2 marks\s*\([^)]*\)/gi, ' based on Round 1 & 2 performance.')
@@ -170,6 +151,25 @@ export default function Round3Celebration({
     resultsAnnounced ||
     isWinnerAnnounced ||
     (resultsTimerActive && resultsAnnouncementTime && (secondsLeft <= 0 || timerExpired) && remainingRealtime <= 0)
+  );
+
+  // Check qualification status of team only if explicitly qualified or results are announced
+  const isTeamQualified = Boolean(
+    isQualified ||
+    (isAnnounced && (
+      team?.is_qualified_r3 ||
+      user?.is_qualified_r3 ||
+      team?.status === 'QUALIFIED_FOR_FINAL'
+    ))
+  );
+
+  const isTeamEliminated = Boolean(
+    isEliminated ||
+    (isAnnounced && (
+      team?.is_eliminated ||
+      user?.is_eliminated ||
+      team?.status === 'ELIMINATED'
+    ))
   );
 
   // High-precision live ticker (ticks every 250ms but only re-renders on second change)
