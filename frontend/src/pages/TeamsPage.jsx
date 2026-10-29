@@ -9,7 +9,7 @@ import dashboardBg from '../assets/dashboard_bg.jpg';
 
 export default function TeamsPage() {
   const { user } = useAuth();
-  const { registerListener, isConnected } = useRaceSocket();
+  const { registerListener, isConnected, reconnect } = useRaceSocket();
 
   const [teams, setTeams] = useState(() => {
     try {
@@ -171,10 +171,15 @@ export default function TeamsPage() {
                   <Users className="w-3.5 h-3.5" />
                   <span>REGISTERED TEAMS DIRECTORY</span>
                 </span>
-                <span className="flex items-center space-x-1.5 text-xs font-mono-code text-cyan-400">
-                  <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
-                  <span>{isConnected ? 'LIVE GRID TELEMETRY' : 'DISCONNECTED'}</span>
-                </span>
+                <button
+                  type="button"
+                  onClick={() => !isConnected && reconnect && reconnect()}
+                  title={isConnected ? 'Telemetry active' : 'Click to reconnect telemetry'}
+                  className={`flex items-center space-x-1.5 text-xs font-mono-code transition-colors ${isConnected ? 'text-emerald-400 cursor-default' : 'text-amber-400 hover:text-amber-300 cursor-pointer underline decoration-dotted'}`}
+                >
+                  <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400 animate-pulse' : 'text-amber-400'}`} />
+                  <span>{isConnected ? 'LIVE GRID TELEMETRY' : 'DISCONNECTED (RECONNECT)'}</span>
+                </button>
               </div>
               <h2 className="font-race text-2xl sm:text-3xl font-black text-white">
                 REGISTERED TEAMS &amp; LIVE SESSIONS

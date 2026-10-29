@@ -13,6 +13,13 @@ export function RaceSocketProvider({ children }) {
   const listenersRef = useRef(new Set());
   const broadcastChannelRef = useRef(null);
   const retryCountRef = useRef(0);
+  const reconnectRef = useRef(null);
+
+  const reconnect = useCallback(() => {
+    if (reconnectRef.current) {
+      reconnectRef.current();
+    }
+  }, []);
 
   const registerListener = useCallback((callback) => {
     listenersRef.current.add(callback);
@@ -73,19 +80,27 @@ export function RaceSocketProvider({ children }) {
     }
   }, [dispatchEvent]);
 
-  // WebSocket Connection Management
+  // WebSocket Connection Management with Self-Healing and Zero-Drop Resilience
   useEffect(() => {
     let unmounted = false;
 
-    function getWsUrls() {
-      const token = getAuthToken('participant');
+    function getBackendEndpoints() {
+      const token = getAuthToken() || getAuthToken('admin') || getAuthToken('participant');
       const params = [];
       if (teamId) params.push(`team_id=${encodeURIComponent(teamId)}`);
       if (token) params.push(`token=${encodeURIComponent(token)}`);
       const query = params.length > 0 ? `?${params.join('&')}` : '';
-      const urls = [];
-      const customApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://cloudnex-backend.onrender.com' : null);
 
+      const isLocal = typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '0.0.0.0'
+      );
+
+      const customApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://cloudnex-backend.onrender.com' : null);
+      const urls = [];
+
+      // 1. Direct custom/production backend URL (e.g. Render)
       if (customApiUrl) {
         const wsProtocol = customApiUrl.startsWith('https') ? 'wss:' : 'ws:';
         const cleanHost = customApiUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
@@ -93,19 +108,37 @@ export function RaceSocketProvider({ children }) {
         urls.push(`${wsProtocol}//${cleanHost}/api/v1/ws${query}`);
       }
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const hostname = window.location.hostname;
+      // 2. In local dev mode, proxy through Vite and connect direct to FastAPI
+      if (isLocal) {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const hostname = window.location.hostname;
 
-      urls.push(`${protocol}//${host}/ws${query}`);
-      urls.push(`${protocol}//${host}/api/v1/ws${query}`);
-
-      // If running on standard dev port 5173, also include direct backend connection fallback
-      if (window.location.port === '5173') {
+        urls.push(`${protocol}//${host}/ws${query}`);
+        urls.push(`${protocol}//${host}/api/v1/ws${query}`);
         urls.push(`${protocol}//${hostname}:8000/ws${query}`);
+        urls.push(`${protocol}//${hostname}:8000/api/v1/ws${query}`);
+        urls.push(`${protocol}//127.0.0.1:8000/ws${query}`);
+      } else if (!customApiUrl) {
+        // Fallback production default if neither custom URL nor localhost
+        urls.push(`wss://cloudnex-backend.onrender.com/ws${query}`);
+        urls.push(`wss://cloudnex-backend.onrender.com/api/v1/ws${query}`);
       }
 
-      return urls;
+      // Deduplicate URLs
+      return [...new Set(urls)];
+    }
+
+    // Keep Render / backend alive and wake from sleep if cold-started
+    function pingBackendWake() {
+      try {
+        const customApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://cloudnex-backend.onrender.com' : null);
+        const wakeTarget = customApiUrl || '/health';
+        fetch(wakeTarget.startsWith('http') ? `${wakeTarget.replace(/\/+$/, '')}/health` : '/health', {
+          method: 'GET',
+          cache: 'no-store'
+        }).catch(() => {});
+      } catch {}
     }
 
     let urlIndex = 0;
@@ -113,7 +146,9 @@ export function RaceSocketProvider({ children }) {
     function connectWs() {
       if (unmounted) return;
 
-      const wsUrls = getWsUrls();
+      const wsUrls = getBackendEndpoints();
+      if (!wsUrls.length) return;
+
       const currentUrl = wsUrls[urlIndex % wsUrls.length];
 
       try {
@@ -128,7 +163,7 @@ export function RaceSocketProvider({ children }) {
           if (!unmounted) {
             setIsConnected(true);
             retryCountRef.current = 0;
-            console.log(`🏁 Connected to Race Control live telemetry socket via ${currentUrl}`);
+            console.log(`🏁 Telemetry WebSocket linked successfully via ${currentUrl}`);
           }
         };
 
@@ -138,8 +173,8 @@ export function RaceSocketProvider({ children }) {
             if (!unmounted) {
               dispatchEvent(data, 'ws');
             }
-          } catch (e) {
-            // Heartbeat pong or plain string
+          } catch {
+            // Raw text or pong heartbeat
           }
         };
 
@@ -154,10 +189,14 @@ export function RaceSocketProvider({ children }) {
               }, 'ws');
               return;
             }
-            urlIndex++;
+
+            // Immediately attempt waking backend in case of sleep
+            pingBackendWake();
+
+            urlIndex = (urlIndex + 1) % wsUrls.length;
             retryCountRef.current++;
-            // Fast exponential backoff capped at 2000ms
-            const delay = Math.min(400 * Math.pow(1.5, Math.min(retryCountRef.current, 4)), 2000);
+            // Rapid backoff capped at 1500ms
+            const delay = Math.min(300 * Math.pow(1.3, Math.min(retryCountRef.current, 5)), 1500);
             if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
             reconnectTimeout.current = setTimeout(connectWs, delay);
           }
@@ -168,40 +207,72 @@ export function RaceSocketProvider({ children }) {
         };
       } catch (err) {
         if (!unmounted) {
-          urlIndex++;
+          pingBackendWake();
+          urlIndex = (urlIndex + 1) % wsUrls.length;
           retryCountRef.current++;
-          const delay = Math.min(500 * Math.pow(1.5, Math.min(retryCountRef.current, 4)), 2000);
+          const delay = Math.min(400 * Math.pow(1.3, Math.min(retryCountRef.current, 5)), 1500);
           if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
           reconnectTimeout.current = setTimeout(connectWs, delay);
         }
       }
     }
 
+    // Initial connection + initial wake-up ping
+    pingBackendWake();
     connectWs();
 
-    // Fast heartbeat ping interval to keep connection hot
+    // Fast heartbeat ping interval + auto-heal if socket is dead
     const pingInterval = setInterval(() => {
       if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
         try { socketRef.current.send('ping'); } catch {}
-      }
-    }, 10000);
-
-    // Instant reconnect on window focus or network recovery
-    const handleReactivate = () => {
-      if (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) {
-        retryCountRef.current = 0;
+      } else if (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) {
+        // Auto-heal dead connection
         connectWs();
+      }
+    }, 8000);
+
+    // Prevent cloud backend from sleeping while dashboard tab is open
+    const wakeInterval = setInterval(pingBackendWake, 180000); // every 3 minutes
+
+    reconnectRef.current = () => {
+      retryCountRef.current = 0;
+      urlIndex = 0;
+      pingBackendWake();
+      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+      if (socketRef.current) {
+        try { socketRef.current.close(); } catch {}
+        socketRef.current = null;
+      }
+      connectWs();
+    };
+
+    // Instant reconnect on tab focus, network recovery, or visibility change
+    const handleReactivate = () => {
+      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
+        retryCountRef.current = 0;
+        pingBackendWake();
+        connectWs();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleReactivate();
       }
     };
 
     window.addEventListener('focus', handleReactivate);
     window.addEventListener('online', handleReactivate);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       unmounted = true;
+      reconnectRef.current = null;
       clearInterval(pingInterval);
+      clearInterval(wakeInterval);
       window.removeEventListener('focus', handleReactivate);
       window.removeEventListener('online', handleReactivate);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
       if (socketRef.current) {
         try { socketRef.current.close(); } catch {}
@@ -211,7 +282,7 @@ export function RaceSocketProvider({ children }) {
   }, [teamId, dispatchEvent]);
 
   return (
-    <RaceSocketContext.Provider value={{ isConnected, lastEvent, registerListener, broadcastLocalEvent }}>
+    <RaceSocketContext.Provider value={{ isConnected, lastEvent, registerListener, broadcastLocalEvent, reconnect }}>
       {children}
     </RaceSocketContext.Provider>
   );
@@ -224,4 +295,3 @@ export function useRaceSocket() {
   }
   return context;
 }
-

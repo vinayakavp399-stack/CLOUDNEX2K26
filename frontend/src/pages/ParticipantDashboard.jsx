@@ -15,7 +15,7 @@ import dashboardBg from '../assets/dashboard_bg.jpg';
 
 export default function ParticipantDashboard() {
   const { user, teamId, team, refreshProfile } = useAuth();
-  const { registerListener, isConnected } = useRaceSocket();
+  const { registerListener, isConnected, reconnect } = useRaceSocket();
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [rulesModalTab, setRulesModalTab] = useState('pdf');
 
@@ -820,10 +820,15 @@ export default function ParticipantDashboard() {
                 <span className="px-3 py-1 bg-red-600/30 text-red-400 border border-red-500/40 rounded-full text-xs font-race font-bold tracking-wider">
                   TEAM PIT WALL &bull; {teamId}
                 </span>
-                <span className="flex items-center space-x-1.5 text-xs font-mono-code text-cyan-400">
-                  <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
-                  <span>{isConnected ? 'TELEMETRY SYNCED' : 'OFFLINE'}</span>
-                </span>
+                <button
+                  type="button"
+                  onClick={() => !isConnected && reconnect && reconnect()}
+                  title={isConnected ? 'Telemetry active' : 'Click to reconnect telemetry'}
+                  className={`flex items-center space-x-1.5 text-xs font-mono-code transition-colors ${isConnected ? 'text-emerald-400 cursor-default' : 'text-amber-400 hover:text-amber-300 cursor-pointer underline decoration-dotted'}`}
+                >
+                  <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400 animate-pulse' : 'text-amber-400'}`} />
+                  <span>{isConnected ? 'TELEMETRY SYNCED' : 'OFFLINE (RETRY)'}</span>
+                </button>
               </div>
 
               <h2 className="font-race text-2xl sm:text-3xl font-black text-white">

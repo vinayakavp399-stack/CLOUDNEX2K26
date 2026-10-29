@@ -15,7 +15,7 @@ import dashboardBg from '../assets/dashboard_bg.jpg';
 
 export default function AdminDashboard({ initialTab = 'rounds' }) {
   const { user } = useAuth();
-  const { registerListener, isConnected, broadcastLocalEvent } = useRaceSocket();
+  const { registerListener, isConnected, broadcastLocalEvent, reconnect } = useRaceSocket();
 
   const [overview, setOverview] = useState(() => {
     try {
@@ -1686,10 +1686,15 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                 <span className="px-3 py-1 bg-red-600 text-white rounded-full text-xs font-race font-bold tracking-widest uppercase shadow-md shadow-red-950/60">
                   RACE DIRECTOR CONSOLE
                 </span>
-                <span className="flex items-center space-x-1.5 text-xs font-mono-code text-cyan-400">
-                  <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
-                  <span>{isConnected ? 'BROADCAST ENGINE ONLINE' : 'DISCONNECTED'}</span>
-                </span>
+                <button
+                  type="button"
+                  onClick={() => !isConnected && reconnect && reconnect()}
+                  title={isConnected ? 'Telemetry active' : 'Click to reconnect broadcast engine'}
+                  className={`flex items-center space-x-1.5 text-xs font-mono-code transition-colors ${isConnected ? 'text-emerald-400 cursor-default' : 'text-amber-400 hover:text-amber-300 cursor-pointer underline decoration-dotted'}`}
+                >
+                  <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400 animate-pulse' : 'text-amber-400'}`} />
+                  <span>{isConnected ? 'BROADCAST ENGINE ONLINE' : 'DISCONNECTED (RECONNECT)'}</span>
+                </button>
               </div>
               <h2 className="font-race text-2xl sm:text-3xl font-black text-white">
                 F1 STEWARD RACE CONTROL HQ
