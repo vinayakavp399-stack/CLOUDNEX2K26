@@ -243,11 +243,13 @@ export default function ParticipantDashboard() {
         api.submissions.getMy(),
         api.winner.get().catch(() => null)
       ]);
-      setRounds(roundsData);
-      setSubmissions(subsData);
+      const safeR = Array.isArray(roundsData) ? roundsData : [];
+      const safeS = Array.isArray(subsData) ? subsData : [];
+      setRounds(safeR);
+      setSubmissions(safeS);
       try {
-        sessionStorage.setItem('cloudnex_cached_rounds', JSON.stringify(roundsData));
-        sessionStorage.setItem('cloudnex_cached_subs', JSON.stringify(subsData));
+        sessionStorage.setItem('cloudnex_cached_rounds', JSON.stringify(safeR));
+        sessionStorage.setItem('cloudnex_cached_subs', JSON.stringify(safeS));
       } catch {}
       if (winnerData) {
         setWinnerAnnouncement(winnerData);
@@ -266,7 +268,7 @@ export default function ParticipantDashboard() {
         return isNaN(parsed) ? new Date(str).getTime() : parsed;
       };
 
-      const r3 = (roundsData || []).find(r => r.round_number === 3);
+      const r3 = safeR.find(r => r.round_number === 3);
       const isR3TimerExpired = Boolean(
         r3?.results_timer_active &&
         r3?.results_announcement_time &&
@@ -291,9 +293,9 @@ export default function ParticipantDashboard() {
       }
 
       // Auto-focus on whichever round is currently LIVE if no round is selected or current round is locked/closed
-      const liveRound = (roundsData || []).find(r => r.status === 'LIVE');
+      const liveRound = safeR.find(r => r.status === 'LIVE');
       if (liveRound && !r3?.results_timer_active) {
-        const curRound = (roundsData || []).find(r => r.round_number === selectedRoundNumberRef.current);
+        const curRound = safeR.find(r => r.round_number === selectedRoundNumberRef.current);
         if (!curRound || curRound.status === 'LOCKED' || curRound.status === 'CLOSED') {
           setSelectedRoundNumber(liveRound.round_number);
           selectedRoundNumberRef.current = liveRound.round_number;
@@ -306,7 +308,7 @@ export default function ParticipantDashboard() {
 
       // Populate form if submission exists for selected round
       const targetRound = selectedRoundNumberRef.current;
-      const currentSub = (subsData || []).find(s => s.round_number === targetRound);
+      const currentSub = safeS.find(s => s.round_number === targetRound);
       if (currentSub) {
         setGithubUrl(currentSub.github_url || '');
         setDeployedUrl(currentSub.deployed_url || '');
@@ -521,12 +523,15 @@ export default function ParticipantDashboard() {
     };
   }, []);
 
-  const activeRound = rounds.find(r => r.round_number === selectedRoundNumber) || rounds[0] || {};
-  const activeSubmission = submissions.find(s => s.round_number === selectedRoundNumber);
+  const safeRounds = Array.isArray(rounds) ? rounds : [];
+  const safeSubmissions = Array.isArray(submissions) ? submissions : [];
 
-  const round1 = rounds.find(r => r.round_number === 1);
-  const round2 = rounds.find(r => r.round_number === 2);
-  const round3 = rounds.find(r => r.round_number === 3);
+  const activeRound = safeRounds.find(r => r.round_number === selectedRoundNumber) || safeRounds[0] || {};
+  const activeSubmission = safeSubmissions.find(s => s.round_number === selectedRoundNumber);
+
+  const round1 = safeRounds.find(r => r.round_number === 1);
+  const round2 = safeRounds.find(r => r.round_number === 2);
+  const round3 = safeRounds.find(r => r.round_number === 3);
 
 
   const isR3TimerExpired = Boolean(
@@ -662,7 +667,7 @@ export default function ParticipantDashboard() {
     selectedRoundNumberRef.current = rNum;
     setActionSuccess('');
     setActionError('');
-    const sub = submissions.find(s => s.round_number === rNum);
+    const sub = safeSubmissions.find(s => s.round_number === rNum);
     if (sub) {
       setGithubUrl(sub.github_url || '');
       setDeployedUrl(sub.deployed_url || '');

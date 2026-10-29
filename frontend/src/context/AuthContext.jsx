@@ -73,6 +73,27 @@ export function AuthProvider({ children }) {
     return profile;
   };
 
+  const register = async (registrationData) => {
+    const data = await api.auth.register(registrationData);
+    
+    // Fast path: Immediately establish authenticated participant session
+    const profile = data.user || {
+      username: data.username,
+      role: data.role || 'participant',
+      team_id: data.team_id,
+      team_name: data.team?.team_name,
+      team: data.team
+    };
+
+    if (data.access_token) {
+      setAuthToken(data.access_token, profile.role || 'participant');
+      setUser(profile);
+      setUserData(profile);
+    }
+
+    return { ...data, user: profile };
+  };
+
   const logout = async () => {
     const role = user?.role;
     // 1. Immediately clear state and token synchronously for 0ms instant UI response
@@ -112,6 +133,7 @@ export function AuthProvider({ children }) {
     isParticipant: user?.role === 'participant',
     loading,
     login,
+    register,
     logout,
     refreshProfile
   };

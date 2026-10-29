@@ -6,10 +6,10 @@
     "role": "admin",
     "team_id": null,
     "team_name": "Race Control HQ",
-    "hashed_password": "$2b$10$qxZZNhSLyK9yZa5OBkj2pO7laq8JCJWteNM5uyQu6C/VsW8DVDygO",
+    "hashed_password": "$2b$07$4VQCc4wqv7NMmO/s2Wzzv.tZLOuNekZc/GhY958iQK7O1aWiaBiMe",
     "created_at": "2026-10-13T06:14:35.535492",
     "active_session": false,
     "active_session_token": null,
-    "last_active": "2026-10-17T20:27:19.041420"
+    "last_active": "2026-10-29T07:48:14.302898"
   }
 ]

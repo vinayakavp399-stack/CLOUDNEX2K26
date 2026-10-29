@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timezone
 import logging
 import re
+from typing import Optional
 import uuid
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -26,48 +27,89 @@ from app.models import (
 logger = logging.getLogger("cloudnex.auth")
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# In-memory cached Round 3 settings to eliminate repeated remote database roundtrips
+_r3_cache: Optional[dict] = None
+_r3_cache_ts: float = 0
+_R3_CACHE_TTL = 30  # seconds
+
+def _get_cached_round_3() -> Optional[dict]:
+    global _r3_cache, _r3_cache_ts
+    now = datetime.utcnow().timestamp()
+    if _r3_cache is not None and (now - _r3_cache_ts) < _R3_CACHE_TTL:
+        return _r3_cache
+    try:
+        rounds_col = db_manager.get_collection("rounds")
+        r3 = rounds_col.find_one({"round_number": 3})
+        _r3_cache = dict(r3) if r3 else {}
+        _r3_cache_ts = now
+        return _r3_cache
+    except Exception:
+        return _r3_cache or {}
+
+def _apply_r3_rules_to_team(team_dict: dict):
+    r3 = _get_cached_round_3()
+    is_held = bool(r3.get("results_held", False)) if r3 else False
+    now_dt = datetime.utcnow()
+    announcement_time = r3.get("results_announcement_time") if r3 else None
+    is_timer_expired = False
+    if announcement_time:
+        try:
+            ann_dt = datetime.fromisoformat(announcement_time.replace("Z", "+00:00")).replace(tzinfo=None)
+            is_timer_expired = ann_dt <= now_dt
+        except Exception:
+            pass
+    is_revealed = bool(
+        not is_held and (
+            r3.get("selection_revealed") or
+            r3.get("results_announced") or
+            (r3.get("results_timer_active") and is_timer_expired)
+        )
+    ) if r3 else False
+    if not is_revealed:
+        team_dict["is_qualified_r3"] = False
+        team_dict["is_eliminated"] = False
+    if team_dict.get("director_feedback"):
+        fb = team_dict["director_feedback"]
+        fb = re.sub(r'\s*based on Round 1 & 2 score\s*\([^)]*\)', ' based on Round 1 & 2 performance.', fb, flags=re.IGNORECASE)
+        fb = re.sub(r'\s*based on Round 1 & 2 marks\s*\([^)]*\)', ' based on Round 1 & 2 performance.', fb, flags=re.IGNORECASE)
+        fb = re.sub(r'\s*\(\d+(\.\d+)?\s*(pts|points)?\)', '', fb, flags=re.IGNORECASE)
+        fb = re.sub(r'\s+pts\b', '', fb, flags=re.IGNORECASE)
+        fb = re.sub(r'\s+points\b', '', fb, flags=re.IGNORECASE)
+        team_dict["director_feedback"] = fb.strip()
+    return team_dict
+
 
 @router.post("/login", response_model=Token)
 async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
-    t0 = datetime.utcnow().timestamp()
-    identifier = credentials.username.strip().lower()
+    raw_id = credentials.username.strip()
+    id_lower = raw_id.lower()
+    id_upper = raw_id.upper()
     users_col = db_manager.get_collection("users")
-    t1 = datetime.utcnow().timestamp()
-    logger.info(f"[PERF] Init took: {t1 - t0:.3f}s")
     
-    # 1. Fast direct indexed lookup (O(1)) instead of downloading entire collection
-    user = await asyncio.to_thread(
-        users_col.find_one,
-        {
-            "$or": [
-                {"username": identifier},
-                {"email": identifier},
-                {"team_id": identifier},
-                {"team_id": identifier.upper()}
-            ]
-        }
-    )
-    t2 = datetime.utcnow().timestamp()
-    logger.info(f"[PERF] find_one exact took: {t2 - t1:.3f}s (found: {bool(user)})")
-    
-    # Fallback to case-insensitive regex only if exact index match didn't find it
+    # 1. Ultra-fast direct single-trip lookup covering username, team_id, and email
+    query_conditions = [
+        {"username": id_lower},
+        {"team_id": id_upper},
+        {"team_id": id_lower},
+        {"email": id_lower},
+        {"username": raw_id}
+    ]
+    if id_lower == "admin":
+        query_conditions.append({"role": UserRole.ADMIN})
+
+    user = await asyncio.to_thread(users_col.find_one, {"$or": query_conditions})
     if not user:
+        # Fallback to case-insensitive regex only if direct index match didn't find it
         user = await asyncio.to_thread(
             users_col.find_one,
             {
                 "$or": [
-                    {"username": {"$regex": f"^{re.escape(identifier)}$", "$options": "i"}},
-                    {"email": {"$regex": f"^{re.escape(identifier)}$", "$options": "i"}},
-                    {"team_id": {"$regex": f"^{re.escape(identifier)}$", "$options": "i"}}
+                    {"username": {"$regex": f"^{re.escape(id_lower)}$", "$options": "i"}},
+                    {"email": {"$regex": f"^{re.escape(id_lower)}$", "$options": "i"}},
+                    {"team_id": {"$regex": f"^{re.escape(id_lower)}$", "$options": "i"}}
                 ]
             }
         )
-        t2_regex = datetime.utcnow().timestamp()
-        logger.info(f"[PERF] find_one regex took: {t2_regex - t2:.3f}s")
-
-    # Fallback for admin: allow logging in using the standard 'admin' alias as well
-    if not user and identifier.lower() == "admin":
-        user = await asyncio.to_thread(users_col.find_one, {"role": UserRole.ADMIN})
 
     if not user:
         raise HTTPException(
@@ -87,8 +129,6 @@ async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
         )
 
     # 2.5 Enforce strict portal role separation:
-    # If login is initiated from Admin portal, participant credentials must not be allowed.
-    # If login is initiated from Participant portal, admin credentials must not be allowed.
     if credentials.required_role:
         if credentials.required_role == UserRole.ADMIN and user.get("role") != UserRole.ADMIN:
             logger.warning(f"Role mismatch: Participant '{user.get('username')}' tried to log in through Admin portal")
@@ -104,10 +144,8 @@ async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
             )
 
     # 3. Enforce single device login: Prevent multiple logins from the same participant team
-    # (Admins can have multiple devices/sessions concurrently)
     if user.get("role") == UserRole.PARTICIPANT and user.get("team_id"):
         team_id = user["team_id"]
-        # Verify whether an active session or active token exists in the database
         has_active_session = bool(user.get("active_session")) or bool(user.get("active_session_token"))
         has_live_ws = team_id in ws_manager.team_connections and len(ws_manager.team_connections[team_id]) > 0
 
@@ -118,7 +156,7 @@ async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
                 detail=f"Team '{team_id}' is already logged in on another device. Participants can only access from one device at a time."
             )
 
-        # If another device was active and force=True, kick the old device out via WebSocket and close old sockets
+        # If another device was active and force=True, kick the old device out
         if has_active_session or has_live_ws:
             logger.info(f"Terminating old session for team '{team_id}' to activate new device")
             try:
@@ -134,23 +172,9 @@ async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
     # 4. Generate token and session id
     session_id = str(uuid.uuid4())
     now_iso = datetime.utcnow().isoformat()
-
-    # Synchronously register active session in database and refresh cache
     user_id = user["_id"]
-    await asyncio.to_thread(
-        users_col.update_one,
-        {"_id": user_id},
-        {
-            "$set": {
-                "active_session": True,
-                "active_session_token": session_id,
-                "last_active": now_iso
-            }
-        }
-    )
-    invalidate_user_cache(user["username"])
 
-    # 5. Populate in-memory user cache immediately
+    # 5. Populate in-memory user cache immediately for 0ms lag
     clean_user = {
         "username": user["username"],
         "email": user.get("email"),
@@ -162,46 +186,33 @@ async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
     }
     set_cached_user(user["username"], clean_user)
 
-    # 6. Pre-build user profile so frontend gets everything in 1 single fast trip
+    # Run session update in DB concurrently with team profile query
+    db_update_task = asyncio.to_thread(
+        users_col.update_one,
+        {"_id": user_id},
+        {
+            "$set": {
+                "active_session": True,
+                "active_session_token": session_id,
+                "last_active": now_iso
+            }
+        }
+    )
+
     user_info = dict(clean_user)
     team_data = None
+
     if user.get("role") == UserRole.PARTICIPANT and user.get("team_id"):
         teams_col = db_manager.get_collection("teams")
-        team = teams_col.find_one({"team_id": user["team_id"]})
+        team_fetch_task = asyncio.to_thread(teams_col.find_one, {"team_id": user["team_id"]})
+        # Execute both operations concurrently!
+        _, team = await asyncio.gather(db_update_task, team_fetch_task)
         if team:
-            team_dict = dict(team)
-            rounds_col = db_manager.get_collection("rounds")
-            r3 = rounds_col.find_one({"round_number": 3})
-            is_held = bool(r3.get("results_held", False)) if r3 else False
-            now_dt = datetime.utcnow()
-            announcement_time = r3.get("results_announcement_time") if r3 else None
-            is_timer_expired = False
-            if announcement_time:
-                try:
-                    ann_dt = datetime.fromisoformat(announcement_time.replace("Z", "+00:00")).replace(tzinfo=None)
-                    is_timer_expired = ann_dt <= now_dt
-                except Exception:
-                    pass
-            is_revealed = bool(
-                not is_held and (
-                    r3.get("selection_revealed") or
-                    r3.get("results_announced") or
-                    (r3.get("results_timer_active") and is_timer_expired)
-                )
-            ) if r3 else False
-            if not is_revealed:
-                team_dict["is_qualified_r3"] = False
-                team_dict["is_eliminated"] = False
-            if team_dict.get("director_feedback"):
-                fb = team_dict["director_feedback"]
-                fb = re.sub(r'\s*based on Round 1 & 2 score\s*\([^)]*\)', ' based on Round 1 & 2 performance.', fb, flags=re.IGNORECASE)
-                fb = re.sub(r'\s*based on Round 1 & 2 marks\s*\([^)]*\)', ' based on Round 1 & 2 performance.', fb, flags=re.IGNORECASE)
-                fb = re.sub(r'\s*\(\d+(\.\d+)?\s*(pts|points)?\)', '', fb, flags=re.IGNORECASE)
-                fb = re.sub(r'\s+pts\b', '', fb, flags=re.IGNORECASE)
-                fb = re.sub(r'\s+points\b', '', fb, flags=re.IGNORECASE)
-                team_dict["director_feedback"] = fb.strip()
+            team_dict = _apply_r3_rules_to_team(dict(team))
             user_info["team"] = team_dict
             team_data = team_dict
+    else:
+        await db_update_task
 
     # 7. Generate JWT access token
     token_data = {
@@ -287,36 +298,91 @@ async def register_participant(data: RegisterParticipantRequest):
             detail="A valid Team Leader email address is required."
         )
 
-    # Fast O(1) exact uniqueness check first
-    existing_team = teams_col.find_one({
-        "$or": [
-            {"team_name": clean_team_name},
-            {"email": clean_email},
-            {"team_id": clean_team_id}
-        ]
-    })
-    if existing_team:
-        if existing_team.get("team_name", "").lower() == clean_team_name.lower():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Team Name '{clean_team_name}' is already taken.")
-        if existing_team.get("email", "").lower() == clean_email.lower():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Email '{clean_email}' is already registered with another team.")
-        if existing_team.get("team_id", "").upper() == clean_team_id.upper():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Team ID '{clean_team_id}' is already registered.")
+    # Concurrently run strict uniqueness checks and password hashing in worker threads
+    team_id_task = asyncio.to_thread(
+        teams_col.find_one,
+        {
+            "$or": [
+                {"team_id": clean_team_id},
+                {"team_id": clean_team_id.lower()},
+                {"team_id": clean_team_id.upper()},
+                {"team_id": {"$regex": f"^{re.escape(clean_team_id)}$", "$options": "i"}}
+            ]
+        }
+    )
+    user_id_task = asyncio.to_thread(
+        users_col.find_one,
+        {
+            "$or": [
+                {"team_id": clean_team_id},
+                {"team_id": clean_team_id.lower()},
+                {"username": clean_team_id.lower()},
+                {"username": {"$regex": f"^{re.escape(clean_team_id)}$", "$options": "i"}}
+            ]
+        }
+    )
+    team_name_task = asyncio.to_thread(
+        teams_col.find_one,
+        {
+            "$or": [
+                {"team_name": clean_team_name},
+                {"team_name": {"$regex": f"^{re.escape(clean_team_name)}$", "$options": "i"}}
+            ]
+        }
+    )
+    email_team_task = asyncio.to_thread(
+        teams_col.find_one,
+        {
+            "$or": [
+                {"email": clean_email},
+                {"email": {"$regex": f"^{re.escape(clean_email)}$", "$options": "i"}}
+            ]
+        }
+    )
+    email_user_task = asyncio.to_thread(
+        users_col.find_one,
+        {
+            "$or": [
+                {"email": clean_email},
+                {"email": {"$regex": f"^{re.escape(clean_email)}$", "$options": "i"}}
+            ]
+        }
+    )
+    hash_task = asyncio.to_thread(get_password_hash, data.password)
 
-    existing_user = users_col.find_one({
-        "$or": [
-            {"email": clean_email},
-            {"username": clean_team_id.lower()},
-            {"team_id": clean_team_id}
-        ]
-    })
-    if existing_user:
-        if existing_user.get("email", "").lower() == clean_email.lower():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Email '{clean_email}' is already registered.")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Team ID '{clean_team_id}' is already registered.")
+    (
+        existing_team_id,
+        existing_user_id,
+        existing_team_name,
+        existing_team_email,
+        existing_user_email,
+        hashed_pwd
+    ) = await asyncio.gather(
+        team_id_task,
+        user_id_task,
+        team_name_task,
+        email_team_task,
+        email_user_task,
+        hash_task
+    )
 
-    # Compute password hash in worker thread to prevent event loop freeze
-    hashed_pwd = await asyncio.to_thread(get_password_hash, data.password)
+    if existing_team_id or existing_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Team ID '{clean_team_id}' is already registered. Teams must not have the same Team ID. Please enter a unique Team ID."
+        )
+
+    if existing_team_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Team Name '{clean_team_name}' is already taken. Please choose a unique Team Name."
+        )
+
+    if existing_team_email or existing_user_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Email '{clean_email}' is already registered with another team."
+        )
 
     now = datetime.now(timezone.utc).isoformat()
     if not now.endswith("Z") and "+" not in now:
@@ -336,9 +402,10 @@ async def register_participant(data: RegisterParticipantRequest):
         "created_at": now,
         "registered_at": now
     }
-    teams_col.insert_one(new_team)
 
-    # Create 1 dedicated login account per team
+    session_id = str(uuid.uuid4())
+
+    # Create 1 dedicated login account per team with active session
     new_user = {
         "username": clean_team_id.lower(),
         "email": clean_email,
@@ -347,28 +414,59 @@ async def register_participant(data: RegisterParticipantRequest):
         "team_name": clean_team_name,
         "leader_name": clean_leader_name,
         "hashed_password": hashed_pwd,
+        "active_session": True,
+        "active_session_token": session_id,
+        "last_active": now,
         "created_at": now
     }
-    users_col.insert_one(new_user)
 
-    # Audit log
-    audit_col = db_manager.get_collection("audit_logs")
-    audit_col.insert_one({
-        "action": "TEAM_REGISTERED",
-        "actor": clean_team_id,
-        "details": {
-            "team_name": clean_team_name,
-            "leader_name": clean_leader_name,
-            "email": clean_email,
-            "institution": clean_institution
-        },
-        "timestamp": now
-    })
+    # Parallel insertions backed by database uniqueness enforcement
+    try:
+        await asyncio.gather(
+            asyncio.to_thread(teams_col.insert_one, new_team),
+            asyncio.to_thread(users_col.insert_one, new_user)
+        )
+    except Exception as e:
+        if "duplicate" in str(e).lower() or "11000" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Team ID '{clean_team_id}' is already registered. Teams must not have the same Team ID. Please enter a unique Team ID."
+            )
+        raise e
+
+    # Issue access token immediately so the participant can land on cockpit in <1s
+    token_data = {
+        "sub": clean_team_id.lower(),
+        "role": UserRole.PARTICIPANT,
+        "team_id": clean_team_id,
+        "team_name": clean_team_name,
+        "session_id": session_id
+    }
+    access_token = create_access_token(data=token_data)
+
+    clean_user = {
+        "username": clean_team_id.lower(),
+        "email": clean_email,
+        "role": UserRole.PARTICIPANT,
+        "team_id": clean_team_id,
+        "team_name": clean_team_name,
+        "active_session": True,
+        "active_session_token": session_id
+    }
+    set_cached_user(clean_team_id.lower(), clean_user)
+
+    user_info = dict(clean_user)
+    user_info["team"] = dict(new_team)
 
     return {
-        "message": f"Team '{clean_team_name}' ({clean_team_id}) registered successfully by Team Leader {clean_leader_name}! You can now log in.",
+        "message": f"Team '{clean_team_name}' ({clean_team_id}) registered successfully!",
         "team_id": clean_team_id,
-        "username": clean_team_id.lower()
+        "username": clean_team_id.lower(),
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": UserRole.PARTICIPANT,
+        "user": user_info,
+        "team": new_team
     }
 
 
@@ -377,38 +475,7 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
     user_info = dict(current_user)
     if current_user.get("role") == UserRole.PARTICIPANT and current_user.get("team_id"):
         teams_col = db_manager.get_collection("teams")
-        team = teams_col.find_one({"team_id": current_user["team_id"]})
+        team = await asyncio.to_thread(teams_col.find_one, {"team_id": current_user["team_id"]})
         if team:
-            team_dict = dict(team)
-            rounds_col = db_manager.get_collection("rounds")
-            r3 = rounds_col.find_one({"round_number": 3})
-            is_held = bool(r3.get("results_held", False)) if r3 else False
-            now_dt = datetime.utcnow()
-            announcement_time = r3.get("results_announcement_time") if r3 else None
-            is_timer_expired = False
-            if announcement_time:
-                try:
-                    ann_dt = datetime.fromisoformat(announcement_time.replace("Z", "+00:00")).replace(tzinfo=None)
-                    is_timer_expired = ann_dt <= now_dt
-                except Exception:
-                    pass
-            is_revealed = bool(
-                not is_held and (
-                    r3.get("selection_revealed") or
-                    r3.get("results_announced") or
-                    (r3.get("results_timer_active") and is_timer_expired)
-                )
-            ) if r3 else False
-            if not is_revealed:
-                team_dict["is_qualified_r3"] = False
-                team_dict["is_eliminated"] = False
-            if team_dict.get("director_feedback"):
-                fb = team_dict["director_feedback"]
-                fb = re.sub(r'\s*based on Round 1 & 2 score\s*\([^)]*\)', ' based on Round 1 & 2 performance.', fb, flags=re.IGNORECASE)
-                fb = re.sub(r'\s*based on Round 1 & 2 marks\s*\([^)]*\)', ' based on Round 1 & 2 performance.', fb, flags=re.IGNORECASE)
-                fb = re.sub(r'\s*\(\d+(\.\d+)?\s*(pts|points)?\)', '', fb, flags=re.IGNORECASE)
-                fb = re.sub(r'\s+pts\b', '', fb, flags=re.IGNORECASE)
-                fb = re.sub(r'\s+points\b', '', fb, flags=re.IGNORECASE)
-                team_dict["director_feedback"] = fb.strip()
-            user_info["team"] = team_dict
+            user_info["team"] = _apply_r3_rules_to_team(dict(team))
     return user_info

@@ -165,7 +165,7 @@ async def round_timer_monitor():
     logger.info("Real-time round deadline monitor started.")
     while True:
         try:
-            await asyncio.sleep(2)
+            await asyncio.sleep(4)
             events = await asyncio.to_thread(_check_round_deadlines_sync)
             for event_type, payload in events:
                 await ws_manager.broadcast(event_type, payload)
@@ -221,7 +221,7 @@ async def handle_websocket(websocket: WebSocket, team_id: Optional[str] = None, 
             if payload and payload.get("role") == UserRole.PARTICIPANT:
                 sess_id = payload.get("session_id")
                 users_col = db_manager.get_collection("users")
-                u = users_col.find_one({"team_id": team_id})
+                u = await asyncio.to_thread(users_col.find_one, {"team_id": team_id})
                 active_token = u.get("active_session_token") if u else None
                 if u and active_token and sess_id and active_token != sess_id:
                     # An older session was terminated by a newer login

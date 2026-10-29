@@ -38,7 +38,7 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
   const [conflictError, setConflictError] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  const { login } = useAuth();
+  const { login, register } = useAuth();
 
   const handleLogin = async (e, force = false) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -100,6 +100,10 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
       setError('Please enter a valid Team Leader email address.');
       return;
     }
+    if (!regPassword) {
+      setError('Please provide a secure team password.');
+      return;
+    }
 
     setLoading(true);
 
@@ -109,7 +113,7 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
         .map(m => m.trim())
         .filter(Boolean);
 
-      const resp = await api.auth.register({
+      const resp = await register({
         team_id: cleanTeamId,
         team_name: cleanTeamName,
         leader_name: cleanLeader,
@@ -119,10 +123,15 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
         members: membersArray
       });
 
-      setSuccessMsg(resp.message || `Team '${cleanTeamName}' successfully registered by Team Leader ${cleanLeader}! You may now sign in.`);
-      setActiveTab('participant');
-      setUsername(cleanTeamId.toLowerCase());
-      setPassword(regPassword);
+      // Seamless Instant Entry: Directly launch the participant into their Cockpit!
+      if (onSuccess && resp.user) {
+        onSuccess(resp.user);
+      } else {
+        setSuccessMsg(resp.message || `Team '${cleanTeamName}' successfully registered! You are now logged in.`);
+        setActiveTab('participant');
+        setUsername(cleanTeamId.toLowerCase());
+        setPassword(regPassword);
+      }
     } catch (err) {
       setError(err.message || 'Registration failed. Check the fields.');
     } finally {
@@ -340,7 +349,10 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
                   }`}
               >
                 {loading ? (
-                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="flex items-center space-x-2">
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Verifying Telemetry...</span>
+                  </span>
                 ) : (
                   <>
                     <span>{activeTab === 'admin' ? 'Enter Race Control' : 'Enter Cockpit'}</span>
@@ -454,9 +466,19 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white font-race font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg cursor-pointer"
+                className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white font-race font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center space-x-2"
               >
-                {loading ? 'Registering Team...' : 'Submit Grid Registration'}
+                {loading ? (
+                  <span className="flex items-center space-x-2">
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Launching Grid Registration...</span>
+                  </span>
+                ) : (
+                  <>
+                    <span>Submit Grid Registration & Enter Cockpit</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </form>
           )}

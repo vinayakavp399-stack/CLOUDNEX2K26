@@ -18,6 +18,8 @@ class JsonCollection:
         self.name = name
         self.filepath = filepath
         self.lock = lock
+        self._cache: Optional[List[Dict[str, Any]]] = None
+        self._last_mtime: float = 0
         self._ensure_file()
 
     def _ensure_file(self):
@@ -28,35 +30,107 @@ class JsonCollection:
     def _read_all(self) -> List[Dict[str, Any]]:
         with self.lock:
             try:
-                with open(self.filepath, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
+                if self.filepath.exists():
+                    mtime = os.path.getmtime(self.filepath)
+                    if self._cache is not None and mtime == self._last_mtime:
+                        return self._cache
+                    with open(self.filepath, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        self._cache = data
+                        self._last_mtime = mtime
+                        return data
                 return []
+            except Exception:
+                return self._cache if self._cache is not None else []
 
     def _write_all(self, data: List[Dict[str, Any]]):
         with self.lock:
-            with open(self.filepath, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, default=str)
+            self._cache = data
+            try:
+                with open(self.filepath, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, default=str)
+                self._last_mtime = os.path.getmtime(self.filepath)
+            except Exception as e:
+                logger.error(f"Error writing to {self.filepath}: {e}")
 
     def find_one(self, filter_dict: Optional[Dict[str, Any]] = None, projection: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
-        items = self.find(filter_dict)
-        return items[0] if items else None
+        all_docs = self._read_all()
+        if not filter_dict:
+            return all_docs[0] if all_docs else None
+
+        import re
+        for doc in all_docs:
+            match = True
+            for k, v in filter_dict.items():
+                if k == "$or" and isinstance(v, list):
+                    or_match = False
+                    for condition in v:
+                        cond_match = True
+                        for sub_k, sub_v in condition.items():
+                            val = doc.get(sub_k)
+                            if isinstance(sub_v, dict) and "$regex" in sub_v:
+                                pattern = sub_v["$regex"]
+                                flags = re.IGNORECASE if sub_v.get("$options") == "i" else 0
+                                if not re.search(pattern, str(val or ""), flags):
+                                    cond_match = False
+                                    break
+                            elif val != sub_v:
+                                cond_match = False
+                                break
+                        if cond_match:
+                            or_match = True
+                            break
+                    if not or_match:
+                        match = False
+                        break
+                elif isinstance(v, dict) and "$regex" in v:
+                    pattern = v["$regex"]
+                    flags = re.IGNORECASE if v.get("$options") == "i" else 0
+                    if not re.search(pattern, str(doc.get(k, "")), flags):
+                        match = False
+                        break
+                elif doc.get(k) != v:
+                    match = False
+                    break
+            if match:
+                return doc
+        return None
 
     def find(self, filter_dict: Optional[Dict[str, Any]] = None, projection: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         all_docs = self._read_all()
         if not filter_dict:
             return all_docs
 
+        import re
         results = []
         for doc in all_docs:
             match = True
             for k, v in filter_dict.items():
                 if k == "$or" and isinstance(v, list):
-                    or_match = any(
-                        all(doc.get(sub_k) == sub_v for sub_k, sub_v in condition.items())
-                        for condition in v
-                    )
+                    or_match = False
+                    for condition in v:
+                        cond_match = True
+                        for sub_k, sub_v in condition.items():
+                            val = doc.get(sub_k)
+                            if isinstance(sub_v, dict) and "$regex" in sub_v:
+                                pattern = sub_v["$regex"]
+                                flags = re.IGNORECASE if sub_v.get("$options") == "i" else 0
+                                if not re.search(pattern, str(val or ""), flags):
+                                    cond_match = False
+                                    break
+                            elif val != sub_v:
+                                cond_match = False
+                                break
+                        if cond_match:
+                            or_match = True
+                            break
                     if not or_match:
+                        match = False
+                        break
+                elif isinstance(v, dict) and "$regex" in v:
+                    pattern = v["$regex"]
+                    flags = re.IGNORECASE if v.get("$options") == "i" else 0
+                    if not re.search(pattern, str(doc.get(k, "")), flags):
                         match = False
                         break
                 elif doc.get(k) != v:
@@ -258,12 +332,12 @@ class DatabaseManager:
                 logger.info(f"Connecting to MongoDB with URI: {uri[:20]}...")
                 self.client = MongoClient(
                     uri,
-                    serverSelectionTimeoutMS=5000,
-                    connectTimeoutMS=5000,
-                    socketTimeoutMS=10000,
-                    maxPoolSize=50,
-                    minPoolSize=5,
-                    maxIdleTimeMS=45000,
+                    serverSelectionTimeoutMS=2500,
+                    connectTimeoutMS=2500,
+                    socketTimeoutMS=5000,
+                    maxPoolSize=25,
+                    minPoolSize=0,
+                    maxIdleTimeMS=30000,
                     retryWrites=True
                 )
                 # Verify connection
@@ -301,14 +375,24 @@ class DatabaseManager:
         if not self.is_atlas or self.db is None:
             return
         try:
-            self.db["users"].create_index("username")
+            try:
+                self.db["teams"].create_index("team_id", unique=True)
+            except Exception:
+                self.db["teams"].create_index("team_id")
+
+            try:
+                self.db["users"].create_index("username", unique=True)
+            except Exception:
+                self.db["users"].create_index("username")
+
             self.db["users"].create_index("email")
             self.db["users"].create_index("team_id")
-            self.db["teams"].create_index("team_id")
+            self.db["teams"].create_index("team_name")
+            self.db["teams"].create_index("email")
             self.db["rounds"].create_index("round_number")
             self.db["problem_statements"].create_index("round_number")
             self.db["submissions"].create_index([("team_id", 1), ("round_number", 1)])
-            logger.info("MongoDB database indexes ensured for fast querying.")
+            logger.info("MongoDB database indexes ensured with strict uniqueness.")
         except Exception as e:
             logger.warning(f"Could not build indexes: {e}")
 
