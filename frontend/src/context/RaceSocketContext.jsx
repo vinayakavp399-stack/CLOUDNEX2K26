@@ -1,32 +1,32 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { getAuthToken } from '../api/client';
+import { api, getUserData } from '../api/client';
 
 const RaceSocketContext = createContext(null);
 
+/**
+ * RaceTelemetryProvider (replaces WebSockets with intelligent HTTP polling & event streaming)
+ * Maintains 100% backward compatibility with useRaceSocket across all dashboards and pages.
+ */
 export function RaceSocketProvider({ children }) {
   const { teamId } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState(null);
-  const socketRef = useRef(null);
-  const reconnectTimeout = useRef(null);
+
   const listenersRef = useRef(new Set());
   const broadcastChannelRef = useRef(null);
+  const lastEventIdRef = useRef(null);
+  const isPollingRef = useRef(false);
+  const pollTimerRef = useRef(null);
   const retryCountRef = useRef(0);
-  const reconnectRef = useRef(null);
-
-  const reconnect = useCallback(() => {
-    if (reconnectRef.current) {
-      reconnectRef.current();
-    }
-  }, []);
+  const unmountedRef = useRef(false);
 
   const registerListener = useCallback((callback) => {
     listenersRef.current.add(callback);
     return () => listenersRef.current.delete(callback);
   }, []);
 
-  const dispatchEvent = useCallback((eventData, source = 'ws') => {
+  const dispatchEvent = useCallback((eventData, source = 'http') => {
     if (!eventData || !eventData.type) return;
     setLastEvent(eventData);
 
@@ -34,21 +34,26 @@ export function RaceSocketProvider({ children }) {
       try {
         cb(eventData);
       } catch (e) {
-        console.error('Socket listener error', e);
+        console.error('Telemetry listener error:', e);
       }
     });
 
-    // If event came from websocket, broadcast to other open tabs in this browser (0ms cross-tab sync)
-    if (source === 'ws' && broadcastChannelRef.current) {
+    // Cross-tab synchronization via BroadcastChannel (0ms sync across local tabs)
+    if (source === 'http' && broadcastChannelRef.current) {
       try {
         broadcastChannelRef.current.postMessage(eventData);
       } catch {}
     }
   }, []);
 
-  // Broadcast an event locally across all tabs without waiting for network
+  // Broadcast an event locally across all open tabs without waiting for server roundtrip
   const broadcastLocalEvent = useCallback((eventType, payload) => {
-    const eventObj = { type: eventType, data: payload, local: true, timestamp: new Date().toISOString() };
+    const eventObj = {
+      type: eventType,
+      data: payload,
+      local: true,
+      timestamp: new Date().toISOString()
+    };
     dispatchEvent(eventObj, 'local');
     if (broadcastChannelRef.current) {
       try {
@@ -75,184 +80,87 @@ export function RaceSocketProvider({ children }) {
           broadcastChannelRef.current = null;
         };
       } catch (err) {
-        console.warn('BroadcastChannel not supported or blocked', err);
+        console.warn('BroadcastChannel not supported or blocked:', err);
       }
     }
   }, [dispatchEvent]);
 
-  // WebSocket Connection Management with Self-Healing and Zero-Drop Resilience
-  useEffect(() => {
-    let unmounted = false;
+  // Intelligent HTTP Event Polling Engine
+  const executePoll = useCallback(async () => {
+    if (unmountedRef.current || isPollingRef.current) return;
+    isPollingRef.current = true;
 
-    function getBackendEndpoints() {
-      const token = getAuthToken() || getAuthToken('admin') || getAuthToken('participant');
-      const params = [];
-      if (teamId) params.push(`team_id=${encodeURIComponent(teamId)}`);
-      if (token) params.push(`token=${encodeURIComponent(token)}`);
-      const query = params.length > 0 ? `?${params.join('&')}` : '';
+    try {
+      const storedUser = getUserData();
+      const effectiveTeam = teamId || storedUser?.team_id || null;
 
-      const isLocal = typeof window !== 'undefined' && (
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname === '0.0.0.0'
-      );
+      const res = await api.telemetry.poll(lastEventIdRef.current, effectiveTeam);
 
-      const customApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://cloudnex-backend.onrender.com' : null);
-      const urls = [];
+      if (unmountedRef.current) return;
 
-      // 1. Direct custom/production backend URL (e.g. Render)
-      if (customApiUrl) {
-        const wsProtocol = customApiUrl.startsWith('https') ? 'wss:' : 'ws:';
-        const cleanHost = customApiUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-        urls.push(`${wsProtocol}//${cleanHost}/ws${query}`);
-        urls.push(`${wsProtocol}//${cleanHost}/api/v1/ws${query}`);
-      }
-
-      // 2. In local dev mode, proxy through Vite and connect direct to FastAPI
-      if (isLocal) {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        const hostname = window.location.hostname;
-
-        urls.push(`${protocol}//${host}/ws${query}`);
-        urls.push(`${protocol}//${host}/api/v1/ws${query}`);
-        urls.push(`${protocol}//${hostname}:8000/ws${query}`);
-        urls.push(`${protocol}//${hostname}:8000/api/v1/ws${query}`);
-        urls.push(`${protocol}//127.0.0.1:8000/ws${query}`);
-      } else if (!customApiUrl) {
-        // Fallback production default if neither custom URL nor localhost
-        urls.push(`wss://cloudnex-backend.onrender.com/ws${query}`);
-        urls.push(`wss://cloudnex-backend.onrender.com/api/v1/ws${query}`);
-      }
-
-      // Deduplicate URLs
-      return [...new Set(urls)];
-    }
-
-    // Keep Render / backend alive and wake from sleep if cold-started
-    function pingBackendWake() {
-      try {
-        const customApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://cloudnex-backend.onrender.com' : null);
-        const wakeTarget = customApiUrl || '/health';
-        fetch(wakeTarget.startsWith('http') ? `${wakeTarget.replace(/\/+$/, '')}/health` : '/health', {
-          method: 'GET',
-          cache: 'no-store'
-        }).catch(() => {});
-      } catch {}
-    }
-
-    let urlIndex = 0;
-
-    function connectWs() {
-      if (unmounted) return;
-
-      const wsUrls = getBackendEndpoints();
-      if (!wsUrls.length) return;
-
-      const currentUrl = wsUrls[urlIndex % wsUrls.length];
-
-      try {
-        if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
-          return;
-        }
-
-        const ws = new WebSocket(currentUrl);
-        socketRef.current = ws;
-
-        ws.onopen = () => {
-          if (!unmounted) {
-            setIsConnected(true);
-            retryCountRef.current = 0;
-            console.log(`🏁 Telemetry WebSocket linked successfully via ${currentUrl}`);
-          }
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (!unmounted) {
-              dispatchEvent(data, 'ws');
-            }
-          } catch {
-            // Raw text or pong heartbeat
-          }
-        };
-
-        ws.onclose = (event) => {
-          if (!unmounted) {
-            setIsConnected(false);
-            if (event && event.code === 4001) {
-              console.warn('WebSocket closed: single device takeover.');
-              dispatchEvent({
-                type: 'FORCE_LOGOUT',
-                data: { message: 'Your session has been terminated because this account was logged into on another device.' }
-              }, 'ws');
-              return;
-            }
-
-            // Immediately attempt waking backend in case of sleep
-            pingBackendWake();
-
-            urlIndex = (urlIndex + 1) % wsUrls.length;
-            retryCountRef.current++;
-            // Rapid backoff capped at 1500ms
-            const delay = Math.min(300 * Math.pow(1.3, Math.min(retryCountRef.current, 5)), 1500);
-            if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
-            reconnectTimeout.current = setTimeout(connectWs, delay);
-          }
-        };
-
-        ws.onerror = () => {
-          try { ws.close(); } catch {}
-        };
-      } catch (err) {
-        if (!unmounted) {
-          pingBackendWake();
-          urlIndex = (urlIndex + 1) % wsUrls.length;
-          retryCountRef.current++;
-          const delay = Math.min(400 * Math.pow(1.3, Math.min(retryCountRef.current, 5)), 1500);
-          if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
-          reconnectTimeout.current = setTimeout(connectWs, delay);
-        }
-      }
-    }
-
-    // Initial connection + initial wake-up ping
-    pingBackendWake();
-    connectWs();
-
-    // Fast heartbeat ping interval + auto-heal if socket is dead
-    const pingInterval = setInterval(() => {
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        try { socketRef.current.send('ping'); } catch {}
-      } else if (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) {
-        // Auto-heal dead connection
-        connectWs();
-      }
-    }, 8000);
-
-    // Prevent cloud backend from sleeping while dashboard tab is open
-    const wakeInterval = setInterval(pingBackendWake, 180000); // every 3 minutes
-
-    reconnectRef.current = () => {
+      setIsConnected(true);
       retryCountRef.current = 0;
-      urlIndex = 0;
-      pingBackendWake();
-      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
-      if (socketRef.current) {
-        try { socketRef.current.close(); } catch {}
-        socketRef.current = null;
-      }
-      connectWs();
-    };
 
-    // Instant reconnect on tab focus, network recovery, or visibility change
-    const handleReactivate = () => {
-      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
-        retryCountRef.current = 0;
-        pingBackendWake();
-        connectWs();
+      if (res && typeof res.last_event_id === 'number') {
+        if (lastEventIdRef.current === null) {
+          // Initial sync: capture the baseline event ID without replaying historical events
+          lastEventIdRef.current = res.last_event_id;
+        } else if (res.last_event_id < lastEventIdRef.current) {
+          // Server restarted or counter reset: re-align ID
+          lastEventIdRef.current = res.last_event_id;
+        } else {
+          lastEventIdRef.current = res.last_event_id;
+        }
       }
+
+      // Dispatch pending events sequentially
+      if (res && Array.isArray(res.events) && res.events.length > 0) {
+        res.events.forEach(ev => {
+          dispatchEvent(ev, 'http');
+        });
+      }
+    } catch (err) {
+      if (unmountedRef.current) return;
+      // Mark disconnected if unreachable
+      setIsConnected(false);
+      retryCountRef.current++;
+    } finally {
+      isPollingRef.current = false;
+      if (!unmountedRef.current) {
+        // Adaptive delay: 2.5s when active, 6s when tab is backgrounded, 1.5s on rapid retry
+        const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+        let delay = 2500;
+        if (retryCountRef.current > 0) {
+          delay = Math.min(1200 * Math.pow(1.3, Math.min(retryCountRef.current, 4)), 5000);
+        } else if (isHidden) {
+          delay = 6000;
+        }
+
+        if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = setTimeout(executePoll, delay);
+      }
+    }
+  }, [teamId, dispatchEvent]);
+
+  // Manual reconnect / sync trigger
+  const reconnect = useCallback(() => {
+    retryCountRef.current = 0;
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    executePoll();
+  }, [executePoll]);
+
+  // Lifecycle & event listeners
+  useEffect(() => {
+    unmountedRef.current = false;
+
+    // Start initial poll immediately
+    executePoll();
+
+    // Trigger immediate poll on tab focus, visibility return, or network reconnect
+    const handleReactivate = () => {
+      retryCountRef.current = 0;
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+      executePoll();
     };
 
     const handleVisibilityChange = () => {
@@ -266,20 +174,13 @@ export function RaceSocketProvider({ children }) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      unmounted = true;
-      reconnectRef.current = null;
-      clearInterval(pingInterval);
-      clearInterval(wakeInterval);
+      unmountedRef.current = true;
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       window.removeEventListener('focus', handleReactivate);
       window.removeEventListener('online', handleReactivate);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
-      if (socketRef.current) {
-        try { socketRef.current.close(); } catch {}
-        socketRef.current = null;
-      }
     };
-  }, [teamId, dispatchEvent]);
+  }, [executePoll]);
 
   return (
     <RaceSocketContext.Provider value={{ isConnected, lastEvent, registerListener, broadcastLocalEvent, reconnect }}>

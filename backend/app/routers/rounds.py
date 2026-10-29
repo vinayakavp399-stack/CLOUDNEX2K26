@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -7,6 +8,30 @@ from app.models import RoundState, TeamStatus, UserRole
 from app.websocket_manager import ws_manager
 
 router = APIRouter(prefix="/rounds", tags=["Rounds"])
+
+_ROUNDS_CACHE: Optional[tuple] = None
+_ROUNDS_CACHE_TS: float = 0
+_ROUNDS_TTL: float = 2.0
+
+
+def invalidate_rounds_cache():
+    global _ROUNDS_CACHE
+    _ROUNDS_CACHE = None
+
+
+async def _get_rounds_and_problems_cached(rounds_col, problems_col):
+    global _ROUNDS_CACHE, _ROUNDS_CACHE_TS
+    now = datetime.utcnow().timestamp()
+    if _ROUNDS_CACHE is not None and (now - _ROUNDS_CACHE_TS) < _ROUNDS_TTL:
+        return _ROUNDS_CACHE
+
+    raw_rounds, all_problems = await asyncio.gather(
+        asyncio.to_thread(lambda: list(rounds_col.find())),
+        asyncio.to_thread(lambda: list(problems_col.find()))
+    )
+    _ROUNDS_CACHE = (raw_rounds, all_problems)
+    _ROUNDS_CACHE_TS = now
+    return _ROUNDS_CACHE
 
 
 @router.get("")
@@ -18,15 +43,14 @@ async def get_all_rounds(current_user: Optional[dict] = Depends(get_current_user
     is_admin = current_user and current_user.get("role") == UserRole.ADMIN
     team = None
     if current_user and current_user.get("role") == UserRole.PARTICIPANT and current_user.get("team_id"):
-        team = teams_col.find_one({"team_id": current_user["team_id"]})
+        team = await asyncio.to_thread(teams_col.find_one, {"team_id": current_user["team_id"]})
 
-    raw_rounds = list(rounds_col.find())
-    all_problems = list(problems_col.find())
+    raw_rounds, all_problems = await _get_rounds_and_problems_cached(rounds_col, problems_col)
     all_rounds = []
     for num in [1, 2, 3]:
         matching = [r for r in raw_rounds if int(r.get("round_number", 0)) == num]
         if matching:
-            all_rounds.append(matching[0])
+            all_rounds.append(dict(matching[0]))
 
     response_rounds = []
     now_dt = datetime.utcnow()

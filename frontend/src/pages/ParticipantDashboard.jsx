@@ -365,7 +365,7 @@ export default function ParticipantDashboard() {
   useEffect(() => {
     fetchData();
 
-    // Listen for WebSocket and cross-tab events
+    // Listen for telemetry sync and cross-tab events
     const unregister = registerListener((event) => {
       console.log('Telemetry event received on cockpit:', event.type);
 

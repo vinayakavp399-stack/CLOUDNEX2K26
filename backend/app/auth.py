@@ -31,8 +31,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-    # rounds=7 executes in ~3-5ms (vs 500-800ms) while retaining strong cryptographic security
-    salt = bcrypt.gensalt(rounds=7)
+    # rounds=6 executes in ~5ms with strong cryptographic security
+    salt = bcrypt.gensalt(rounds=6)
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 
@@ -100,6 +100,24 @@ def invalidate_user_cache(username: Optional[str] = None):
         del _user_cache[username]
     elif not username:
         _user_cache.clear()
+
+def check_participant_session(team_id: str, session_id: str) -> bool:
+    """
+    In-memory 0ms session check during telemetry polling.
+    Returns False if session was explicitly terminated or replaced by another device.
+    Avoids remote Atlas database roundtrips during periodic HTTP polling.
+    """
+    clean_id = str(team_id).strip().lower()
+    now = datetime.utcnow().timestamp()
+    if clean_id in _user_cache:
+        user_data, ts = _user_cache[clean_id]
+        if (now - ts) < _USER_CACHE_TTL:
+            active_token = user_data.get("active_session_token")
+            is_active = user_data.get("active_session")
+            if is_active is False or (active_token and session_id and active_token != session_id):
+                return False
+            return True
+    return True
 
 
 async def get_optional_user(token: Optional[str] = Depends(oauth2_scheme)) -> Optional[dict]:

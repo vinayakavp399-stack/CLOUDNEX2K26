@@ -355,5 +355,15 @@ export const api = {
         body: JSON.stringify(settingsData)
       });
     }
+  },
+  telemetry: {
+    poll: async (sinceId = null, teamId = null, sessionId = null) => {
+      const params = new URLSearchParams();
+      if (sinceId !== null && sinceId !== undefined) params.append('since_id', sinceId);
+      if (teamId) params.append('team_id', teamId);
+      if (sessionId) params.append('session_id', sessionId);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      return request(`/events/poll${query}`, { method: 'GET' });
+    }
   }
 };

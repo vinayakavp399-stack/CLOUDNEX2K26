@@ -58,7 +58,7 @@ export default function TeamsPage() {
           }));
         }
       }
-      if (event && (event.type === 'USER_REGISTERED' || event.type === 'LEADERBOARD_UPDATED')) {
+      if (event && (event.type === 'TEAM_REGISTERED' || event.type === 'USER_REGISTERED' || event.type === 'LEADERBOARD_UPDATED')) {
         loadTeams(true);
       }
     });

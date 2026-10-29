@@ -99,7 +99,7 @@ function AppContent() {
     }
   }, [isAuthenticated, currentView]);
 
-  // Listen for single-device participant force logout event from WebSocket and global 401 interception
+  // Listen for single-device participant force logout event from telemetry event bus and global 401 interception
   useEffect(() => {
     let isHandling = false;
     const triggerLogout = (msg) => {

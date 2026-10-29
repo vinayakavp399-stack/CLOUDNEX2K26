@@ -3,17 +3,17 @@ from datetime import datetime, timedelta
 import json
 import logging
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.auth import decode_token
+from app.auth import decode_token, check_participant_session
 from app.config import settings
 from app.database import db_manager
 from app.models import UserRole
 from app.routers import admin, auth, leaderboard, rounds, submissions
 from app.seed_data import seed_database
-from app.websocket_manager import ws_manager
+from app.event_manager import event_manager, ws_manager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -193,98 +193,86 @@ async def health_check():
     }
 
 
-def _update_session_sync(team_id: str, active: bool):
-    try:
-        users_col = db_manager.get_collection("users")
-        update_fields = {"active_session": active}
-        if active:
-            update_fields["last_active"] = datetime.utcnow().isoformat()
-        users_col.update_one({"team_id": team_id}, {"$set": update_fields})
-    except Exception:
-        pass
+# HTTP Polling & Event Stream for real-time race telemetry (replaces WebSockets)
+@app.get("/api/v1/events/poll")
+@app.get("/events/poll")
+async def poll_events(
+    since: Optional[int] = Query(None, alias="since"),
+    since_id: Optional[int] = Query(None, alias="since_id"),
+    last_event_id: Optional[int] = Query(None, alias="last_event_id"),
+    team_id: Optional[str] = Query(None),
+    session_id: Optional[str] = Query(None),
+    token: Optional[str] = Query(None),
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Lightweight, proxy-friendly HTTP telemetry polling endpoint.
+    Returns real-time race events, round state changes, and session takeover alerts.
+    """
+    raw_token = token
+    if not raw_token and authorization and authorization.startswith("Bearer "):
+        raw_token = authorization.split(" ", 1)[1].strip()
 
+    effective_team_id = team_id
+    effective_session_id = session_id
 
-async def update_session_async(team_id: str, active: bool):
-    try:
-        await asyncio.to_thread(_update_session_sync, team_id, active)
-    except Exception:
-        pass
-
-
-# WebSocket handler for real-time race telemetry and round updates
-async def handle_websocket(websocket: WebSocket, team_id: Optional[str] = None, token: Optional[str] = None):
-    # If participant connects with a token, verify that their session is currently the active one
-    sess_id = None
-    if team_id and token:
+    if raw_token:
         try:
-            payload = decode_token(token)
-            if payload and payload.get("role") == UserRole.PARTICIPANT:
-                sess_id = payload.get("session_id")
-                users_col = db_manager.get_collection("users")
-                u = await asyncio.to_thread(users_col.find_one, {"team_id": team_id})
-                active_token = u.get("active_session_token") if u else None
-                if u and active_token and sess_id and active_token != sess_id:
-                    # An older session was terminated by a newer login
-                    await websocket.accept()
-                    await websocket.send_text(json.dumps({
+            payload = decode_token(raw_token)
+            if payload:
+                if not effective_team_id and payload.get("team_id"):
+                    effective_team_id = payload.get("team_id")
+                if not effective_session_id and payload.get("session_id"):
+                    effective_session_id = payload.get("session_id")
+        except Exception:
+            pass
+
+    if effective_team_id:
+        event_manager.record_heartbeat(effective_team_id)
+
+    if effective_team_id and effective_session_id:
+        try:
+            if not check_participant_session(effective_team_id, effective_session_id):
+                return {
+                    "status": "ok",
+                    "server_time": datetime.utcnow().isoformat(),
+                    "last_event_id": event_manager.get_latest_event_id(),
+                    "events": [{
+                        "id": event_manager.get_latest_event_id(),
                         "type": "FORCE_LOGOUT",
-                        "data": {"message": "Your session has been terminated because this account was logged into on another device."}
-                    }))
-                    await websocket.close(code=4001, reason="LOGGED_IN_ON_ANOTHER_DEVICE")
-                    return
-        except Exception as e:
-            logger.debug(f"WebSocket token validation error: {e}")
+                        "data": {
+                            "message": "Your session has been terminated because this account was logged into on another device."
+                        }
+                    }]
+                }
+        except Exception as sess_err:
+            logger.debug(f"Session validation error in poll: {sess_err}")
 
-    await ws_manager.connect(websocket, team_id=team_id)
-    if team_id:
-        asyncio.create_task(update_session_async(team_id, True))
+    effective_since = None
+    if since_id is not None:
+        effective_since = since_id
+    elif since is not None:
+        effective_since = since
+    elif last_event_id is not None:
+        effective_since = last_event_id
 
-    # Send initial welcome packet so client immediately confirms active link
-    try:
-        await websocket.send_text(json.dumps({
-            "type": "CONNECTION_ESTABLISHED",
-            "data": {
-                "status": "ONLINE",
-                "team_id": team_id,
-                "server_time": datetime.utcnow().isoformat()
+    events = event_manager.get_events(since_id=effective_since, team_id=effective_team_id)
+
+    return {
+        "status": "ok",
+        "server_time": datetime.utcnow().isoformat(),
+        "last_event_id": event_manager.get_latest_event_id(),
+        "events": [
+            {
+                "id": e["id"],
+                "type": e["type"],
+                "data": e["data"],
+                "timestamp": e.get("timestamp")
             }
-        }))
-    except Exception:
-        pass
-
-    try:
-        while True:
-            # Keep connection alive and receive client telemetry pings
-            data = await websocket.receive_text()
-            if data == "ping":
-                # Check if session was superseded by another device in the meantime
-                if team_id and sess_id:
-                    try:
-                        users_col = db_manager.get_collection("users")
-                        u = users_col.find_one({"team_id": team_id})
-                        if u and u.get("active_session_token") and u.get("active_session_token") != sess_id:
-                            await websocket.send_text(json.dumps({
-                                "type": "FORCE_LOGOUT",
-                                "data": {"message": "Your session has been terminated because this account was logged into on another device."}
-                            }))
-                            await websocket.close(code=4001, reason="LOGGED_IN_ON_ANOTHER_DEVICE")
-                            break
-                    except Exception:
-                        pass
-
-                await websocket.send_text('{"type": "PONG"}')
-    except WebSocketDisconnect:
-        ws_manager.disconnect(websocket, team_id=team_id)
-    except Exception:
-        ws_manager.disconnect(websocket, team_id=team_id)
+            for e in events
+        ]
+    }
 
 
-@app.websocket("/ws")
-async def websocket_ws(websocket: WebSocket, team_id: Optional[str] = None, token: Optional[str] = None):
-    await handle_websocket(websocket, team_id=team_id, token=token)
 
-
-@app.websocket("/api/v1/ws")
-async def websocket_api_ws(websocket: WebSocket, team_id: Optional[str] = None, token: Optional[str] = None):
-    await handle_websocket(websocket, team_id=team_id, token=token)
 

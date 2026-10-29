@@ -1079,9 +1079,9 @@ async def get_all_teams_admin(current_admin: dict = Depends(get_current_admin)):
         # Live session and connection status
         user_info = users_by_team.get(t_id) or {}
         has_active_db_session = bool(user_info.get("active_session") and user_info.get("active_session_token"))
-        has_active_ws = bool(t_id and t_id in ws_manager.team_connections and len(ws_manager.team_connections[t_id]) > 0)
+        has_active_stream = bool(t_id and (ws_manager.is_team_online(t_id) or (t_id in ws_manager.team_connections and len(ws_manager.team_connections[t_id]) > 0)))
 
-        t_copy["is_online"] = has_active_db_session or has_active_ws
+        t_copy["is_online"] = has_active_db_session or has_active_stream
         t_copy["email"] = t.get("email") or user_info.get("email", "")
         raw_reg = t.get("registered_at") or t.get("created_at") or user_info.get("created_at") or ""
         if raw_reg and isinstance(raw_reg, str) and not raw_reg.endswith("Z") and "+" not in raw_reg:
@@ -1120,7 +1120,7 @@ async def force_logout_team_admin(
     except Exception:
         pass
 
-    # 3. Notify team websocket with FORCE_LOGOUT packet
+    # 3. Queue FORCE_LOGOUT telemetry packet for team
     try:
         await ws_manager.send_team_message(team_id, "FORCE_LOGOUT", {
             "message": "Your session has been terminated by the Race Director / Administrator.",
@@ -1129,7 +1129,7 @@ async def force_logout_team_admin(
     except Exception:
         pass
 
-    # 4. Forcefully disconnect active sockets
+    # 4. Terminate team active telemetry link
     try:
         await ws_manager.close_team_connections(team_id, reason="ADMIN_FORCED_LOGOUT")
     except Exception:
@@ -1709,7 +1709,7 @@ async def allocate_problem_statements(
         "timestamp": now_iso
     })
 
-    # Broadcast event via WebSocket
+    # Broadcast event via telemetry stream
     await ws_manager.broadcast("PROBLEMS_ALLOCATED", {
         "batch_id": batch_id,
         "teams_count": num_teams,
@@ -2095,7 +2095,7 @@ async def reset_entire_event(
         "timestamp": now_iso
     })
 
-    # Broadcast websocket events
+    # Broadcast telemetry stream events
     await ws_manager.broadcast("EVENT_RESET", {"timestamp": now_iso})
     await ws_manager.broadcast("PROBLEMS_ALLOCATION_RESET", {"timestamp": now_iso})
     await ws_manager.broadcast("PROBLEM_UNPUBLISHED", {"round_number": 1, "timestamp": now_iso})

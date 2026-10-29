@@ -1,3 +1,5 @@
+import asyncio
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -7,6 +9,14 @@ from app.models import UserRole
 from app.websocket_manager import ws_manager
 
 router = APIRouter(prefix="/leaderboard", tags=["Leaderboard & Standings"])
+
+_WINNER_CACHE = None
+_WINNER_CACHE_TS = 0
+_WINNER_TTL = 2.0
+
+def invalidate_winner_cache():
+    global _WINNER_CACHE
+    _WINNER_CACHE = None
 
 class LeaderboardVisibilitySettings(BaseModel):
     visibility_mode: str = "LOCKED"  # LOCKED, PUBLIC, FROZEN, ADMIN_ONLY
@@ -110,10 +120,15 @@ import time
 
 @router.get("/winner-announcement")
 async def get_public_winner_announcement():
+    global _WINNER_CACHE, _WINNER_CACHE_TS
+    now = datetime.utcnow().timestamp()
+    if _WINNER_CACHE is not None and (now - _WINNER_CACHE_TS) < _WINNER_TTL:
+        return _WINNER_CACHE
+
     settings_col = db_manager.get_collection("system_settings")
-    doc = settings_col.find_one({"key": "winner_announcement"})
+    doc = await asyncio.to_thread(settings_col.find_one, {"key": "winner_announcement"})
     if not doc:
-        return {
+        res = {
             "key": "winner_announcement",
             "is_announced": False,
             "is_timer_active": False,
@@ -124,15 +139,20 @@ async def get_public_winner_announcement():
             "runner_up": None,
             "updated_at": None
         }
-    return {
-        "key": "winner_announcement",
-        "is_announced": bool(doc.get("is_announced", False)),
-        "is_timer_active": bool(doc.get("is_timer_active", False)),
-        "announcement_time": doc.get("announcement_time"),
-        "timer_seconds": doc.get("timer_seconds", 10),
-        "held": bool(doc.get("held", False)),
-        "winner": doc.get("winner"),
-        "runner_up": doc.get("runner_up"),
-        "updated_at": doc.get("updated_at")
-    }
+    else:
+        res = {
+            "key": "winner_announcement",
+            "is_announced": bool(doc.get("is_announced", False)),
+            "is_timer_active": bool(doc.get("is_timer_active", False)),
+            "announcement_time": doc.get("announcement_time"),
+            "timer_seconds": doc.get("timer_seconds", 10),
+            "held": bool(doc.get("held", False)),
+            "winner": doc.get("winner"),
+            "runner_up": doc.get("runner_up"),
+            "updated_at": doc.get("updated_at")
+        }
+
+    _WINNER_CACHE = res
+    _WINNER_CACHE_TS = now
+    return res
 

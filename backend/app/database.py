@@ -332,12 +332,13 @@ class DatabaseManager:
                 logger.info(f"Connecting to MongoDB with URI: {uri[:20]}...")
                 self.client = MongoClient(
                     uri,
-                    serverSelectionTimeoutMS=2500,
-                    connectTimeoutMS=2500,
-                    socketTimeoutMS=5000,
-                    maxPoolSize=25,
-                    minPoolSize=0,
-                    maxIdleTimeMS=30000,
+                    serverSelectionTimeoutMS=10000,
+                    connectTimeoutMS=10000,
+                    socketTimeoutMS=10000,
+                    maxPoolSize=100,
+                    minPoolSize=10,
+                    maxIdleTimeMS=60000,
+                    waitQueueTimeoutMS=3000,
                     retryWrites=True
                 )
                 # Verify connection

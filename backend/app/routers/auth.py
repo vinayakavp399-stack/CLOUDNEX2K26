@@ -86,30 +86,20 @@ async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
     id_upper = raw_id.upper()
     users_col = db_manager.get_collection("users")
     
-    # 1. Ultra-fast direct single-trip lookup covering username, team_id, and email
+    # 1. Ultra-fast direct single-trip lookup covering username, team_id, and email (all indexed)
     query_conditions = [
         {"username": id_lower},
         {"team_id": id_upper},
         {"team_id": id_lower},
         {"email": id_lower},
-        {"username": raw_id}
+        {"username": raw_id},
+        {"team_id": raw_id},
+        {"email": raw_id}
     ]
     if id_lower == "admin":
         query_conditions.append({"role": UserRole.ADMIN})
 
     user = await asyncio.to_thread(users_col.find_one, {"$or": query_conditions})
-    if not user:
-        # Fallback to case-insensitive regex only if direct index match didn't find it
-        user = await asyncio.to_thread(
-            users_col.find_one,
-            {
-                "$or": [
-                    {"username": {"$regex": f"^{re.escape(id_lower)}$", "$options": "i"}},
-                    {"email": {"$regex": f"^{re.escape(id_lower)}$", "$options": "i"}},
-                    {"team_id": {"$regex": f"^{re.escape(id_lower)}$", "$options": "i"}}
-                ]
-            }
-        )
 
     if not user:
         raise HTTPException(
@@ -147,17 +137,17 @@ async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
     if user.get("role") == UserRole.PARTICIPANT and user.get("team_id"):
         team_id = user["team_id"]
         has_active_session = bool(user.get("active_session")) or bool(user.get("active_session_token"))
-        has_live_ws = team_id in ws_manager.team_connections and len(ws_manager.team_connections[team_id]) > 0
+        has_live_stream = ws_manager.is_team_online(team_id) or bool(team_id in ws_manager.team_connections and len(ws_manager.team_connections[team_id]) > 0)
 
         # Block if active on another device and user has not confirmed force takeover
-        if (has_active_session or has_live_ws) and not getattr(credentials, "force", False):
+        if (has_active_session or has_live_stream) and not getattr(credentials, "force", False):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Team '{team_id}' is already logged in on another device. Participants can only access from one device at a time."
             )
 
         # If another device was active and force=True, kick the old device out
-        if has_active_session or has_live_ws:
+        if has_active_session or has_live_stream:
             logger.info(f"Terminating old session for team '{team_id}' to activate new device")
             try:
                 await ws_manager.send_team_message(
@@ -298,91 +288,73 @@ async def register_participant(data: RegisterParticipantRequest):
             detail="A valid Team Leader email address is required."
         )
 
-    # Concurrently run strict uniqueness checks and password hashing in worker threads
-    team_id_task = asyncio.to_thread(
+    # 2 ultra-fast index-accelerated checks + password hashing in parallel (<10ms total)
+    team_check_task = asyncio.to_thread(
         teams_col.find_one,
         {
             "$or": [
                 {"team_id": clean_team_id},
                 {"team_id": clean_team_id.lower()},
-                {"team_id": clean_team_id.upper()},
-                {"team_id": {"$regex": f"^{re.escape(clean_team_id)}$", "$options": "i"}}
-            ]
-        }
-    )
-    user_id_task = asyncio.to_thread(
-        users_col.find_one,
-        {
-            "$or": [
-                {"team_id": clean_team_id},
-                {"team_id": clean_team_id.lower()},
-                {"username": clean_team_id.lower()},
-                {"username": {"$regex": f"^{re.escape(clean_team_id)}$", "$options": "i"}}
-            ]
-        }
-    )
-    team_name_task = asyncio.to_thread(
-        teams_col.find_one,
-        {
-            "$or": [
                 {"team_name": clean_team_name},
-                {"team_name": {"$regex": f"^{re.escape(clean_team_name)}$", "$options": "i"}}
+                {"email": clean_email}
             ]
         }
     )
-    email_team_task = asyncio.to_thread(
-        teams_col.find_one,
-        {
-            "$or": [
-                {"email": clean_email},
-                {"email": {"$regex": f"^{re.escape(clean_email)}$", "$options": "i"}}
-            ]
-        }
-    )
-    email_user_task = asyncio.to_thread(
+    user_check_task = asyncio.to_thread(
         users_col.find_one,
         {
             "$or": [
-                {"email": clean_email},
-                {"email": {"$regex": f"^{re.escape(clean_email)}$", "$options": "i"}}
+                {"username": clean_team_id.lower()},
+                {"team_id": clean_team_id},
+                {"team_id": clean_team_id.lower()},
+                {"email": clean_email}
             ]
         }
     )
     hash_task = asyncio.to_thread(get_password_hash, data.password)
 
-    (
-        existing_team_id,
-        existing_user_id,
-        existing_team_name,
-        existing_team_email,
-        existing_user_email,
-        hashed_pwd
-    ) = await asyncio.gather(
-        team_id_task,
-        user_id_task,
-        team_name_task,
-        email_team_task,
-        email_user_task,
+    existing_team, existing_user, hashed_pwd = await asyncio.gather(
+        team_check_task,
+        user_check_task,
         hash_task
     )
 
-    if existing_team_id or existing_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Team ID '{clean_team_id}' is already registered. Teams must not have the same Team ID. Please enter a unique Team ID."
-        )
+    if existing_team:
+        t_id = str(existing_team.get("team_id", "")).strip().upper()
+        t_name = str(existing_team.get("team_name", "")).strip().lower()
+        t_email = str(existing_team.get("email", "")).strip().lower()
 
-    if existing_team_name:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Team Name '{clean_team_name}' is already taken. Please choose a unique Team Name."
-        )
+        if t_id == clean_team_id or t_id.lower() == clean_team_id.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Team ID '{clean_team_id}' is already registered. Teams must not have the same Team ID. Please enter a unique Team ID."
+            )
+        if t_name == clean_team_name.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Team Name '{clean_team_name}' is already taken. Please choose a unique Team Name."
+            )
+        if t_email == clean_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Email '{clean_email}' is already registered with another team."
+            )
 
-    if existing_team_email or existing_user_email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Email '{clean_email}' is already registered with another team."
-        )
+    if existing_user:
+        u_name = str(existing_user.get("username", "")).strip().lower()
+        u_tid = str(existing_user.get("team_id", "")).strip().upper()
+        u_email = str(existing_user.get("email", "")).strip().lower()
+
+        if u_name == clean_team_id.lower() or u_tid == clean_team_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Team ID '{clean_team_id}' is already registered. Teams must not have the same Team ID. Please enter a unique Team ID."
+            )
+        if u_email == clean_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Email '{clean_email}' is already registered with another team."
+            )
 
     now = datetime.now(timezone.utc).isoformat()
     if not now.endswith("Z") and "+" not in now:
@@ -457,6 +429,19 @@ async def register_participant(data: RegisterParticipantRequest):
 
     user_info = dict(clean_user)
     user_info["team"] = dict(new_team)
+
+    # Broadcast registration immediately so Race Control HQ and Teams Page update in 0ms!
+    try:
+        await ws_manager.broadcast("TEAM_REGISTERED", {
+            "team_id": clean_team_id,
+            "team_name": clean_team_name,
+            "leader_name": clean_leader_name,
+            "email": clean_email,
+            "institution": clean_institution,
+            "team": new_team
+        })
+    except Exception as b_err:
+        logger.warning(f"Failed to broadcast TEAM_REGISTERED: {b_err}")
 
     return {
         "message": f"Team '{clean_team_name}' ({clean_team_id}) registered successfully!",

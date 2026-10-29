@@ -19,11 +19,12 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
   const [overview, setOverview] = useState(() => {
     try {
-      const cached = sessionStorage.getItem('cloudnex_admin_overview');
+      const cached = sessionStorage.getItem('cloudnex_admin_overview') || localStorage.getItem('cloudnex_admin_overview');
       if (!cached) return null;
       const parsed = JSON.parse(cached);
-      if (parsed?.total_teams > 3 || (Array.isArray(parsed?.teams) && parsed.teams.some(t => String(t.team_id).startsWith('TEAM-RED-BULL')))) {
+      if (Array.isArray(parsed?.teams) && parsed.teams.some(t => String(t.team_id).startsWith('TEAM-RED-BULL'))) {
         sessionStorage.removeItem('cloudnex_admin_overview');
+        localStorage.removeItem('cloudnex_admin_overview');
         return null;
       }
       return parsed;
@@ -33,15 +34,15 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   });
   const [teams, setTeams] = useState(() => {
     try {
-      const cached = sessionStorage.getItem('cloudnex_admin_teams');
+      const cached = sessionStorage.getItem('cloudnex_admin_teams') || localStorage.getItem('cloudnex_admin_teams');
       if (!cached) return [];
       const parsed = JSON.parse(cached);
       if (Array.isArray(parsed) && parsed.some(t => String(t.team_id).startsWith('TEAM-RED-BULL'))) {
         sessionStorage.removeItem('cloudnex_admin_teams');
-        sessionStorage.removeItem('cloudnex_admin_overview');
+        localStorage.removeItem('cloudnex_admin_teams');
         return [];
       }
-      return parsed;
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
@@ -188,7 +189,10 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
       if (ovRes.status === 'fulfilled') {
         setOverview(ovRes.value);
-        try { sessionStorage.setItem('cloudnex_admin_overview', JSON.stringify(ovRes.value)); } catch {}
+        try {
+          sessionStorage.setItem('cloudnex_admin_overview', JSON.stringify(ovRes.value));
+          localStorage.setItem('cloudnex_admin_overview', JSON.stringify(ovRes.value));
+        } catch {}
         if (ovRes.value?.winner_announcement) {
           setWinnerAnnouncement(ovRes.value.winner_announcement);
         }
@@ -198,7 +202,10 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
       if (teamsRes.status === 'fulfilled') {
         setTeams(teamsRes.value);
-        try { sessionStorage.setItem('cloudnex_admin_teams', JSON.stringify(teamsRes.value)); } catch {}
+        try {
+          sessionStorage.setItem('cloudnex_admin_teams', JSON.stringify(teamsRes.value));
+          localStorage.setItem('cloudnex_admin_teams', JSON.stringify(teamsRes.value));
+        } catch {}
       } else {
         console.error('Failed to load teams:', teamsRes.reason);
       }
@@ -269,6 +276,19 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
     // Listen to real-time socket and cross-tab events
     const unregister = registerListener((event) => {
+      if (event.type === 'TEAM_REGISTERED' && event.data) {
+        const newTeam = event.data.team || event.data;
+        if (newTeam && newTeam.team_id) {
+          setTeams(prevTeams => {
+            const list = Array.isArray(prevTeams) ? prevTeams : [];
+            if (list.some(t => t.team_id === newTeam.team_id)) return list;
+            return [newTeam, ...list];
+          });
+          setOverview(prev => prev ? ({ ...prev, total_teams: (prev.total_teams || 0) + 1 }) : prev);
+          scheduleLoadData(100);
+        }
+        return;
+      }
       if (event.type === 'NEW_SUBMISSION' && event.data) {
         const newSub = event.data;
         // Instantly reflect new submission on Admin UI in 0ms!
@@ -2921,6 +2941,19 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                       );
                     });
 
+                    if (loading && teams.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan="8" className="py-12 text-center text-slate-400 font-mono-code bg-slate-950/30">
+                            <div className="flex flex-col items-center justify-center space-y-3">
+                              <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                              <p className="text-sm text-cyan-300 font-race tracking-wider">CONNECTING TO GRID TELEMETRY...</p>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+
                     if (filteredTeams.length === 0) {
                       return (
                         <tr>
@@ -3196,7 +3229,16 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {teams.length === 0 ? (
+                      {loading && teams.length === 0 ? (
+                        <tr>
+                          <td colSpan="5" className="py-12 text-center text-slate-400 font-mono-code bg-slate-950/30">
+                            <div className="flex flex-col items-center justify-center space-y-3">
+                              <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                              <p className="text-sm text-cyan-300 font-race tracking-wider">SYNCING LIVE GRID TELEMETRY...</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : teams.length === 0 ? (
                         <tr>
                           <td colSpan="5" className="py-12 text-center text-slate-400 font-mono-code bg-slate-950/30">
                             <div className="flex flex-col items-center justify-center space-y-2">

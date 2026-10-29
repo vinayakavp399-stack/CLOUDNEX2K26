@@ -34,7 +34,7 @@
 ## 🛠️ Technology Stack
 
 - **Frontend**: React 19, Vite, Tailwind CSS v4, Lucide Icons, Canvas Confetti.
-- **Backend**: Python FastAPI, Uvicorn, WebSockets for live race events, PyJWT, Bcrypt password hashing.
+- **Backend**: Python FastAPI, Uvicorn, HTTP Telemetry Stream & Polling for live race events, PyJWT, Bcrypt password hashing.
 - **Database**: 
   - Direct integration with **MongoDB Atlas** via `MONGODB_URI`.
   - Automatic zero-configuration fallback to local persistent document store (`backend/data/`), allowing immediate out-of-the-box operation on any machine without local MongoDB daemon setup.
@@ -94,14 +94,16 @@ npm run dev
 
 ---
 
-## 🌐 Real-Time Telemetry & WebSockets
+## 🌐 Real-Time Telemetry & HTTP Event Stream
 
-- **Endpoint**: `/api/v1/ws` (and `/ws`)
-- Automatically broadcasts:
+- **Endpoint**: `/api/v1/events/poll` (and `/events/poll`)
+- Highly reliable, proxy-friendly HTTP telemetry stream with adaptive polling and cross-tab synchronization.
+- Automatically synchronizes:
   - `ROUND_STATUS_CHANGED`: Live round activations and deadline countdowns.
   - `NEW_SUBMISSION`: Real-time submission counter increments on Race Director console.
   - `QUALIFICATIONS_UPDATED`: Live notification when a team is qualified for Round 3 or eliminated.
   - `LEADERBOARD_UPDATED`: Instant grid standings recalculations after evaluations.
+  - `FORCE_LOGOUT`: Real-time single-device session enforcement.
 
 ---
 

@@ -1,3 +1,4 @@
+import asyncio
 import base64
 from datetime import datetime
 import mimetypes
@@ -24,7 +25,7 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 async def get_my_submissions(current_participant: dict = Depends(get_current_participant)):
     submissions_col = db_manager.get_collection("submissions")
     team_id = current_participant["team_id"]
-    subs = submissions_col.find({"team_id": team_id})
+    subs = await asyncio.to_thread(submissions_col.find, {"team_id": team_id})
     return sorted(subs, key=lambda s: s.get("round_number", 0))
 
 

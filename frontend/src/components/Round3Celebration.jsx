@@ -125,7 +125,7 @@ export default function Round3Celebration({
 
   const lastAnnouncedTargetRef = useRef(null);
 
-  // Synchronize when resultsAnnouncementTime or resultsTimerActive changes from WebSocket
+  // Synchronize when resultsAnnouncementTime or resultsTimerActive changes from telemetry event bus
   useEffect(() => {
     if (resultsAnnouncementTime && resultsTimerActive) {
       const remaining = getSecondsRemaining();
