@@ -63,7 +63,7 @@ async def get_all_rounds(current_user: Optional[dict] = Depends(get_current_user
                 if now_dt >= deadline_dt:
                     rounds_col.update_one(
                         {"round_number": r_num},
-                        {"$set": {"status": "CLOSED", "is_active": False, "updated_at": now_dt.isoformat()}}
+                        {"$set": {"status": "CLOSED", "is_active": False, "updated_at": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")}}
                     )
                     r["status"] = "CLOSED"
                     r["is_active"] = False
@@ -84,21 +84,21 @@ async def get_all_rounds(current_user: Optional[dict] = Depends(get_current_user
                                 {"$set": {
                                     "status": "LIVE",
                                     "is_active": True,
-                                    "start_time": now_dt.isoformat(),
-                                    "deadline": r2_deadline.isoformat(),
+                                    "start_time": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                    "deadline": r2_deadline.strftime("%Y-%m-%dT%H:%M:%SZ"),
                                     "duration_minutes": 210,
                                     "submissions_open": False,
                                     "problem_published": True,
-                                    "updated_at": now_dt.isoformat()
+                                    "updated_at": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
                                 }}
                             )
-                            problems_col.update_many({"round_number": 2}, {"$set": {"is_published": True, "updated_at": now_dt.isoformat()}})
+                            problems_col.update_many({"round_number": 2}, {"$set": {"is_published": True, "updated_at": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")}})
                             await ws_manager.broadcast("ROUND_STATUS_CHANGED", {
                                 "round_number": 2,
                                 "status": "LIVE",
                                 "is_active": True,
-                                "start_time": now_dt.isoformat(),
-                                "deadline": r2_deadline.isoformat(),
+                                "start_time": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                "deadline": r2_deadline.strftime("%Y-%m-%dT%H:%M:%SZ"),
                                 "duration_minutes": 210,
                                 "submissions_open": False,
                                 "problem_published": True
@@ -154,7 +154,7 @@ async def get_all_rounds(current_user: Optional[dict] = Depends(get_current_user
                             "selection_revealed": True,
                             "results_announced": True,
                             "results_timer_active": False,
-                            "updated_at": now_dt.isoformat()
+                            "updated_at": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
                         }}
                     )
                     r["selection_revealed"] = True
@@ -167,7 +167,7 @@ async def get_all_rounds(current_user: Optional[dict] = Depends(get_current_user
                         "results_announced": True,
                         "selection_revealed": True,
                         "results_held": False,
-                        "timestamp": now_dt.isoformat()
+                        "timestamp": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
                     })
                     await ws_manager.broadcast("ROUND_STATUS_CHANGED", {
                         "round_number": 3,
@@ -326,7 +326,7 @@ async def get_round_detail(round_number: int, current_user: Optional[dict] = Dep
             if now_dt >= deadline_dt:
                 rounds_col.update_one(
                     {"round_number": round_number},
-                    {"$set": {"status": "CLOSED", "is_active": False, "updated_at": now_dt.isoformat()}}
+                    {"$set": {"status": "CLOSED", "is_active": False, "updated_at": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")}}
                 )
                 r["status"] = "CLOSED"
                 r["is_active"] = False
@@ -340,15 +340,15 @@ async def get_round_detail(round_number: int, current_user: Optional[dict] = Dep
                             {"$set": {
                                 "status": "LIVE",
                                 "is_active": True,
-                                "start_time": now_dt.isoformat(),
-                                "deadline": r2_deadline.isoformat(),
+                                "start_time": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                "deadline": r2_deadline.strftime("%Y-%m-%dT%H:%M:%SZ"),
                                 "duration_minutes": 210,
                                 "submissions_open": False,
                                 "problem_published": True,
-                                "updated_at": now_dt.isoformat()
+                                "updated_at": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
                             }}
                         )
-                        problems_col.update_many({"round_number": 2}, {"$set": {"is_published": True, "updated_at": now_dt.isoformat()}})
+                        problems_col.update_many({"round_number": 2}, {"$set": {"is_published": True, "updated_at": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")}})
         except Exception:
             pass
 
@@ -445,7 +445,7 @@ async def get_round_detail(round_number: int, current_user: Optional[dict] = Dep
                             "selection_revealed": True,
                             "results_announced": True,
                             "results_timer_active": False,
-                            "updated_at": now_dt.isoformat()
+                            "updated_at": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
                         }}
                     )
                     r["selection_revealed"] = True
@@ -458,7 +458,7 @@ async def get_round_detail(round_number: int, current_user: Optional[dict] = Dep
                         "results_announced": True,
                         "selection_revealed": True,
                         "results_held": False,
-                        "timestamp": now_dt.isoformat()
+                        "timestamp": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
                     })
                     await ws_manager.broadcast("ROUND_STATUS_CHANGED", {
                         "round_number": 3,

@@ -113,6 +113,8 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const celebrationCanvasRef = useRef(null);
   const [startingRoundNum, setStartingRoundNum] = useState(null);
+  const [selectedWinnerId, setSelectedWinnerId] = useState('');
+  const [selectedRunnerUpId, setSelectedRunnerUpId] = useState('');
 
   // High-performance concurrency guard & background reload debouncer
   const isLoadingDataRef = useRef(false);
@@ -347,10 +349,13 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
               }
               return r;
             });
-            return { ...prev, rounds: updatedRounds };
+            const liveRound = updatedRounds.find(r => r.status === 'LIVE')?.round_number || null;
+            return { ...prev, current_live_round: liveRound, rounds: updatedRounds };
           });
         }
-        scheduleLoadData(200);
+        if (event.type !== 'ROUND_STATUS_CHANGED' && event.type !== 'WINNER_ANNOUNCEMENT_UPDATED') {
+          scheduleLoadData(200);
+        }
       }
     });
 
@@ -415,10 +420,13 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       const defaultMins = roundNumber === 1 ? 45 : (roundNumber === 2 ? 210 : 180);
       const mins = deadlineMinutes !== null ? deadlineMinutes : defaultMins;
       const label = mins < 60 ? `${mins} minutes` : `${(mins / 60).toFixed(1)} hours`;
-      const deadlineDate = new Date(Date.now() + mins * 60000).toISOString();
       const subOpen = roundNumber === 1 || roundNumber === 2;
 
-      // OPTIMISTIC UPDATE IMMEDIATELY
+      // Single-click guarantee: await server response first so database state is confirmed
+      const res = await api.admin.openRound(roundNumber, mins, true);
+      const confirmedDeadline = res?.deadline || new Date(Date.now() + mins * 60000).toISOString();
+      const confirmedStartTime = res?.start_time || new Date().toISOString();
+
       setOverview(prev => {
         if (!prev) return prev;
         const prevRounds = Array.isArray(prev.rounds) ? prev.rounds : [];
@@ -428,7 +436,9 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
               ...r,
               status: 'LIVE',
               is_active: true,
-              deadline: deadlineDate,
+              start_time: confirmedStartTime,
+              deadline: confirmedDeadline,
+              duration_minutes: mins,
               submissions_open: subOpen,
               problem_published: true
             };
@@ -444,39 +454,32 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       setProblemStatements(prev => (prev || []).map(p => ({ ...p, is_published: true })));
       setSuccessMsg(`Round ${roundNumber} started live with ${label} timer!`);
 
-      // Broadcast immediately across all browser tabs for instant 0ms participant sync
+      // Broadcast confirmed live round event
       if (typeof broadcastLocalEvent === 'function') {
         broadcastLocalEvent('ROUND_STATUS_CHANGED', {
           round_number: roundNumber,
           status: 'LIVE',
           is_active: true,
-          deadline: deadlineDate,
+          start_time: confirmedStartTime,
+          deadline: confirmedDeadline,
           duration_minutes: mins,
           submissions_open: subOpen,
           problem_published: true
         });
       }
-
-      api.admin.openRound(roundNumber, mins, true)
-        .then(() => {
-          setStartingRoundNum(null);
-          scheduleLoadData(300);
-        })
-        .catch(err => {
-          setStartingRoundNum(null);
-          setErrorMsg(err.message || `Failed to open Round ${roundNumber}`);
-          loadData(true);
-        });
     } catch (err) {
-      setStartingRoundNum(null);
       setErrorMsg(err.message || `Failed to open Round ${roundNumber}`);
+    } finally {
+      setStartingRoundNum(null);
     }
   };
 
   const handleCloseRound = async (roundNumber) => {
     try {
       setErrorMsg('');
-      // OPTIMISTIC UPDATE IMMEDIATELY
+      // Single-click guarantee: await server response first
+      await api.admin.closeRound(roundNumber);
+
       setOverview(prev => {
         if (!prev) return prev;
         const prevRounds = Array.isArray(prev.rounds) ? prev.rounds : [];
@@ -499,7 +502,6 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       });
       setSuccessMsg(`Round ${roundNumber} closed. Submissions locked.`);
 
-      // Broadcast immediately across all browser tabs
       if (typeof broadcastLocalEvent === 'function') {
         broadcastLocalEvent('ROUND_STATUS_CHANGED', {
           round_number: roundNumber,
@@ -508,13 +510,6 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
           submissions_open: false
         });
       }
-
-      api.admin.closeRound(roundNumber)
-        .then(() => scheduleLoadData(400))
-        .catch(err => {
-          setErrorMsg(err.message || `Failed to close Round ${roundNumber}`);
-          loadData(true);
-        });
     } catch (err) {
       setErrorMsg(err.message || `Failed to close Round ${roundNumber}`);
     }
@@ -605,10 +600,13 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       const defaultMins = roundNumber === 1 ? 45 : (roundNumber === 2 ? 210 : 180);
       const mins = deadlineMinutes !== null ? deadlineMinutes : defaultMins;
       const label = mins < 60 ? `${mins} minutes` : `${(mins / 60).toFixed(1)} hours`;
-      const deadlineDate = new Date(Date.now() + mins * 60000).toISOString();
       const subOpen = roundNumber === 1 || roundNumber === 2;
 
-      // OPTIMISTIC UPDATE IMMEDIATELY
+      // Single-click guarantee: await server response first
+      const res = await api.admin.reopenRound(roundNumber, mins, true);
+      const confirmedDeadline = res?.deadline || new Date(Date.now() + mins * 60000).toISOString();
+      const confirmedStartTime = res?.start_time || new Date().toISOString();
+
       setOverview(prev => {
         if (!prev) return prev;
         const prevRounds = Array.isArray(prev.rounds) ? prev.rounds : [];
@@ -618,7 +616,9 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
               ...r,
               status: 'LIVE',
               is_active: true,
-              deadline: deadlineDate,
+              start_time: confirmedStartTime,
+              deadline: confirmedDeadline,
+              duration_minutes: mins,
               submissions_open: subOpen,
               problem_published: true
             };
@@ -639,33 +639,25 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
           round_number: roundNumber,
           status: 'LIVE',
           is_active: true,
-          deadline: deadlineDate,
+          start_time: confirmedStartTime,
+          deadline: confirmedDeadline,
           duration_minutes: mins,
           submissions_open: subOpen,
           problem_published: true
         });
       }
-
-      api.admin.reopenRound(roundNumber, mins, true)
-        .then(() => {
-          setStartingRoundNum(null);
-          scheduleLoadData(300);
-        })
-        .catch(err => {
-          setStartingRoundNum(null);
-          setErrorMsg(err.message || `Failed to start Round ${roundNumber}`);
-          loadData(true);
-        });
     } catch (err) {
-      setStartingRoundNum(null);
       setErrorMsg(err.message || `Failed to start Round ${roundNumber}`);
+    } finally {
+      setStartingRoundNum(null);
     }
   };
 
   const handleToggleSubmissions = async (roundNumber, open) => {
     try {
       setErrorMsg('');
-      // OPTIMISTIC UPDATE IMMEDIATELY
+      await api.admin.toggleSubmissions(roundNumber, open);
+
       setOverview(prev => {
         if (!prev) return prev;
         const prevRounds = Array.isArray(prev.rounds) ? prev.rounds : [];
@@ -679,12 +671,12 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       });
       setSuccessMsg(`Submissions for Round ${roundNumber} are now ${open ? 'OPEN' : 'CLOSED'}.`);
 
-      api.admin.toggleSubmissions(roundNumber, open)
-        .then(() => scheduleLoadData(400))
-        .catch(err => {
-          setErrorMsg(err.message || 'Failed to toggle submissions');
-          loadData(true);
+      if (typeof broadcastLocalEvent === 'function') {
+        broadcastLocalEvent('ROUND_STATUS_CHANGED', {
+          round_number: roundNumber,
+          submissions_open: open
         });
+      }
     } catch (err) {
       setErrorMsg(err.message || 'Failed to toggle submissions');
     }
@@ -770,15 +762,21 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
     return isNaN(parsed) ? new Date(str).getTime() : parsed;
   };
 
-  const handleGoLiveInstant = async () => {
+  const handleGoLiveInstant = async (customWinnerId = null, customRunnerUpId = null) => {
     if (isPublishingLive) return;
     setIsPublishingLive(true);
     setAnnouncementCountdown(0);
     setAnnouncementDismissed(false);
 
+    const winId = customWinnerId || selectedWinnerId || null;
+    const runId = customRunnerUpId || selectedRunnerUpId || null;
+
     const candidateTeams = (teams || []).filter(t => t.status !== 'DISQUALIFIED');
-    const defaultWinner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner || candidateTeams[0] || null;
-    const defaultRunnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || candidateTeams[1] || null;
+    const matchedWinner = winId ? candidateTeams.find(t => String(t.team_id) === String(winId) || String(t._id) === String(winId)) : null;
+    const matchedRunnerUp = runId ? candidateTeams.find(t => String(t.team_id) === String(runId) || String(t._id) === String(runId)) : null;
+
+    const defaultWinner = matchedWinner || winnerAnnouncement?.winner || overview?.winner_announcement?.winner || candidateTeams[0] || null;
+    const defaultRunnerUp = matchedRunnerUp || winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || candidateTeams[1] || null;
 
     // OPTIMISTIC UPDATE WINNER ANNOUNCEMENT IMMEDIATELY
     const immediateWinnerDoc = {
@@ -799,14 +797,12 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
     }
 
     try {
-      const res = await api.admin.setWinnerAnnouncement('announce_now', 0);
+      const res = await api.admin.setWinnerAnnouncement('announce_now', 0, winId, runId);
       if (res) {
         setWinnerAnnouncement(res);
       }
-      scheduleLoadData(400);
     } catch (err) {
       setErrorMsg(err.message || 'Failed to publish results live');
-      loadData(true);
     } finally {
       setIsAnnouncing(false);
       setAnnouncementCountdown(null);
@@ -874,10 +870,15 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       setAnnouncementCountdown(seconds);
       isGoingLiveRef.current = false;
 
-      // OPTIMISTIC UPDATE IMMEDIATELY
+      const winId = selectedWinnerId || null;
+      const runId = selectedRunnerUpId || null;
+
       const candidateTeams = (teams || []).filter(t => t.status !== 'DISQUALIFIED');
-      const defaultWinner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner || candidateTeams[0] || null;
-      const defaultRunnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || candidateTeams[1] || null;
+      const matchedWinner = winId ? candidateTeams.find(t => String(t.team_id) === String(winId) || String(t._id) === String(winId)) : null;
+      const matchedRunnerUp = runId ? candidateTeams.find(t => String(t.team_id) === String(runId) || String(t._id) === String(runId)) : null;
+
+      const defaultWinner = matchedWinner || winnerAnnouncement?.winner || overview?.winner_announcement?.winner || candidateTeams[0] || null;
+      const defaultRunnerUp = matchedRunnerUp || winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || candidateTeams[1] || null;
 
       const targetTime = new Date(Date.now() + seconds * 1000).toISOString();
       const nextWinnerDoc = {
@@ -900,17 +901,15 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
       setSuccessMsg(`🚀 Winner Go Live countdown initiated (${seconds}s)!`);
 
-      api.admin.setWinnerAnnouncement('set', seconds)
+      api.admin.setWinnerAnnouncement('set', seconds, winId, runId)
         .then(res => {
           if (res) setWinnerAnnouncement(res);
-          scheduleLoadData(400);
         })
         .catch(err => {
           setErrorMsg(err.message || 'Failed to start countdown');
           setIsAnnouncing(false);
           setAnnouncementCountdown(null);
           isGoingLiveRef.current = false;
-          loadData(true);
         });
     } catch (err) {
       setErrorMsg(err.message || 'Failed to start countdown');
@@ -3765,44 +3764,117 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
               const eligible = qualified.length > 0 ? qualified : teams.filter((t) => !t.is_eliminated);
               const candidateTeams = eligible.length > 0 ? eligible : teams;
 
-              const winner = winnerAnnouncement?.winner || candidateTeams[0];
-              const runnerUp = winnerAnnouncement?.runner_up || (candidateTeams.length > 1 ? candidateTeams[1] : null);
+              const matchedWinner = selectedWinnerId ? candidateTeams.find(t => String(t.team_id) === String(selectedWinnerId) || String(t._id) === String(selectedWinnerId)) : null;
+              const matchedRunnerUp = selectedRunnerUpId ? candidateTeams.find(t => String(t.team_id) === String(selectedRunnerUpId) || String(t._id) === String(selectedRunnerUpId)) : null;
+
+              const winner = matchedWinner || winnerAnnouncement?.winner || overview?.winner_announcement?.winner || candidateTeams[0];
+              const runnerUp = matchedRunnerUp || winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || (candidateTeams.length > 1 ? candidateTeams.filter(t => t !== winner)[0] : null);
               const isResultsAnnounced = Boolean(winnerAnnouncement?.is_announced);
               const isCountdownActive = Boolean(
                 !isResultsAnnounced &&
                 (winnerAnnouncement?.is_timer_active || isAnnouncing || isPublishingLive || announcementCountdown !== null)
-              );
-              const hasEvaluations = teams.some(
-                (t) => (t.scores_by_round?.['3'] !== undefined && t.scores_by_round?.['3'] !== null) || (t.total_score || 0) > 0
               );
 
               return (
                 <div className="space-y-6">
 
                   {/* GO LIVE CONTROL CONSOLE (Shown when results are NOT yet live) */}
-                  {/* BEFORE GOING LIVE: ONLY SHOWS THE TIMER & GO LIVE BUTTON */}
                   {!isResultsAnnounced && !isCountdownActive && (
-                    <div className="racing-card rounded-2xl p-8 sm:p-12 border-2 border-amber-500/50 bg-gradient-to-b from-slate-950/95 via-slate-950/95 to-amber-950/20 shadow-2xl text-center max-w-xl mx-auto space-y-6">
-                      <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-400/40 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-950/40">
-                        <Clock className="w-8 h-8 text-amber-400 animate-pulse" />
-                      </div>
-
-                      <div className="space-y-1">
-                        <span className="text-xs font-race font-bold uppercase tracking-widest text-amber-400">
-                          ANNOUNCEMENT TIMER
+                    <div className="racing-card rounded-2xl p-6 sm:p-8 border-2 border-amber-500/50 bg-gradient-to-b from-slate-950/95 via-slate-950/95 to-amber-950/20 shadow-2xl max-w-3xl mx-auto space-y-6">
+                      <div className="text-center space-y-2">
+                        <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-400/40 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-950/40">
+                          <Trophy className="w-7 h-7 text-amber-400 animate-pulse" />
+                        </div>
+                        <span className="text-xs font-race font-bold uppercase tracking-widest text-amber-400 block">
+                          CHAMPIONSHIP PODIUM CONTROL HQ
                         </span>
                         <h4 className="font-race text-2xl font-black text-white">
-                          START CHAMPIONSHIP COUNTDOWN
+                          OFFICIAL WINNER &amp; RUNNER UP ANNOUNCEMENT
                         </h4>
-                        <p className="text-xs text-slate-400 font-mono-code max-w-md mx-auto">
-                          Select the countdown timer duration and click Go Live to announce the winner &amp; 1st runner up.
+                        <p className="text-xs text-slate-400 font-mono-code max-w-xl mx-auto">
+                          Verify or select the Grand Champion (1st Place) and 1st Runner Up (2nd Place). The leaderboard auto-ranks them, or you can pick any qualified team from the dropdowns below.
                         </p>
                       </div>
 
-                      {/* ONLY SHOWS THE TIMER */}
+                      {/* TEAM SELECTION & PREVIEW CARDS */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Winner Selector */}
+                        <div className="p-4 rounded-xl bg-slate-900/90 border border-amber-500/40 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-race font-bold text-amber-300 uppercase flex items-center space-x-1.5">
+                              <Trophy className="w-4 h-4 text-yellow-400" />
+                              <span>1ST PLACE &bull; GRAND CHAMPION</span>
+                            </span>
+                            <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                              GOLD PODIUM
+                            </span>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-mono-code text-slate-400 uppercase block mb-1">
+                              Select Champion Team:
+                            </label>
+                            <select
+                              value={selectedWinnerId || (winner?.team_id || '')}
+                              onChange={(e) => setSelectedWinnerId(e.target.value)}
+                              className="w-full bg-slate-950 border border-amber-500/50 rounded-lg px-3 py-2 text-xs font-mono-code text-white focus:outline-none focus:border-amber-400"
+                            >
+                              {candidateTeams.map((t) => (
+                                <option key={t.team_id || t._id} value={t.team_id}>
+                                  {t.team_name} ({t.leader_name || 'Leader'}) — R3: {t.scores_by_round?.['3'] ?? 0} | Tot: {t.total_score || 0} pts
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {winner && (
+                            <div className="p-3 rounded-lg bg-amber-950/30 border border-amber-500/20 text-[11px] font-mono-code space-y-1">
+                              <p className="text-amber-300 font-bold text-sm truncate">{winner.team_name}</p>
+                              <p className="text-slate-300 truncate">Leader: {winner.leader_name || 'Not set'}</p>
+                              <p className="text-slate-400 truncate">{winner.institution || 'Championship Contender'}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Runner Up Selector */}
+                        <div className="p-4 rounded-xl bg-slate-900/90 border border-cyan-500/40 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-race font-bold text-cyan-300 uppercase flex items-center space-x-1.5">
+                              <Award className="w-4 h-4 text-cyan-400" />
+                              <span>2ND PLACE &bull; 1ST RUNNER UP</span>
+                            </span>
+                            <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
+                              SILVER PODIUM
+                            </span>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-mono-code text-slate-400 uppercase block mb-1">
+                              Select Runner Up Team:
+                            </label>
+                            <select
+                              value={selectedRunnerUpId || (runnerUp?.team_id || '')}
+                              onChange={(e) => setSelectedRunnerUpId(e.target.value)}
+                              className="w-full bg-slate-950 border border-cyan-500/50 rounded-lg px-3 py-2 text-xs font-mono-code text-white focus:outline-none focus:border-cyan-400"
+                            >
+                              {candidateTeams.map((t) => (
+                                <option key={t.team_id || t._id} value={t.team_id}>
+                                  {t.team_name} ({t.leader_name || 'Leader'}) — R3: {t.scores_by_round?.['3'] ?? 0} | Tot: {t.total_score || 0} pts
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {runnerUp && (
+                            <div className="p-3 rounded-lg bg-cyan-950/30 border border-cyan-500/20 text-[11px] font-mono-code space-y-1">
+                              <p className="text-cyan-300 font-bold text-sm truncate">{runnerUp.team_name}</p>
+                              <p className="text-slate-300 truncate">Leader: {runnerUp.leader_name || 'Not set'}</p>
+                              <p className="text-slate-400 truncate">{runnerUp.institution || 'Championship Contender'}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* COUNTDOWN TIMER SELECTOR */}
                       <div className="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-3">
-                        <span className="text-[11px] font-mono-code text-slate-400 uppercase block font-bold">
-                          SELECT COUNTDOWN TIMER:
+                        <span className="text-[11px] font-mono-code text-slate-400 uppercase block font-bold text-center">
+                          SELECT COUNTDOWN DURATION BEFORE REVEAL:
                         </span>
                         <div className="flex flex-wrap items-center justify-center gap-2">
                           {[5, 10, 15, 30, 60].map((s) => (
@@ -3821,20 +3893,34 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                         </div>
                       </div>
 
-                      {/* GO LIVE BUTTON */}
-                      <div className="pt-2">
+                      {/* ACTION BUTTONS */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                         <button
                           type="button"
                           onClick={() => handleStartGoLive(winnerTimerSeconds)}
-                          disabled={!hasEvaluations || isPublishingLive}
-                          className={`w-full py-4 rounded-xl font-race font-black text-sm uppercase transition-all flex items-center justify-center space-x-2.5 shadow-2xl ${hasEvaluations && !isPublishingLive
+                          disabled={candidateTeams.length === 0 || isPublishingLive}
+                          className={`py-4 rounded-xl font-race font-black text-xs uppercase transition-all flex items-center justify-center space-x-2.5 shadow-2xl ${
+                            candidateTeams.length > 0 && !isPublishingLive
                               ? 'bg-gradient-to-r from-red-600 via-amber-500 to-amber-400 hover:from-red-500 hover:to-amber-300 text-slate-950 shadow-red-950/70 glow-red cursor-pointer transform hover:scale-[1.02] active:scale-95'
                               : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed'
-                            }`}
-                          title={hasEvaluations ? 'Click to Go Live' : 'Please allocate scores/evaluations first'}
+                          }`}
                         >
                           <Rocket className="w-5 h-5 text-slate-950" />
-                          <span>GO LIVE ({winnerTimerSeconds}s TIMER)</span>
+                          <span>GO LIVE ({winnerTimerSeconds}s COUNTDOWN)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleGoLiveInstant()}
+                          disabled={candidateTeams.length === 0 || isPublishingLive}
+                          className={`py-4 rounded-xl font-race font-bold text-xs uppercase transition-all flex items-center justify-center space-x-2 shadow-xl ${
+                            candidateTeams.length > 0 && !isPublishingLive
+                              ? 'bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/40 cursor-pointer transform hover:scale-[1.02] active:scale-95'
+                              : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed'
+                          }`}
+                        >
+                          <Trophy className="w-4 h-4 text-amber-400" />
+                          <span>REVEAL IMMEDIATELY</span>
                         </button>
                       </div>
                     </div>

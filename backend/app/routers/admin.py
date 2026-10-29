@@ -119,6 +119,13 @@ def find_announcement_team_by_id(team_identifier):
             pass
     if not t:
         t = teams_col.find_one({"team_name": str(team_identifier)})
+    if not t:
+        all_t = list(teams_col.find())
+        clean_target = str(team_identifier).strip().lower()
+        for cand in all_t:
+            if str(cand.get("team_id", "")).strip().lower() == clean_target or str(cand.get("team_name", "")).strip().lower() == clean_target:
+                t = cand
+                break
     return format_announcement_team(t)
 
 
@@ -194,9 +201,10 @@ async def get_admin_overview(current_admin: dict = Depends(get_current_admin)):
             try:
                 deadline_dt = datetime.fromisoformat(r["deadline"].replace("Z", "+00:00")).replace(tzinfo=None)
                 if now >= deadline_dt:
+                    now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
                     rounds_col.update_one(
                         {"round_number": r["round_number"]},
-                        {"$set": {"status": RoundState.CLOSED, "is_active": False, "updated_at": now.isoformat()}}
+                        {"$set": {"status": RoundState.CLOSED, "is_active": False, "updated_at": now_iso}}
                     )
                     r["status"] = RoundState.CLOSED
                     r["is_active"] = False
@@ -205,17 +213,18 @@ async def get_admin_overview(current_admin: dict = Depends(get_current_admin)):
                         r2_doc = rounds_col.find_one({"round_number": 2})
                         if r2_doc and r2_doc.get("status") not in [RoundState.LIVE, RoundState.CLOSED, RoundState.COMPLETED]:
                             r2_deadline = now + timedelta(minutes=210)
+                            r2_deadline_iso = r2_deadline.strftime("%Y-%m-%dT%H:%M:%SZ")
                             rounds_col.update_one(
                                 {"round_number": 2},
                                 {"$set": {
                                     "status": RoundState.LIVE,
                                     "is_active": True,
-                                    "start_time": now.isoformat(),
-                                    "deadline": r2_deadline.isoformat(),
+                                    "start_time": now_iso,
+                                    "deadline": r2_deadline_iso,
                                     "duration_minutes": 210,
                                     "submissions_open": False,
                                     "problem_published": True,
-                                    "updated_at": now.isoformat()
+                                    "updated_at": now_iso
                                 }}
                             )
             except Exception:
@@ -285,6 +294,8 @@ async def open_round(
     else:
         mins = 180
     deadline = now + timedelta(minutes=mins)
+    now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    deadline_iso = deadline.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Ensure problem statements are distributed before Round 1 can be started
     if round_number == 1:
@@ -306,24 +317,24 @@ async def open_round(
     update_payload = {
         "status": RoundState.LIVE,
         "is_active": True,
-        "start_time": now.isoformat(),
-        "deadline": deadline.isoformat(),
+        "start_time": now_iso,
+        "deadline": deadline_iso,
         "duration_minutes": mins,
         "submissions_open": sub_open,
         "problem_published": pub,
-        "updated_at": now.isoformat()
+        "updated_at": now_iso
     }
     rounds_col.update_one({"round_number": round_number}, {"$set": update_payload})
 
     if pub:
-        problems_col.update_many({"round_number": round_number}, {"$set": {"is_published": True, "updated_at": now.isoformat()}})
+        problems_col.update_many({"round_number": round_number}, {"$set": {"is_published": True, "updated_at": now_iso}})
 
     # Audit log
     audit_col.insert_one({
         "action": "ROUND_REOPENED" if is_reopen else "ROUND_OPENED",
         "actor": current_admin["username"],
-        "details": {"round_number": round_number, "deadline": deadline.isoformat(), "duration_minutes": mins, "is_reopen": is_reopen, "publish_problem": pub, "submissions_open": sub_open},
-        "timestamp": now.isoformat()
+        "details": {"round_number": round_number, "deadline": deadline_iso, "duration_minutes": mins, "is_reopen": is_reopen, "publish_problem": pub, "submissions_open": sub_open},
+        "timestamp": now_iso
     })
 
     # Broadcast live race event to all connected browsers
@@ -331,8 +342,8 @@ async def open_round(
         "round_number": round_number,
         "status": RoundState.LIVE,
         "is_active": True,
-        "start_time": now.isoformat(),
-        "deadline": deadline.isoformat(),
+        "start_time": now_iso,
+        "deadline": deadline_iso,
         "duration_minutes": mins,
         "submissions_open": sub_open,
         "problem_published": pub
@@ -344,8 +355,11 @@ async def open_round(
         "message": msg,
         "round_number": round_number,
         "status": RoundState.LIVE,
-        "deadline": deadline.isoformat(),
+        "start_time": now_iso,
+        "deadline": deadline_iso,
         "duration_minutes": mins,
+        "submissions_open": sub_open,
+        "problem_published": pub,
         "is_reopen": is_reopen
     }
 
@@ -376,6 +390,8 @@ async def reopen_round(
     else:
         mins = 180
     deadline = now + timedelta(minutes=mins)
+    now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    deadline_iso = deadline.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Ensure problem statements are distributed before Round 1 can be started
     if round_number == 1:
@@ -396,24 +412,24 @@ async def reopen_round(
     update_payload = {
         "status": RoundState.LIVE,
         "is_active": True,
-        "start_time": now.isoformat(),
-        "deadline": deadline.isoformat(),
+        "start_time": now_iso,
+        "deadline": deadline_iso,
         "duration_minutes": mins,
         "submissions_open": sub_open,
         "problem_published": pub,
-        "updated_at": now.isoformat()
+        "updated_at": now_iso
     }
     rounds_col.update_one({"round_number": round_number}, {"$set": update_payload})
 
     if pub:
-        problems_col.update_many({"round_number": round_number}, {"$set": {"is_published": True, "updated_at": now.isoformat()}})
+        problems_col.update_many({"round_number": round_number}, {"$set": {"is_published": True, "updated_at": now_iso}})
 
     # Audit log
     audit_col.insert_one({
         "action": "ROUND_REOPENED",
         "actor": current_admin["username"],
-        "details": {"round_number": round_number, "deadline_minutes": mins, "new_deadline": deadline.isoformat(), "submissions_open": sub_open, "problem_published": pub},
-        "timestamp": now.isoformat()
+        "details": {"round_number": round_number, "deadline_minutes": mins, "new_deadline": deadline_iso, "submissions_open": sub_open, "problem_published": pub},
+        "timestamp": now_iso
     })
 
     # Broadcast to all clients
@@ -421,8 +437,8 @@ async def reopen_round(
         "round_number": round_number,
         "status": RoundState.LIVE,
         "is_active": True,
-        "start_time": now.isoformat(),
-        "deadline": deadline.isoformat(),
+        "start_time": now_iso,
+        "deadline": deadline_iso,
         "duration_minutes": mins,
         "submissions_open": sub_open,
         "problem_published": pub
@@ -433,8 +449,11 @@ async def reopen_round(
         "message": f"Round {round_number} started live with {duration_label} timer!",
         "round_number": round_number,
         "status": RoundState.LIVE,
-        "deadline": deadline.isoformat(),
-        "duration_minutes": mins
+        "start_time": now_iso,
+        "deadline": deadline_iso,
+        "duration_minutes": mins,
+        "submissions_open": sub_open,
+        "problem_published": pub
     }
 
 
@@ -448,11 +467,12 @@ async def close_round(round_number: int, current_admin: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Round not found")
 
     now = datetime.utcnow()
+    now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     update_payload = {
         "status": RoundState.CLOSED,
         "is_active": False,
         "submissions_open": False,
-        "updated_at": now.isoformat()
+        "updated_at": now_iso
     }
     rounds_col.update_one({"round_number": round_number}, {"$set": update_payload})
 
@@ -461,7 +481,7 @@ async def close_round(round_number: int, current_admin: dict = Depends(get_curre
         "action": "ROUND_CLOSED",
         "actor": current_admin["username"],
         "details": {"round_number": round_number},
-        "timestamp": now.isoformat()
+        "timestamp": now_iso
     })
 
     # Broadcast to all clients
@@ -469,7 +489,8 @@ async def close_round(round_number: int, current_admin: dict = Depends(get_curre
         "round_number": round_number,
         "status": RoundState.CLOSED,
         "is_active": False,
-        "submissions_open": False
+        "submissions_open": False,
+        "updated_at": now_iso
     })
 
     # Auto-open Round 2 when Round 1 completes
@@ -477,27 +498,28 @@ async def close_round(round_number: int, current_admin: dict = Depends(get_curre
         r2_doc = rounds_col.find_one({"round_number": 2})
         if r2_doc and r2_doc.get("status") not in [RoundState.LIVE, RoundState.CLOSED, RoundState.COMPLETED]:
             r2_deadline = now + timedelta(minutes=210)
+            r2_deadline_iso = r2_deadline.strftime("%Y-%m-%dT%H:%M:%SZ")
             rounds_col.update_one(
                 {"round_number": 2},
                 {"$set": {
                     "status": RoundState.LIVE,
                     "is_active": True,
-                    "start_time": now.isoformat(),
-                    "deadline": r2_deadline.isoformat(),
+                    "start_time": now_iso,
+                    "deadline": r2_deadline_iso,
                     "duration_minutes": 210,
                     "submissions_open": False,
                     "problem_published": True,
-                    "updated_at": now.isoformat()
+                    "updated_at": now_iso
                 }}
             )
             problems_col = db_manager.get_collection("problem_statements")
-            problems_col.update_many({"round_number": 2}, {"$set": {"is_published": True, "updated_at": now.isoformat()}})
+            problems_col.update_many({"round_number": 2}, {"$set": {"is_published": True, "updated_at": now_iso}})
             await ws_manager.broadcast("ROUND_STATUS_CHANGED", {
                 "round_number": 2,
                 "status": RoundState.LIVE,
                 "is_active": True,
-                "start_time": now.isoformat(),
-                "deadline": r2_deadline.isoformat(),
+                "start_time": now_iso,
+                "deadline": r2_deadline_iso,
                 "duration_minutes": 210,
                 "submissions_open": False,
                 "problem_published": True
@@ -582,7 +604,7 @@ async def set_round_results_timer(
         raise HTTPException(status_code=404, detail="Round not found")
 
     now = datetime.utcnow()
-    now_iso = now.isoformat()
+    now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     if action == "clear":
         update_payload = {
@@ -786,7 +808,7 @@ async def set_winner_announcement(
     settings_col = db_manager.get_collection("system_settings")
     audit_col = db_manager.get_collection("audit_logs")
     now = datetime.utcnow()
-    now_iso = now.isoformat()
+    now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Determine teams: custom specified takes priority, otherwise compute from leaderboard
     custom_winner = find_announcement_team_by_id(winner_team_id) if winner_team_id else None
@@ -893,7 +915,7 @@ async def set_winner_announcement(
             await asyncio.sleep(wait_sec)
             cur = settings_col.find_one({"key": "winner_announcement"})
             if cur and cur.get("is_timer_active") and not cur.get("is_announced") and not cur.get("held"):
-                now_ann = datetime.utcnow().isoformat()
+                now_ann = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
                 ann_doc = {
                     "key": "winner_announcement",
                     "is_announced": True,

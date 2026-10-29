@@ -37,7 +37,8 @@ export default function CountdownTimer({ targetDate, title = "LAP TIME REMAINING
     prevSecRef.current = null;
 
     function calculate() {
-      const now = Date.now();
+      const skew = (typeof window !== 'undefined' && window.__cloudnex_server_time_skew) || 0;
+      const now = Date.now() + skew;
       const target = parseUtcDate(targetDate);
       const difference = target - now;
 

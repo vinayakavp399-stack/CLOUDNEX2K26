@@ -381,6 +381,11 @@ export default function ParticipantDashboard() {
           try { sessionStorage.setItem('cloudnex_cached_winner', JSON.stringify(merged)); } catch {}
           return merged;
         });
+        if (event.data.is_announced && !event.data.held) {
+          setShowWinnerModal(true);
+        } else if (event.data.held || !event.data.is_announced) {
+          setShowWinnerModal(false);
+        }
       }
 
       // 2. INSTANT ROUND 3 SELECTION / TIMER UPDATE (0ms)
@@ -1019,7 +1024,7 @@ export default function ParticipantDashboard() {
               resultsAnnounced={
                 (winnerAnnouncement?.is_timer_active && !winnerAnnouncement?.is_announced)
                   ? false
-                  : (round3?.results_announced || isSelectionRevealed)
+                  : (round3?.results_announced || isSelectionRevealed || Boolean(winnerAnnouncement?.is_announced))
               }
               isWinnerTimer={Boolean(winnerAnnouncement?.is_timer_active && !winnerAnnouncement?.is_announced)}
               winnerAnnouncement={winnerAnnouncement}

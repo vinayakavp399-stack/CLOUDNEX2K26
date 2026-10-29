@@ -94,7 +94,8 @@ export default function Round3Celebration({
     if (!resultsAnnouncementTime) return 0;
     const targetMs = parseUtcDate(resultsAnnouncementTime);
     if (!targetMs) return 0;
-    const diff = targetMs - Date.now();
+    const skew = (typeof window !== 'undefined' && window.__cloudnex_server_time_skew) || 0;
+    const diff = targetMs - (Date.now() + skew);
     return Math.max(0, Math.ceil(diff / 1000));
   };
 

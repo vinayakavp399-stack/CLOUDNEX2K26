@@ -101,6 +101,20 @@ export function RaceSocketProvider({ children }) {
       setIsConnected(true);
       retryCountRef.current = 0;
 
+      // Exact server-time synchronization to eliminate client timezone skew and clock drift
+      if (res && res.server_time && typeof window !== 'undefined') {
+        try {
+          let sTime = res.server_time;
+          if (typeof sTime === 'string' && !sTime.endsWith('Z') && !sTime.includes('+')) {
+            sTime += 'Z';
+          }
+          const serverMs = new Date(sTime).getTime();
+          if (!isNaN(serverMs)) {
+            window.__cloudnex_server_time_skew = serverMs - Date.now();
+          }
+        } catch {}
+      }
+
       if (res && typeof res.last_event_id === 'number') {
         if (lastEventIdRef.current === null) {
           // Initial sync: capture the baseline event ID without replaying historical events

@@ -235,7 +235,7 @@ async def poll_events(
             if not check_participant_session(effective_team_id, effective_session_id):
                 return {
                     "status": "ok",
-                    "server_time": datetime.utcnow().isoformat(),
+                    "server_time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
                     "last_event_id": event_manager.get_latest_event_id(),
                     "events": [{
                         "id": event_manager.get_latest_event_id(),
@@ -260,7 +260,7 @@ async def poll_events(
 
     return {
         "status": "ok",
-        "server_time": datetime.utcnow().isoformat(),
+        "server_time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
         "last_event_id": event_manager.get_latest_event_id(),
         "events": [
             {
