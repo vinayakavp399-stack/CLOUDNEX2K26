@@ -1655,9 +1655,16 @@ export default function ParticipantDashboard() {
                     >
                       {winnerAnnouncement?.winner?.team_name || 'Grand Champion'}
                     </h3>
-                    <p className="text-[10px] font-mono-code text-slate-400">
-                      {winnerAnnouncement?.winner?.institution || 'Championship Contender'}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      <span className="text-[10px] font-mono-code text-slate-400">
+                        {winnerAnnouncement?.winner?.institution || 'Championship Contender'}
+                      </span>
+                      {winnerAnnouncement?.winner && (
+                        <span className="text-[10px] font-mono-code font-bold px-2 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                          R3 Marks: {winnerAnnouncement.winner.r3_score !== undefined ? winnerAnnouncement.winner.r3_score : (winnerAnnouncement.winner.scores_by_round?.['3'] ?? 0)} Pts
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <p className="text-xs text-amber-100/90 font-sans leading-relaxed px-4 pb-4">
@@ -1698,9 +1705,16 @@ export default function ParticipantDashboard() {
                     >
                       {winnerAnnouncement?.runner_up?.team_name || '1st Runner Up'}
                     </h3>
-                    <p className="text-[10px] font-mono-code text-slate-400">
-                      {winnerAnnouncement?.runner_up?.institution || 'Championship Contender'}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      <span className="text-[10px] font-mono-code text-slate-400">
+                        {winnerAnnouncement?.runner_up?.institution || 'Championship Contender'}
+                      </span>
+                      {winnerAnnouncement?.runner_up && (
+                        <span className="text-[10px] font-mono-code font-bold px-2 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
+                          R3 Marks: {winnerAnnouncement.runner_up.r3_score !== undefined ? winnerAnnouncement.runner_up.r3_score : (winnerAnnouncement.runner_up.scores_by_round?.['3'] ?? 0)} Pts
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <p className="text-xs text-cyan-100/90 font-sans leading-relaxed px-4 pb-4">

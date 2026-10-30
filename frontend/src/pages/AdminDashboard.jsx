@@ -113,8 +113,6 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const celebrationCanvasRef = useRef(null);
   const [startingRoundNum, setStartingRoundNum] = useState(null);
-  const [selectedWinnerId, setSelectedWinnerId] = useState('');
-  const [selectedRunnerUpId, setSelectedRunnerUpId] = useState('');
 
   // High-performance concurrency guard & background reload debouncer
   const isLoadingDataRef = useRef(false);
@@ -762,21 +760,49 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
     return isNaN(parsed) ? new Date(str).getTime() : parsed;
   };
 
-  const handleGoLiveInstant = async (customWinnerId = null, customRunnerUpId = null) => {
+  const handleGoLiveInstant = async () => {
     if (isPublishingLive) return;
     setIsPublishingLive(true);
     setAnnouncementCountdown(0);
     setAnnouncementDismissed(false);
 
-    const winId = customWinnerId || selectedWinnerId || null;
-    const runId = customRunnerUpId || selectedRunnerUpId || null;
+    // Compute automatic winner & runner up based strictly on Round 3 marks
+    const qualified = (teams || [])
+      .filter((t) => t.is_qualified_r3)
+      .slice()
+      .sort((a, b) => {
+        const r3A = a.scores_by_round?.['3'] !== undefined && a.scores_by_round?.['3'] !== null
+          ? parseFloat(a.scores_by_round['3'])
+          : (a.r3_score !== undefined ? parseFloat(a.r3_score) : -1);
+        const r3B = b.scores_by_round?.['3'] !== undefined && b.scores_by_round?.['3'] !== null
+          ? parseFloat(b.scores_by_round['3'])
+          : (b.r3_score !== undefined ? parseFloat(b.r3_score) : -1);
+        if (r3B !== r3A) return r3B - r3A;
+        const totA = parseFloat(a.total_score || 0);
+        const totB = parseFloat(b.total_score || 0);
+        if (totB !== totA) return totB - totA;
+        return (a.team_name || '').localeCompare(b.team_name || '');
+      });
 
-    const candidateTeams = (teams || []).filter(t => t.status !== 'DISQUALIFIED');
-    const matchedWinner = winId ? candidateTeams.find(t => String(t.team_id) === String(winId) || String(t._id) === String(winId)) : null;
-    const matchedRunnerUp = runId ? candidateTeams.find(t => String(t.team_id) === String(runId) || String(t._id) === String(runId)) : null;
+    const candidates = qualified.length > 0 ? qualified : (teams || []).filter(t => !t.is_eliminated).slice().sort((a, b) => {
+      const r3A = a.scores_by_round?.['3'] !== undefined && a.scores_by_round?.['3'] !== null
+        ? parseFloat(a.scores_by_round['3'])
+        : (a.r3_score !== undefined ? parseFloat(a.r3_score) : -1);
+      const r3B = b.scores_by_round?.['3'] !== undefined && b.scores_by_round?.['3'] !== null
+        ? parseFloat(b.scores_by_round['3'])
+        : (b.r3_score !== undefined ? parseFloat(b.r3_score) : -1);
+      if (r3B !== r3A) return r3B - r3A;
+      const totA = parseFloat(a.total_score || 0);
+      const totB = parseFloat(b.total_score || 0);
+      if (totB !== totA) return totB - totA;
+      return (a.team_name || '').localeCompare(b.team_name || '');
+    });
 
-    const defaultWinner = matchedWinner || winnerAnnouncement?.winner || overview?.winner_announcement?.winner || candidateTeams[0] || null;
-    const defaultRunnerUp = matchedRunnerUp || winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || candidateTeams[1] || null;
+    const autoWinner = candidates[0] || null;
+    const autoRunnerUp = candidates.length > 1 ? candidates[1] : null;
+
+    const defaultWinner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner || autoWinner;
+    const defaultRunnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || autoRunnerUp;
 
     // OPTIMISTIC UPDATE WINNER ANNOUNCEMENT IMMEDIATELY
     const immediateWinnerDoc = {
@@ -797,7 +823,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
     }
 
     try {
-      const res = await api.admin.setWinnerAnnouncement('announce_now', 0, winId, runId);
+      const res = await api.admin.setWinnerAnnouncement('announce_now', 0);
       if (res) {
         setWinnerAnnouncement(res);
       }
@@ -870,15 +896,40 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       setAnnouncementCountdown(seconds);
       isGoingLiveRef.current = false;
 
-      const winId = selectedWinnerId || null;
-      const runId = selectedRunnerUpId || null;
+      // Automatically determine winner and runner up strictly by Round 3 marks
+      const qualified = (teams || [])
+        .filter((t) => t.is_qualified_r3)
+        .slice()
+        .sort((a, b) => {
+          const r3A = a.scores_by_round?.['3'] !== undefined && a.scores_by_round?.['3'] !== null
+            ? parseFloat(a.scores_by_round['3'])
+            : (a.r3_score !== undefined ? parseFloat(a.r3_score) : -1);
+          const r3B = b.scores_by_round?.['3'] !== undefined && b.scores_by_round?.['3'] !== null
+            ? parseFloat(b.scores_by_round['3'])
+            : (b.r3_score !== undefined ? parseFloat(b.r3_score) : -1);
+          if (r3B !== r3A) return r3B - r3A;
+          const totA = parseFloat(a.total_score || 0);
+          const totB = parseFloat(b.total_score || 0);
+          if (totB !== totA) return totB - totA;
+          return (a.team_name || '').localeCompare(b.team_name || '');
+        });
 
-      const candidateTeams = (teams || []).filter(t => t.status !== 'DISQUALIFIED');
-      const matchedWinner = winId ? candidateTeams.find(t => String(t.team_id) === String(winId) || String(t._id) === String(winId)) : null;
-      const matchedRunnerUp = runId ? candidateTeams.find(t => String(t.team_id) === String(runId) || String(t._id) === String(runId)) : null;
+      const candidates = qualified.length > 0 ? qualified : (teams || []).filter(t => !t.is_eliminated).slice().sort((a, b) => {
+        const r3A = a.scores_by_round?.['3'] !== undefined && a.scores_by_round?.['3'] !== null
+          ? parseFloat(a.scores_by_round['3'])
+          : (a.r3_score !== undefined ? parseFloat(a.r3_score) : -1);
+        const r3B = b.scores_by_round?.['3'] !== undefined && b.scores_by_round?.['3'] !== null
+          ? parseFloat(b.scores_by_round['3'])
+          : (b.r3_score !== undefined ? parseFloat(b.r3_score) : -1);
+        if (r3B !== r3A) return r3B - r3A;
+        const totA = parseFloat(a.total_score || 0);
+        const totB = parseFloat(b.total_score || 0);
+        if (totB !== totA) return totB - totA;
+        return (a.team_name || '').localeCompare(b.team_name || '');
+      });
 
-      const defaultWinner = matchedWinner || winnerAnnouncement?.winner || overview?.winner_announcement?.winner || candidateTeams[0] || null;
-      const defaultRunnerUp = matchedRunnerUp || winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || candidateTeams[1] || null;
+      const defaultWinner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner || candidates[0] || null;
+      const defaultRunnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || (candidates.length > 1 ? candidates[1] : null);
 
       const targetTime = new Date(Date.now() + seconds * 1000).toISOString();
       const nextWinnerDoc = {
@@ -901,7 +952,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
       setSuccessMsg(`🚀 Winner Go Live countdown initiated (${seconds}s)!`);
 
-      api.admin.setWinnerAnnouncement('set', seconds, winId, runId)
+      api.admin.setWinnerAnnouncement('set', seconds)
         .then(res => {
           if (res) setWinnerAnnouncement(res);
         })
@@ -3743,32 +3794,40 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
         {activeTab === 'winner_announcement' && (
           <div className="space-y-6">
             {(() => {
-              // Qualified teams sorted strictly by Round 3 marks descending
-              const qualified = teams
-                .filter((t) => t.is_qualified_r3)
-                .slice()
-                .sort((a, b) => {
-                  const r3A = a.scores_by_round?.['3'] !== undefined && a.scores_by_round?.['3'] !== null
-                    ? parseFloat(a.scores_by_round['3'])
-                    : -1;
-                  const r3B = b.scores_by_round?.['3'] !== undefined && b.scores_by_round?.['3'] !== null
-                    ? parseFloat(b.scores_by_round['3'])
-                    : -1;
+              // Helper to retrieve Round 3 marks for any team
+              const getR3Score = (t) => {
+                if (!t) return -1;
+                const sc = t.scores_by_round?.['3'] ?? t.scores_by_round?.[3] ?? t.r3_score;
+                if (sc !== undefined && sc !== null) {
+                  const parsed = parseFloat(sc);
+                  return !isNaN(parsed) ? parsed : -1;
+                }
+                return -1;
+              };
 
-                  if (r3B !== r3A) {
-                    return r3B - r3A;
-                  }
-                  return a.team_name.localeCompare(b.team_name);
-                });
+              // Finalists: teams qualified for Round 3, or active teams if not qualified
+              const qualified = (teams || []).filter((t) => t.is_qualified_r3);
+              const basePool = qualified.length > 0 ? qualified : (teams || []).filter((t) => !t.is_eliminated);
+              const eligiblePool = basePool.length > 0 ? basePool : (teams || []);
 
-              const eligible = qualified.length > 0 ? qualified : teams.filter((t) => !t.is_eliminated);
-              const candidateTeams = eligible.length > 0 ? eligible : teams;
+              // Strict sort by Round 3 marks descending (tie-break by total_score descending)
+              const sortedByR3 = eligiblePool.slice().sort((a, b) => {
+                const r3A = getR3Score(a);
+                const r3B = getR3Score(b);
+                if (r3B !== r3A) return r3B - r3A;
+                const totA = parseFloat(a.total_score || 0);
+                const totB = parseFloat(b.total_score || 0);
+                if (totB !== totA) return totB - totA;
+                return (a.team_name || '').localeCompare(b.team_name || '');
+              });
 
-              const matchedWinner = selectedWinnerId ? candidateTeams.find(t => String(t.team_id) === String(selectedWinnerId) || String(t._id) === String(selectedWinnerId)) : null;
-              const matchedRunnerUp = selectedRunnerUpId ? candidateTeams.find(t => String(t.team_id) === String(selectedRunnerUpId) || String(t._id) === String(selectedRunnerUpId)) : null;
+              // Winner and Runner Up are strictly and automatically determined from Round 3 marks
+              const autoWinner = sortedByR3[0] || null;
+              const autoRunnerUp = sortedByR3.length > 1 ? sortedByR3[1] : null;
 
-              const winner = matchedWinner || winnerAnnouncement?.winner || overview?.winner_announcement?.winner || candidateTeams[0];
-              const runnerUp = matchedRunnerUp || winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || (candidateTeams.length > 1 ? candidateTeams.filter(t => t !== winner)[0] : null);
+              const winner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner || autoWinner;
+              const runnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || autoRunnerUp;
+
               const isResultsAnnounced = Boolean(winnerAnnouncement?.is_announced);
               const isCountdownActive = Boolean(
                 !isResultsAnnounced &&
@@ -3780,94 +3839,213 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
                   {/* GO LIVE CONTROL CONSOLE (Shown when results are NOT yet live) */}
                   {!isResultsAnnounced && !isCountdownActive && (
-                    <div className="racing-card rounded-2xl p-6 sm:p-8 border-2 border-amber-500/50 bg-gradient-to-b from-slate-950/95 via-slate-950/95 to-amber-950/20 shadow-2xl max-w-3xl mx-auto space-y-6">
+                    <div className="racing-card rounded-2xl p-6 sm:p-8 border-2 border-amber-500/50 bg-gradient-to-b from-slate-950/95 via-slate-950/95 to-amber-950/20 shadow-2xl max-w-4xl mx-auto space-y-6">
+                      
+                      {/* Header Badge */}
                       <div className="text-center space-y-2">
                         <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-400/40 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-950/40">
                           <Trophy className="w-7 h-7 text-amber-400 animate-pulse" />
                         </div>
-                        <span className="text-xs font-race font-bold uppercase tracking-widest text-amber-400 block">
-                          CHAMPIONSHIP PODIUM CONTROL HQ
-                        </span>
+                        <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-[11px] font-race font-bold tracking-widest uppercase">
+                          <Lock className="w-3.5 h-3.5 text-amber-400" />
+                          <span>AUTOMATIC SELECTION &bull; STRICTLY BASED ON ROUND 3 MARKS</span>
+                        </div>
                         <h4 className="font-race text-2xl font-black text-white">
-                          OFFICIAL WINNER &amp; RUNNER UP ANNOUNCEMENT
+                          CHAMPIONSHIP PODIUM REVEAL HQ
                         </h4>
-                        <p className="text-xs text-slate-400 font-mono-code max-w-xl mx-auto">
-                          Verify or select the Grand Champion (1st Place) and 1st Runner Up (2nd Place). The leaderboard auto-ranks them, or you can pick any qualified team from the dropdowns below.
+                        <p className="text-xs text-slate-300 font-mono-code max-w-2xl mx-auto leading-relaxed">
+                          The Grand Champion (1st Place) and 1st Runner Up (2nd Place) are automatically selected by the system strictly according to their evaluated Round 3 marks. Admin selection is locked to preserve championship integrity.
                         </p>
                       </div>
 
-                      {/* TEAM SELECTION & PREVIEW CARDS */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Winner Selector */}
-                        <div className="p-4 rounded-xl bg-slate-900/90 border border-amber-500/40 space-y-3">
+                      {/* AUTOMATIC PODIUM PREVIEW CARDS */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        
+                        {/* Winner Card (Gold) */}
+                        <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-950/40 via-slate-900/90 to-slate-950 border-2 border-amber-400/80 shadow-xl shadow-amber-950/40 space-y-4 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+                          
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-race font-bold text-amber-300 uppercase flex items-center space-x-1.5">
+                            <span className="text-xs font-race font-black text-amber-300 uppercase flex items-center space-x-2">
                               <Trophy className="w-4 h-4 text-yellow-400" />
                               <span>1ST PLACE &bull; GRAND CHAMPION</span>
                             </span>
-                            <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30">
-                              GOLD PODIUM
+                            <span className="text-[10px] font-race font-bold px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-sm">
+                              RANK #1 IN ROUND 3
                             </span>
                           </div>
-                          <div>
-                            <label className="text-[10px] font-mono-code text-slate-400 uppercase block mb-1">
-                              Select Champion Team:
-                            </label>
-                            <select
-                              value={selectedWinnerId || (winner?.team_id || '')}
-                              onChange={(e) => setSelectedWinnerId(e.target.value)}
-                              className="w-full bg-slate-950 border border-amber-500/50 rounded-lg px-3 py-2 text-xs font-mono-code text-white focus:outline-none focus:border-amber-400"
-                            >
-                              {candidateTeams.map((t) => (
-                                <option key={t.team_id || t._id} value={t.team_id}>
-                                  {t.team_name} ({t.leader_name || 'Leader'}) — R3: {t.scores_by_round?.['3'] ?? 0} | Tot: {t.total_score || 0} pts
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          {winner && (
-                            <div className="p-3 rounded-lg bg-amber-950/30 border border-amber-500/20 text-[11px] font-mono-code space-y-1">
-                              <p className="text-amber-300 font-bold text-sm truncate">{winner.team_name}</p>
-                              <p className="text-slate-300 truncate">Leader: {winner.leader_name || 'Not set'}</p>
-                              <p className="text-slate-400 truncate">{winner.institution || 'Championship Contender'}</p>
+
+                          {winner ? (
+                            <div className="space-y-3">
+                              <div>
+                                <h3 className="font-race text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 truncate">
+                                  {winner.team_name}
+                                </h3>
+                                <p className="text-xs font-mono-code text-slate-300 truncate mt-0.5">
+                                  Leader: <span className="text-white font-bold">{winner.leader_name || 'Team Leader'}</span>
+                                </p>
+                                <p className="text-[11px] font-mono-code text-slate-400 truncate">
+                                  {winner.institution || 'Championship Contender'}
+                                </p>
+                              </div>
+
+                              {/* Highlighted Round 3 Score Pill */}
+                              <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-between">
+                                <div>
+                                  <span className="text-[10px] font-mono-code text-amber-300/90 uppercase block font-bold">
+                                    ROUND 3 MARKS
+                                  </span>
+                                  <span className="text-2xl font-race font-black text-amber-300">
+                                    {(getR3Score(winner) >= 0 ? getR3Score(winner) : (winner.r3_score ?? 0)).toFixed(1)} <span className="text-xs font-mono-code">Pts</span>
+                                  </span>
+                                </div>
+                                <div className="text-right border-l border-amber-400/20 pl-4">
+                                  <span className="text-[10px] font-mono-code text-slate-400 uppercase block font-bold">
+                                    TOTAL SCORE
+                                  </span>
+                                  <span className="text-sm font-mono-code font-bold text-slate-200">
+                                    {(winner.total_score || 0).toFixed(1)} Pts
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="py-8 text-center text-slate-500 text-xs font-mono-code">
+                              Awaiting Round 3 evaluations...
                             </div>
                           )}
                         </div>
 
-                        {/* Runner Up Selector */}
-                        <div className="p-4 rounded-xl bg-slate-900/90 border border-cyan-500/40 space-y-3">
+                        {/* Runner Up Card (Silver/Cyan) */}
+                        <div className="p-5 rounded-2xl bg-gradient-to-br from-cyan-950/40 via-slate-900/90 to-slate-950 border-2 border-cyan-400/80 shadow-xl shadow-cyan-950/40 space-y-4 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+                          
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-race font-bold text-cyan-300 uppercase flex items-center space-x-1.5">
+                            <span className="text-xs font-race font-black text-cyan-300 uppercase flex items-center space-x-2">
                               <Award className="w-4 h-4 text-cyan-400" />
                               <span>2ND PLACE &bull; 1ST RUNNER UP</span>
                             </span>
-                            <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
-                              SILVER PODIUM
+                            <span className="text-[10px] font-race font-bold px-2.5 py-0.5 rounded-full bg-cyan-400 text-slate-950 shadow-sm">
+                              RANK #2 IN ROUND 3
                             </span>
                           </div>
-                          <div>
-                            <label className="text-[10px] font-mono-code text-slate-400 uppercase block mb-1">
-                              Select Runner Up Team:
-                            </label>
-                            <select
-                              value={selectedRunnerUpId || (runnerUp?.team_id || '')}
-                              onChange={(e) => setSelectedRunnerUpId(e.target.value)}
-                              className="w-full bg-slate-950 border border-cyan-500/50 rounded-lg px-3 py-2 text-xs font-mono-code text-white focus:outline-none focus:border-cyan-400"
-                            >
-                              {candidateTeams.map((t) => (
-                                <option key={t.team_id || t._id} value={t.team_id}>
-                                  {t.team_name} ({t.leader_name || 'Leader'}) — R3: {t.scores_by_round?.['3'] ?? 0} | Tot: {t.total_score || 0} pts
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          {runnerUp && (
-                            <div className="p-3 rounded-lg bg-cyan-950/30 border border-cyan-500/20 text-[11px] font-mono-code space-y-1">
-                              <p className="text-cyan-300 font-bold text-sm truncate">{runnerUp.team_name}</p>
-                              <p className="text-slate-300 truncate">Leader: {runnerUp.leader_name || 'Not set'}</p>
-                              <p className="text-slate-400 truncate">{runnerUp.institution || 'Championship Contender'}</p>
+
+                          {runnerUp ? (
+                            <div className="space-y-3">
+                              <div>
+                                <h3 className="font-race text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-teal-300 to-cyan-400 truncate">
+                                  {runnerUp.team_name}
+                                </h3>
+                                <p className="text-xs font-mono-code text-slate-300 truncate mt-0.5">
+                                  Leader: <span className="text-white font-bold">{runnerUp.leader_name || 'Team Leader'}</span>
+                                </p>
+                                <p className="text-[11px] font-mono-code text-slate-400 truncate">
+                                  {runnerUp.institution || 'Championship Contender'}
+                                </p>
+                              </div>
+
+                              {/* Highlighted Round 3 Score Pill */}
+                              <div className="p-3 rounded-xl bg-cyan-500/15 border border-cyan-400/40 flex items-center justify-between">
+                                <div>
+                                  <span className="text-[10px] font-mono-code text-cyan-300/90 uppercase block font-bold">
+                                    ROUND 3 MARKS
+                                  </span>
+                                  <span className="text-2xl font-race font-black text-cyan-300">
+                                    {(getR3Score(runnerUp) >= 0 ? getR3Score(runnerUp) : (runnerUp.r3_score ?? 0)).toFixed(1)} <span className="text-xs font-mono-code">Pts</span>
+                                  </span>
+                                </div>
+                                <div className="text-right border-l border-cyan-400/20 pl-4">
+                                  <span className="text-[10px] font-mono-code text-slate-400 uppercase block font-bold">
+                                    TOTAL SCORE
+                                  </span>
+                                  <span className="text-sm font-mono-code font-bold text-slate-200">
+                                    {(runnerUp.total_score || 0).toFixed(1)} Pts
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="py-8 text-center text-slate-500 text-xs font-mono-code">
+                              Awaiting Round 3 evaluations...
                             </div>
                           )}
+                        </div>
+
+                      </div>
+
+                      {/* ROUND 3 RANKINGS AUDIT TABLE */}
+                      <div className="rounded-xl bg-slate-900/80 border border-white/10 p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-race font-bold uppercase tracking-wider text-slate-300 flex items-center space-x-1.5">
+                            <Radio className="w-3.5 h-3.5 text-amber-400" />
+                            <span>ROUND 3 AUTOMATIC STANDINGS</span>
+                          </span>
+                          <span className="text-[10px] font-mono-code text-slate-400">
+                            Sorted strictly by Round 3 Marks descending
+                          </span>
+                        </div>
+
+                        <div className="overflow-x-auto max-h-56 overflow-y-auto">
+                          <table className="w-full text-left font-mono-code text-xs">
+                            <thead className="text-[10px] uppercase text-slate-400 bg-slate-950/60 sticky top-0">
+                              <tr>
+                                <th className="px-3 py-2">Rank</th>
+                                <th className="px-3 py-2">Team</th>
+                                <th className="px-3 py-2">Leader</th>
+                                <th className="px-3 py-2 text-right text-amber-300 font-bold">R3 Marks</th>
+                                <th className="px-3 py-2 text-right">Total Score</th>
+                                <th className="px-3 py-2 text-center">Podium Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                              {sortedByR3.map((t, idx) => {
+                                const r3Score = getR3Score(t);
+                                const isFirst = idx === 0;
+                                const isSecond = idx === 1;
+                                return (
+                                  <tr
+                                    key={t.team_id || t._id}
+                                    className={
+                                      isFirst
+                                        ? 'bg-amber-950/30 text-amber-200'
+                                        : isSecond
+                                        ? 'bg-cyan-950/30 text-cyan-200'
+                                        : 'hover:bg-slate-950/40 text-slate-300'
+                                    }
+                                  >
+                                    <td className="px-3 py-2 font-bold font-race text-xs">
+                                      {isFirst ? '🥇 #1' : isSecond ? '🥈 #2' : `#${idx + 1}`}
+                                    </td>
+                                    <td className="px-3 py-2 font-bold font-race">{t.team_name}</td>
+                                    <td className="px-3 py-2 text-slate-400">{t.leader_name || 'Leader'}</td>
+                                    <td className="px-3 py-2 text-right font-black text-sm">
+                                      <span className={isFirst ? 'text-amber-300' : isSecond ? 'text-cyan-300' : 'text-slate-200'}>
+                                        {(r3Score >= 0 ? r3Score : 0).toFixed(1)} Pts
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2 text-right text-slate-400">
+                                      {(t.total_score || 0).toFixed(1)} Pts
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                      {isFirst ? (
+                                        <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-400/40">
+                                          👑 Grand Champion
+                                        </span>
+                                      ) : isSecond ? (
+                                        <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-bold border border-cyan-400/40">
+                                          🥈 1st Runner Up
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] text-slate-500 font-mono-code">
+                                          Round 3 Finalist
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
 
@@ -3882,10 +4060,11 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                               key={s}
                               type="button"
                               onClick={() => setWinnerTimerSeconds(s)}
-                              className={`px-4 py-2 rounded-xl text-xs font-mono-code font-bold transition-all cursor-pointer ${winnerTimerSeconds === s
+                              className={`px-4 py-2 rounded-xl text-xs font-mono-code font-bold transition-all cursor-pointer ${
+                                winnerTimerSeconds === s
                                   ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/30 scale-105'
                                   : 'bg-slate-950 text-slate-400 hover:text-white border border-white/10'
-                                }`}
+                              }`}
                             >
                               {s}s Timer
                             </button>
@@ -3898,9 +4077,9 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                         <button
                           type="button"
                           onClick={() => handleStartGoLive(winnerTimerSeconds)}
-                          disabled={candidateTeams.length === 0 || isPublishingLive}
+                          disabled={sortedByR3.length === 0 || isPublishingLive}
                           className={`py-4 rounded-xl font-race font-black text-xs uppercase transition-all flex items-center justify-center space-x-2.5 shadow-2xl ${
-                            candidateTeams.length > 0 && !isPublishingLive
+                            sortedByR3.length > 0 && !isPublishingLive
                               ? 'bg-gradient-to-r from-red-600 via-amber-500 to-amber-400 hover:from-red-500 hover:to-amber-300 text-slate-950 shadow-red-950/70 glow-red cursor-pointer transform hover:scale-[1.02] active:scale-95'
                               : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed'
                           }`}
@@ -3912,9 +4091,9 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                         <button
                           type="button"
                           onClick={() => handleGoLiveInstant()}
-                          disabled={candidateTeams.length === 0 || isPublishingLive}
+                          disabled={sortedByR3.length === 0 || isPublishingLive}
                           className={`py-4 rounded-xl font-race font-bold text-xs uppercase transition-all flex items-center justify-center space-x-2 shadow-xl ${
-                            candidateTeams.length > 0 && !isPublishingLive
+                            sortedByR3.length > 0 && !isPublishingLive
                               ? 'bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/40 cursor-pointer transform hover:scale-[1.02] active:scale-95'
                               : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed'
                           }`}
@@ -3923,6 +4102,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                           <span>REVEAL IMMEDIATELY</span>
                         </button>
                       </div>
+
                     </div>
                   )}
 
@@ -4132,6 +4312,11 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                                 >
                                   {winner ? winner.team_name : 'Grand Champion'}
                                 </h3>
+                                {winner && (
+                                  <span className="text-[10px] font-mono-code font-bold text-amber-300 block">
+                                    Round 3 Marks: {(winner.r3_score !== undefined ? winner.r3_score : (winner.scores_by_round?.['3'] ?? 0))} Pts
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="p-3.5 sm:p-4 space-y-1.5">
@@ -4190,6 +4375,11 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                                 >
                                   {runnerUp ? runnerUp.team_name : '1st Runner Up'}
                                 </h3>
+                                {runnerUp && (
+                                  <span className="text-[10px] font-mono-code font-bold text-cyan-300 block">
+                                    Round 3 Marks: {(runnerUp.r3_score !== undefined ? runnerUp.r3_score : (runnerUp.scores_by_round?.['3'] ?? 0))} Pts
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="p-3.5 sm:p-4 space-y-1.5">

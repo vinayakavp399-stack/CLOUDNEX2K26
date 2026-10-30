@@ -67,6 +67,7 @@ def purge_test_grid_teams():
 def get_winner_announcement_data():
     settings_col = db_manager.get_collection("system_settings")
     doc = settings_col.find_one({"key": "winner_announcement"})
+    auto_w, auto_r = compute_winner_and_runner_up()
     if not doc:
         return {
             "key": "winner_announcement",
@@ -75,8 +76,8 @@ def get_winner_announcement_data():
             "announcement_time": None,
             "timer_seconds": 10,
             "held": False,
-            "winner": None,
-            "runner_up": None,
+            "winner": auto_w,
+            "runner_up": auto_r,
             "updated_at": None
         }
     return {
@@ -86,8 +87,8 @@ def get_winner_announcement_data():
         "announcement_time": doc.get("announcement_time"),
         "timer_seconds": doc.get("timer_seconds", 10),
         "held": bool(doc.get("held", False)),
-        "winner": doc.get("winner"),
-        "runner_up": doc.get("runner_up"),
+        "winner": doc.get("winner") if doc.get("is_announced") else (auto_w or doc.get("winner")),
+        "runner_up": doc.get("runner_up") if doc.get("is_announced") else (auto_r or doc.get("runner_up")),
         "updated_at": doc.get("updated_at")
     }
 
@@ -95,13 +96,23 @@ def get_winner_announcement_data():
 def format_announcement_team(t):
     if not t:
         return None
+    scores = t.get("scores_by_round") or {}
+    r3_val = scores.get("3")
+    if r3_val is None:
+        r3_val = scores.get(3)
+    try:
+        r3_score = float(r3_val) if r3_val is not None else 0.0
+    except Exception:
+        r3_score = 0.0
+
     return {
         "team_id": t.get("team_id"),
         "team_name": t.get("team_name"),
         "leader_name": t.get("leader_name"),
         "institution": t.get("institution") or "Championship Contender",
+        "r3_score": r3_score,
         "total_score": t.get("total_score", 0),
-        "scores_by_round": t.get("scores_by_round", {})
+        "scores_by_round": scores
     }
 
 
@@ -131,39 +142,88 @@ def find_announcement_team_by_id(team_identifier):
 
 def compute_winner_and_runner_up():
     teams_col = db_manager.get_collection("teams")
+    evaluations_col = db_manager.get_collection("evaluations")
     all_teams = list(teams_col.find())
     if not all_teams:
         return None, None
 
-    qualified = [t for t in all_teams if t.get("is_qualified_r3")]
-    if not qualified:
-        qualified = [t for t in all_teams if not t.get("is_eliminated")]
-    if not qualified:
-        qualified = all_teams
+    # Load all round 3 evaluations: team_id -> r3_eval_score
+    r3_evals = {}
+    try:
+        all_evals = evaluations_col.find({"round_number": 3})
+        for ev in all_evals:
+            tid = str(ev.get("team_id"))
+            try:
+                sc = float(ev.get("total_score") or 0.0)
+                if tid not in r3_evals or sc > r3_evals[tid]:
+                    r3_evals[tid] = sc
+            except Exception:
+                pass
+    except Exception as e:
+        logger.warning(f"Error reading R3 evaluations: {e}")
 
-    def sort_key(t):
+    # Helper function to get R3 score for any team
+    def get_team_r3_score(t):
+        tid = str(t.get("team_id"))
         scores = t.get("scores_by_round") or {}
         r3_score = -1.0
         if "3" in scores and scores["3"] is not None:
             try:
                 r3_score = float(scores["3"])
             except Exception:
-                r3_score = -1.0
+                pass
+        elif 3 in scores and scores[3] is not None:
+            try:
+                r3_score = float(scores[3])
+            except Exception:
+                pass
+
+        if tid in r3_evals:
+            if r3_evals[tid] > r3_score:
+                r3_score = r3_evals[tid]
+        return r3_score
+
+    # Check for teams explicitly qualified for Round 3
+    qualified = [t for t in all_teams if t.get("is_qualified_r3")]
+
+    # If no teams are marked qualified_r3, check if any teams have round 3 evaluations/marks
+    if not qualified:
+        teams_with_r3 = [t for t in all_teams if get_team_r3_score(t) >= 0]
+        if teams_with_r3:
+            qualified = teams_with_r3
+        else:
+            qualified = [t for t in all_teams if not t.get("is_eliminated")]
+            if not qualified:
+                qualified = all_teams
+
+    def sort_key(t):
+        r3_score = get_team_r3_score(t)
         total = float(t.get("total_score") or 0.0)
+        # Primary: Round 3 marks descending!
+        # Secondary: Total score descending
         return (r3_score, total)
 
     sorted_teams = sorted(qualified, key=sort_key, reverse=True)
     winner = sorted_teams[0] if len(sorted_teams) > 0 else None
     runner_up = sorted_teams[1] if len(sorted_teams) > 1 else None
 
-    # If only 1 team was in qualified, pick runner-up from remaining teams if available
+    # If only 1 team in qualified list, pick runner-up from remaining teams if available
     if not runner_up and winner and len(all_teams) > 1:
         remaining = [t for t in all_teams if str(t.get("team_id")) != str(winner.get("team_id"))]
         if remaining:
-            remaining_sorted = sorted(remaining, key=lambda t: float(t.get("total_score") or 0.0), reverse=True)
+            remaining_sorted = sorted(remaining, key=sort_key, reverse=True)
             runner_up = remaining_sorted[0]
 
-    return format_announcement_team(winner), format_announcement_team(runner_up)
+    def format_with_r3(t):
+        if not t:
+            return None
+        r3_sc = max(0.0, get_team_r3_score(t))
+        formatted = format_announcement_team(t)
+        if formatted:
+            formatted["r3_score"] = r3_sc
+        return formatted
+
+    return format_with_r3(winner), format_with_r3(runner_up)
 
 
 
@@ -810,13 +870,9 @@ async def set_winner_announcement(
     now = datetime.utcnow()
     now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    # Determine teams: custom specified takes priority, otherwise compute from leaderboard
-    custom_winner = find_announcement_team_by_id(winner_team_id) if winner_team_id else None
-    custom_runner_up = find_announcement_team_by_id(runner_up_team_id) if runner_up_team_id else None
-    default_w, default_r = compute_winner_and_runner_up()
-
-    final_winner = custom_winner or default_w
-    final_runner_up = custom_runner_up or default_r
+    # Per championship regulations, winner and runner up are determined automatically based on Round 3 marks.
+    # The admin cannot manually select winners; the system computes them automatically.
+    final_winner, final_runner_up = compute_winner_and_runner_up()
 
     if action == "announce_now":
         update_doc = {
