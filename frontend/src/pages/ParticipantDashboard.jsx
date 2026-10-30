@@ -184,6 +184,12 @@ export default function ParticipantDashboard() {
         const remaining = Math.max(0, Math.ceil((targetMs - now) / 1000));
         setWinnerSecondsLeft(prev => prev === remaining ? prev : remaining);
         if (remaining <= 0) {
+          setShowWinnerModal(true);
+          setWinnerAnnouncement(prev => ({
+            ...prev,
+            is_announced: true,
+            is_timer_active: false
+          }));
           if (!hasFetchedWinnerExpiryRef.current) {
             hasFetchedWinnerExpiryRef.current = true;
             fetchData();
@@ -1550,7 +1556,7 @@ export default function ParticipantDashboard() {
       />
 
       {/* Winner Podium Celebration Modal for Participants */}
-      {showWinnerModal && winnerAnnouncement?.is_announced && (
+      {showWinnerModal && (winnerAnnouncement?.is_announced || isWinnerAnnounced) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
           {/* Ambient glows */}
           <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[500px] h-40 bg-amber-500/20 blur-3xl rounded-full pointer-events-none" />
@@ -1662,11 +1668,6 @@ export default function ParticipantDashboard() {
                       <span className="text-[10px] font-mono-code text-slate-400">
                         {winnerAnnouncement?.winner?.institution || 'Championship Contender'}
                       </span>
-                      {winnerAnnouncement?.winner && (
-                        <span className="text-[10px] font-mono-code font-bold px-2 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30">
-                          R3 Marks: {winnerAnnouncement.winner.r3_score !== undefined ? winnerAnnouncement.winner.r3_score : (winnerAnnouncement.winner.scores_by_round?.['3'] ?? 0)} Pts
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1712,11 +1713,6 @@ export default function ParticipantDashboard() {
                       <span className="text-[10px] font-mono-code text-slate-400">
                         {winnerAnnouncement?.runner_up?.institution || 'Championship Contender'}
                       </span>
-                      {winnerAnnouncement?.runner_up && (
-                        <span className="text-[10px] font-mono-code font-bold px-2 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
-                          R3 Marks: {winnerAnnouncement.runner_up.r3_score !== undefined ? winnerAnnouncement.runner_up.r3_score : (winnerAnnouncement.runner_up.scores_by_round?.['3'] ?? 0)} Pts
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>

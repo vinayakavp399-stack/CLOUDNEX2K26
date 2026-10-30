@@ -794,35 +794,73 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       setErrorMsg("Cannot announce winners: No teams have been qualified for Round 3 yet. Please qualify teams for Round 3 first.");
       return;
     }
-    if (isPublishingLive) return;
-    setIsPublishingLive(true);
-    setAnnouncementCountdown(0);
+
+    // Determine winner and runner up automatically from round 3 marks
+    const qualifiedTeams = [...(teams || [])]
+      .filter(t => t.is_qualified_r3)
+      .sort((a, b) => {
+        const scA = parseFloat(a.scores_by_round?.['3'] ?? a.r3_score ?? 0);
+        const scB = parseFloat(b.scores_by_round?.['3'] ?? b.r3_score ?? 0);
+        return scB - scA;
+      });
+
+    const optWinner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner || (qualifiedTeams[0] ? {
+      team_id: qualifiedTeams[0].team_id,
+      team_name: qualifiedTeams[0].team_name,
+      institution: qualifiedTeams[0].institution,
+      r3_score: parseFloat(qualifiedTeams[0].scores_by_round?.['3'] ?? qualifiedTeams[0].r3_score ?? 0)
+    } : null);
+
+    const optRunnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || (qualifiedTeams[1] ? {
+      team_id: qualifiedTeams[1].team_id,
+      team_name: qualifiedTeams[1].team_name,
+      institution: qualifiedTeams[1].institution,
+      r3_score: parseFloat(qualifiedTeams[1].scores_by_round?.['3'] ?? qualifiedTeams[1].r3_score ?? 0)
+    } : null);
+
+    const instantWinnerDoc = {
+      key: 'winner_announcement',
+      is_announced: true,
+      is_timer_active: false,
+      announcement_time: null,
+      held: false,
+      winner: optWinner,
+      runner_up: optRunnerUp
+    };
+
+    // INSTANT 0ms TRANSITION:
+    // Instantly reveal the celebration announcement without waiting for the network!
+    setWinnerAnnouncement(instantWinnerDoc);
+    setIsAnnouncing(false);
+    setAnnouncementCountdown(null);
     setAnnouncementDismissed(false);
+    setIsPublishingLive(false);
+
+    if (typeof broadcastLocalEvent === 'function') {
+      broadcastLocalEvent('WINNER_ANNOUNCEMENT_UPDATED', instantWinnerDoc);
+    }
 
     try {
       const res = await api.admin.setWinnerAnnouncement('announce_now', 0);
-      const nextWinnerDoc = {
-        key: 'winner_announcement',
-        is_announced: true,
-        is_timer_active: false,
-        announcement_time: null,
-        held: false,
-        winner: res?.winner || winnerAnnouncement?.winner,
-        runner_up: res?.runner_up || winnerAnnouncement?.runner_up
-      };
-
-      setWinnerAnnouncement(nextWinnerDoc);
-      setSuccessMsg('🏆 WINNER & 1ST RUNNER UP ARE NOW LIVE ACROSS ALL PORTALS!');
-
-      if (typeof broadcastLocalEvent === 'function') {
-        broadcastLocalEvent('WINNER_ANNOUNCEMENT_UPDATED', nextWinnerDoc);
+      if (res) {
+        const finalizedDoc = {
+          key: 'winner_announcement',
+          is_announced: true,
+          is_timer_active: false,
+          announcement_time: null,
+          held: false,
+          winner: res.winner || optWinner,
+          runner_up: res.runner_up || optRunnerUp
+        };
+        setWinnerAnnouncement(finalizedDoc);
+        if (typeof broadcastLocalEvent === 'function') {
+          broadcastLocalEvent('WINNER_ANNOUNCEMENT_UPDATED', finalizedDoc);
+        }
       }
+      setSuccessMsg('🏆 WINNER & 1ST RUNNER UP ARE NOW LIVE ACROSS ALL PORTALS!');
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to publish results live');
+      console.warn('Background winner announcement live sync:', err);
     } finally {
-      setIsAnnouncing(false);
-      setAnnouncementCountdown(null);
-      setIsPublishingLive(false);
       isGoingLiveRef.current = false;
     }
   };
@@ -3794,16 +3832,34 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
         {activeTab === 'winner_announcement' && (
           <div className="space-y-6">
             {(() => {
-              const isResultsAnnounced = Boolean(winnerAnnouncement?.is_announced);
+              const skew = (typeof window !== 'undefined' && window.__cloudnex_server_time_skew) || 0;
+              const targetTime = winnerAnnouncement?.announcement_time ? parseUtcDate(winnerAnnouncement.announcement_time) : 0;
+              const isTimerExpired = Boolean(
+                winnerAnnouncement?.is_timer_active &&
+                targetTime > 0 &&
+                (Date.now() + skew) >= targetTime
+              );
+
+              const isResultsAnnounced = Boolean(
+                (winnerAnnouncement?.is_announced || isTimerExpired || (announcementCountdown !== null && announcementCountdown <= 0)) &&
+                !winnerAnnouncement?.held
+              );
               const isCountdownActive = Boolean(
                 !isResultsAnnounced &&
-                (winnerAnnouncement?.is_timer_active || isAnnouncing || isPublishingLive || announcementCountdown !== null)
+                !isTimerExpired &&
+                (winnerAnnouncement?.is_timer_active || isAnnouncing || (announcementCountdown !== null && announcementCountdown > 0))
               );
-              const qualifiedR3Teams = (teams || []).filter((t) => t.is_qualified_r3);
+              const qualifiedR3Teams = [...(teams || [])]
+                .filter((t) => t.is_qualified_r3)
+                .sort((a, b) => {
+                  const scA = parseFloat(a.scores_by_round?.['3'] ?? a.r3_score ?? 0);
+                  const scB = parseFloat(b.scores_by_round?.['3'] ?? b.r3_score ?? 0);
+                  return scB - scA;
+                });
               const hasR3Qualifiers = qualifiedR3Teams.length > 0;
 
-              const winner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner;
-              const runnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up;
+              const winner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner || qualifiedR3Teams[0];
+              const runnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || qualifiedR3Teams[1];
 
               return (
                 <div className="space-y-6">
