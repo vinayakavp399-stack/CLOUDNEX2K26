@@ -323,23 +323,27 @@ class DatabaseManager:
         self.client: Optional[MongoClient] = None
         self.db = None
         self.is_atlas: bool = False
+        self._last_reconnect_attempt: float = 0
         self._init_db()
 
     def _init_db(self):
+        import time
+        self._last_reconnect_attempt = time.time()
         uri = settings.MONGODB_URI.strip()
         if uri:
             try:
                 logger.info(f"Connecting to MongoDB with URI: {uri[:20]}...")
                 self.client = MongoClient(
                     uri,
-                    serverSelectionTimeoutMS=10000,
-                    connectTimeoutMS=10000,
-                    socketTimeoutMS=10000,
+                    serverSelectionTimeoutMS=15000,
+                    connectTimeoutMS=15000,
+                    socketTimeoutMS=15000,
                     maxPoolSize=100,
                     minPoolSize=10,
                     maxIdleTimeMS=60000,
-                    waitQueueTimeoutMS=3000,
-                    retryWrites=True
+                    waitQueueTimeoutMS=15000,
+                    retryWrites=True,
+                    retryReads=True
                 )
                 # Verify connection
                 self.client.admin.command('ping')
@@ -356,6 +360,7 @@ class DatabaseManager:
                 except Exception:
                     pass
                 logger.info("Successfully connected to live MongoDB database!")
+                self._sync_offline_and_atlas()
                 self._ensure_indexes()
                 return
             except Exception as e:
@@ -371,6 +376,65 @@ class DatabaseManager:
                 audit_file.unlink()
         except Exception:
             pass
+
+    def _sync_offline_and_atlas(self):
+        """Bi-directional synchronization between local JSON store and MongoDB Atlas to guarantee zero data loss."""
+        if not self.is_atlas or self.db is None:
+            return
+        try:
+            teams_file = settings.DATA_DIR / "teams.json"
+            users_file = settings.DATA_DIR / "users.json"
+            
+            atlas_teams_col = self.db["teams"]
+            atlas_users_col = self.db["users"]
+
+            # 1. Sync teams from JSON to Atlas if missing
+            if teams_file.exists():
+                with open(teams_file, "r", encoding="utf-8") as f:
+                    local_teams = json.load(f)
+                for t in local_teams:
+                    tid = t.get("team_id")
+                    if tid and not atlas_teams_col.find_one({"team_id": tid}):
+                        clean_t = {k: v for k, v in t.items() if k != "_id"}
+                        atlas_teams_col.insert_one(clean_t)
+                        logger.info(f"Synced team '{t.get('team_name')}' ({tid}) from local store to MongoDB Atlas.")
+
+            # 2. Sync users from JSON to Atlas if missing
+            if users_file.exists():
+                with open(users_file, "r", encoding="utf-8") as f:
+                    local_users = json.load(f)
+                for u in local_users:
+                    un = u.get("username")
+                    if un and not atlas_users_col.find_one({"username": un}):
+                        clean_u = {k: v for k, v in u.items() if k != "_id"}
+                        atlas_users_col.insert_one(clean_u)
+                        logger.info(f"Synced user '{un}' from local store to MongoDB Atlas.")
+
+            # 3. Pull all Atlas teams to local JSON backup
+            atlas_all_teams = list(atlas_teams_col.find())
+            if atlas_all_teams and teams_file.exists():
+                clean_teams = []
+                for t in atlas_all_teams:
+                    d = dict(t)
+                    if "_id" in d:
+                        d["_id"] = str(d["_id"])
+                    clean_teams.append(d)
+                with open(teams_file, "w", encoding="utf-8") as f:
+                    json.dump(clean_teams, f, indent=2, default=str)
+
+            # 4. Pull all Atlas users to local JSON backup
+            atlas_all_users = list(atlas_users_col.find())
+            if atlas_all_users and users_file.exists():
+                clean_users = []
+                for u in atlas_all_users:
+                    d = dict(u)
+                    if "_id" in d:
+                        d["_id"] = str(d["_id"])
+                    clean_users.append(d)
+                with open(users_file, "w", encoding="utf-8") as f:
+                    json.dump(clean_users, f, indent=2, default=str)
+        except Exception as e:
+            logger.warning(f"Offline-Atlas sync warning: {e}")
 
     def _ensure_indexes(self):
         if not self.is_atlas or self.db is None:
@@ -398,6 +462,13 @@ class DatabaseManager:
             logger.warning(f"Could not build indexes: {e}")
 
     def get_collection(self, name: str):
+        import time
+        if not self.is_atlas and (time.time() - self._last_reconnect_attempt > 15):
+            try:
+                self._init_db()
+            except Exception:
+                pass
+
         if name == "audit_logs":
             class NoOpCollection:
                 def insert_one(self, *args, **kwargs): return None

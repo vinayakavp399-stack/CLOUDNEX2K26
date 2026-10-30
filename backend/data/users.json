@@ -6,14 +6,14 @@
     "role": "admin",
     "team_id": null,
     "team_name": "Race Control HQ",
-    "hashed_password": "$2b$06$VXX15cX2oiBVRizLUxfCoeyryd8XTosZquHjc4eP0cgjtdFNVLTN6",
+    "hashed_password": "$2b$06$Bd5P6DdR5r0w1U359Zznz.j21IQyYJ03TFQ9CHQNEcK/ONy/1CD2W",
     "created_at": "2026-10-13T06:14:35.535492",
-    "active_session": false,
-    "active_session_token": null,
-    "last_active": "2026-10-29T11:43:02.567910"
+    "active_session": true,
+    "active_session_token": "a789a9f0-be75-419d-a468-5e0f10ea4329",
+    "last_active": "2026-10-30T06:37:39.887572"
   },
   {
-    "_id": "6ae2e932e09be65a3e606736",
+    "_id": "6ae4285942b34d125dea71eb",
     "username": "1",
     "email": "vinayakpujar018@gmail.com",
     "role": "participant",
@@ -23,11 +23,11 @@
     "hashed_password": "$2b$10$topl9Qs4ynCT8.vgaBRVDuJVzn2XdpOULoXildsN7bgXdgl6XNfE2",
     "created_at": "2026-10-29T06:35:30.193609+00:00",
     "active_session": true,
-    "active_session_token": "4f17f178-7c47-40e6-98f6-8ec786724781",
-    "last_active": "2026-10-29T11:53:43.996510"
+    "active_session_token": "bd3da29e-a5c8-4981-ab97-d6e57803af6c",
+    "last_active": "2026-10-30T06:34:07.026485"
   },
   {
-    "_id": "6ae2e9fde09be65a3e606738",
+    "_id": "6ae42a2f47512331f063b72c",
     "username": "12345",
     "email": "mohammadyusufmdyusuf306@gmail.com",
     "role": "participant",
@@ -41,7 +41,7 @@
     "last_active": "2026-10-29T10:09:39.579463"
   },
   {
-    "_id": "6ae2ea02e09be65a3e60673a",
+    "_id": "6ae42a2f47512331f063b72d",
     "username": "apex 2",
     "email": "shrea@gmail.com",
     "role": "participant",
@@ -55,7 +55,7 @@
     "last_active": "2026-10-29T06:39:15.227112"
   },
   {
-    "_id": "6ae2ea0fe09be65a3e60673c",
+    "_id": "6ae42a2f47512331f063b72e",
     "username": "11111111",
     "email": "vedanthvedanth87@gmail.com",
     "role": "participant",
@@ -69,7 +69,7 @@
     "last_active": "2026-10-29T07:18:02.350558"
   },
   {
-    "_id": "6ae2eabce09be65a3e60673e",
+    "_id": "6ae42a2f47512331f063b72f",
     "username": "u26e01cc045",
     "email": "dollykumari.personal@gmail.com",
     "role": "participant",
@@ -83,7 +83,7 @@
     "last_active": "2026-10-29T07:09:09.226402"
   },
   {
-    "_id": "6ae2eaffe09be65a3e606740",
+    "_id": "6ae42a2f47512331f063b730",
     "username": "u26e01cc038",
     "email": "sammu.sammu786sammu@gmail.com",
     "role": "participant",
@@ -96,7 +96,7 @@
     "active_session_token": null
   },
   {
-    "_id": "6ae2ebcce09be65a3e606742",
+    "_id": "6ae42a2f47512331f063b731",
     "username": "u24e01cc080",
     "email": "naaga.shrivalli.yallapu@gmail.com",
     "role": "participant",
@@ -109,7 +109,7 @@
     "active_session_token": null
   },
   {
-    "_id": "6ae2ebefe09be65a3e606744",
+    "_id": "6ae42a2f47512331f063b733",
     "username": "u260eo1cc021",
     "email": "suhana27714@gmail.com",
     "role": "participant",
@@ -122,7 +122,7 @@
     "active_session_token": null
   },
   {
-    "_id": "6ae2ebefe09be65a3e606746",
+    "_id": "6ae42a2f47512331f063b734",
     "username": "u26e01bs003",
     "email": "skshivashri8842@gmail.com",
     "role": "participant",
@@ -136,7 +136,7 @@
     "last_active": "2026-10-29T09:20:45.770588"
   },
   {
-    "_id": "6ae2ec7ee09be65a3e606748",
+    "_id": "6ae42a2f47512331f063b735",
     "username": "u26e01bs017",
     "email": "girishmak987@gmail.com",
     "role": "participant",
@@ -150,7 +150,7 @@
     "last_active": "2026-10-29T09:00:57.804886"
   },
   {
-    "_id": "6ae2ec7ee09be65a3e60674a",
+    "_id": "6ae42a2f47512331f063b736",
     "username": "u26e01cc022",
     "email": "shivani.am07@gmail.com",
     "role": "participant",
@@ -163,7 +163,7 @@
     "active_session_token": null
   },
   {
-    "_id": "6ae2ed62e09be65a3e60674c",
+    "_id": "6ae42a2f47512331f063b737",
     "username": "1111",
     "email": "kka@gmail.com",
     "role": "participant",
@@ -177,7 +177,7 @@
     "last_active": "2026-10-29T07:09:05.844842"
   },
   {
-    "_id": "6ae2edb3e09be65a3e60674e",
+    "_id": "6ae42a3047512331f063b738",
     "username": "u26e01cc058",
     "email": "sinchanakiresur45@gmail.com",
     "role": "participant",
@@ -191,7 +191,7 @@
     "last_active": "2026-10-29T09:01:23.551175"
   },
   {
-    "_id": "6ae30e9b30eb97901713402d",
+    "_id": "6ae42a3047512331f063b739",
     "username": "masira f",
     "email": "masiraf691@gmail.com",
     "role": "participant",
@@ -205,7 +205,7 @@
     "created_at": "2026-10-29T09:15:06.077410+00:00"
   },
   {
-    "_id": "6ae30e9b30eb97901713402f",
+    "_id": "6ae42a3047512331f063b73a",
     "username": "aliya khanum",
     "email": "khanumaliya257@gmail.com",
     "role": "participant",

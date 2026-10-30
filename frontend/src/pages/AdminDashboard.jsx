@@ -19,7 +19,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
   const [overview, setOverview] = useState(() => {
     try {
-      const cached = sessionStorage.getItem('cloudnex_admin_overview') || localStorage.getItem('cloudnex_admin_overview');
+      const cached = localStorage.getItem('cloudnex_admin_overview') || sessionStorage.getItem('cloudnex_admin_overview');
       if (!cached) return null;
       const parsed = JSON.parse(cached);
       if (Array.isArray(parsed?.teams) && parsed.teams.some(t => String(t.team_id).startsWith('TEAM-RED-BULL'))) {
@@ -34,7 +34,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   });
   const [teams, setTeams] = useState(() => {
     try {
-      const cached = sessionStorage.getItem('cloudnex_admin_teams') || localStorage.getItem('cloudnex_admin_teams');
+      const cached = localStorage.getItem('cloudnex_admin_teams') || sessionStorage.getItem('cloudnex_admin_teams');
       if (!cached) return [];
       const parsed = JSON.parse(cached);
       if (Array.isArray(parsed) && parsed.some(t => String(t.team_id).startsWith('TEAM-RED-BULL'))) {
@@ -73,6 +73,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [searchTeamQuery, setSearchTeamQuery] = useState('');
+  const displayTeamCount = teams.length > 0 ? teams.length : (overview?.total_teams ? overview.total_teams : (loading ? '...' : 0));
   const [loggingOutTeamId, setLoggingOutTeamId] = useState(null);
 
   // Problem Allocation & Studio State
@@ -279,7 +280,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   useEffect(() => {
     loadData();
     // Safety fallback: Never keep the screen blocked for more than 750ms
-    const safetyTimer = setTimeout(() => setLoading(false), 750);
+    const safetyTimer = setTimeout(() => setLoading(false), 3500);
 
     // Listen to real-time socket and cross-tab events
     const unregister = registerListener((event) => {
@@ -1746,7 +1747,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 mt-8">
             <div className="p-3.5 rounded-xl bg-slate-950/80 border border-white/5">
               <span className="text-[10px] font-mono-code text-slate-400 uppercase block">REGISTERED TEAMS</span>
-              <span className="font-race text-2xl font-black text-white">{overview?.total_teams || 0}</span>
+              <span className="font-race text-2xl font-black text-white">{displayTeamCount}</span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-950/80 border border-white/5">
@@ -1838,7 +1839,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
               }`}
           >
             <Award className="w-4 h-4" />
-            <span>Judge Evaluations ({teams.length} Live Teams)</span>
+            <span>Judge Evaluations ({displayTeamCount} Live Teams)</span>
           </button>
 
           <button
