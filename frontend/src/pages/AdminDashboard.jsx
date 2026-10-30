@@ -426,16 +426,23 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
           return;
         }
       }
+      if (roundNumber === 3) {
+        const hasQualifiedTeams = Array.isArray(teams) && teams.some(t => t.is_qualified_r3);
+        if (!hasQualifiedTeams) {
+          setErrorMsg("Cannot start Round 3: No teams have been selected or qualified for Round 3 yet. Please qualify teams from the Evaluation or Standings tab before starting Round 3.");
+          return;
+        }
+      }
       setStartingRoundNum(roundNumber);
       setErrorMsg('');
-      const defaultMins = roundNumber === 1 ? 45 : (roundNumber === 2 ? 210 : 180);
-      const mins = deadlineMinutes !== null ? deadlineMinutes : defaultMins;
-      const label = mins < 60 ? `${mins} minutes` : `${(mins / 60).toFixed(1)} hours`;
+      const defaultMins = roundNumber === 1 ? 45 : (roundNumber === 2 ? 210 : null);
+      const mins = roundNumber === 3 ? null : (deadlineMinutes !== null ? deadlineMinutes : defaultMins);
+      const label = roundNumber === 3 ? 'Untimed (No Timer)' : (mins < 60 ? `${mins} minutes` : `${(mins / 60).toFixed(1)} hours`);
       const subOpen = roundNumber === 1 || roundNumber === 2;
 
       // Single-click guarantee: await server response first so database state is confirmed
       const res = await api.admin.openRound(roundNumber, mins, true);
-      const confirmedDeadline = res?.deadline || new Date(Date.now() + mins * 60000).toISOString();
+      const confirmedDeadline = roundNumber === 3 ? null : (res?.deadline || (mins ? new Date(Date.now() + mins * 60000).toISOString() : null));
       const confirmedStartTime = res?.start_time || new Date().toISOString();
 
       setOverview(prev => {
@@ -451,7 +458,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
               deadline: confirmedDeadline,
               duration_minutes: mins,
               submissions_open: subOpen,
-              problem_published: true
+              problem_published: roundNumber === 3 ? false : true
             };
           }
           return r;
@@ -696,6 +703,13 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   // Round 3 Results & Selection Announcement Handler (in seconds)
   const handleSetResultsTimer = async (action = 'set', seconds = r3TimerSeconds) => {
     try {
+      if (action === 'set' || action === 'announce_now') {
+        const hasQualified = Array.isArray(teams) && teams.some(t => t.is_qualified_r3);
+        if (!hasQualified) {
+          setErrorMsg("Cannot announce Round 3 qualifiers: No teams have been selected or qualified for Round 3 yet. Please qualify teams in the Evaluation tab first.");
+          return;
+        }
+      }
       setSettingR3Timer(true);
       setErrorMsg('');
 
@@ -774,6 +788,11 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   };
 
   const handleGoLiveInstant = async () => {
+    const hasQualified = Array.isArray(teams) && teams.some(t => t.is_qualified_r3);
+    if (!hasQualified) {
+      setErrorMsg("Cannot announce winners: No teams have been qualified for Round 3 yet. Please qualify teams for Round 3 first.");
+      return;
+    }
     if (isPublishingLive) return;
     setIsPublishingLive(true);
     setAnnouncementCountdown(0);
@@ -858,6 +877,11 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   ]);
 
   const handleStartGoLive = async (seconds = 10) => {
+    const hasQualified = Array.isArray(teams) && teams.some(t => t.is_qualified_r3);
+    if (!hasQualified) {
+      setErrorMsg("Cannot announce winners: No teams have been qualified for Round 3 yet. Please qualify teams for Round 3 first.");
+      return;
+    }
     if (seconds <= 0) {
       return await handleGoLiveInstant();
     }
@@ -1884,10 +1908,13 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
               const prevRound = num > 1 ? allRoundsList.find(r => Number(r.round_number) === num - 1) : null;
               const isPrevFinished = num === 1 || (prevRound && (prevRound.status === 'CLOSED' || prevRound.status === 'COMPLETED' || prevRound.status === 'LIVE'));
+              const hasR3Qualified = (teams || []).some(t => t.is_qualified_r3);
 
               let blockReason = null;
               if (isLocked && !isPrevFinished) {
                 blockReason = `Lap 0${num - 1} has not started yet. Activate Lap 0${num - 1} first.`;
+              } else if (isLocked && num === 3 && !hasR3Qualified) {
+                blockReason = `No teams have been qualified for Lap 03 yet. Qualify teams before starting Lap 03.`;
               }
 
               return (
@@ -1924,7 +1951,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                       <div className="flex justify-between text-slate-400">
                         <span>Duration:</span>
                         <strong className="text-cyan-300">
-                          {rnd.round_number === 1 ? '45 Minutes' : rnd.round_number === 2 ? '3 Hours 30 Mins' : 'Final Lap (Crisis)'}
+                          {rnd.round_number === 1 ? '45 Minutes' : rnd.round_number === 2 ? '3 Hours 30 Mins' : 'Untimed (Live Evaluation)'}
                         </strong>
                       </div>
                       <div className="flex justify-between text-slate-400">
@@ -1935,8 +1962,8 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                       </div>
                     </div>
 
-                    {/* Real-time Countdown Timer in Race Control Column */}
-                    {isLive && rnd.deadline && (
+                    {/* Real-time Countdown Timer in Race Control Column (Rounds 1 & 2 only) */}
+                    {isLive && rnd.deadline && rnd.round_number !== 3 && (
                       <div className="my-2.5 p-3 rounded-xl bg-slate-950/90 border border-cyan-500/40 shadow-lg shadow-cyan-950/30">
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-[10px] font-race text-cyan-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
@@ -1944,7 +1971,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                             <span>ROUND {rnd.round_number} TIME REMAINING</span>
                           </span>
                           <span className="text-[10px] font-mono-code text-cyan-300 font-bold px-2 py-0.5 rounded bg-cyan-950/70 border border-cyan-800">
-                            {rnd.round_number === 1 ? '45 MIN' : rnd.round_number === 2 ? '3.30 HRS' : '3 HRS'}
+                            {rnd.round_number === 1 ? '45 MIN' : '3.30 HRS'}
                           </span>
                         </div>
                         <CountdownTimer
@@ -1952,6 +1979,21 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                           title={`ROUND 0${rnd.round_number} CLOCK`}
                           onExpire={() => loadData()}
                         />
+                      </div>
+                    )}
+
+                    {/* Round 3 Untimed Live Badge */}
+                    {isLive && rnd.round_number === 3 && (
+                      <div className="my-2.5 p-3 rounded-xl bg-slate-950/90 border border-emerald-500/40 shadow-lg shadow-emerald-950/30">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-race text-emerald-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
+                            <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                            <span>ROUND 3 LIVE EVALUATION</span>
+                          </span>
+                          <span className="text-[10px] font-mono-code text-emerald-300 font-bold px-2 py-0.5 rounded bg-emerald-950/70 border border-emerald-800">
+                            UNTIMED (NO TIMER)
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2103,7 +2145,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                         ) : (
                           <>
                             <Unlock className="w-4 h-4" />
-                            <span>Start Round ({rnd.round_number === 1 ? '45 min' : rnd.round_number === 2 ? '3.30 hrs' : '3 hrs'})</span>
+                            <span>Start Round ({rnd.round_number === 1 ? '45 min' : rnd.round_number === 2 ? '3.30 hrs' : 'Untimed'})</span>
                           </>
                         )}
                       </button>
@@ -2111,6 +2153,30 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
                     {/* ROUND 3 QUALIFIERS ANNOUNCEMENT (BASED ON ROUND 1 & 2 MARKS) */}
                     {rnd.round_number === 3 && (() => {
+                      if (!hasR3Qualified) {
+                        return (
+                          <div className="mt-4 pt-3.5 border-t border-amber-500/30 space-y-2.5 bg-gradient-to-b from-amber-950/20 via-slate-950/80 to-slate-950/95 p-3.5 rounded-xl border border-amber-500/20">
+                            <div className="flex items-center space-x-2 text-amber-400">
+                              <AlertTriangle className="w-4 h-4 shrink-0" />
+                              <span className="text-[10px] font-race font-bold uppercase tracking-wider">
+                                R3 QUALIFIERS TIMER UNAVAILABLE
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-mono-code leading-relaxed">
+                              No teams have been qualified for Round 3 yet. The announcement timer option will only be available once teams are qualified for Round 3.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setActiveTab('evaluation')}
+                              className="w-full py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-race font-bold uppercase transition-all flex items-center justify-center space-x-1.5 cursor-pointer shadow"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Qualify Teams in Evaluation Tab</span>
+                            </button>
+                          </div>
+                        );
+                      }
+
                       const parseUtcDate = (val) => {
                         if (!val) return 0;
                         if (typeof val === 'number') return val;
@@ -3732,6 +3798,8 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                 !isResultsAnnounced &&
                 (winnerAnnouncement?.is_timer_active || isAnnouncing || isPublishingLive || announcementCountdown !== null)
               );
+              const qualifiedR3Teams = (teams || []).filter((t) => t.is_qualified_r3);
+              const hasR3Qualifiers = qualifiedR3Teams.length > 0;
 
               const winner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner;
               const runnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up;
@@ -3739,9 +3807,39 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
               return (
                 <div className="space-y-6">
 
-                  {/* GO LIVE CONTROL CONSOLE (Shown when results are NOT yet live) */}
+                  {/* NO TEAMS QUALIFIED ALERT (Before going live when no teams have been qualified for final round) */}
+                  {!isResultsAnnounced && !isCountdownActive && !hasR3Qualifiers && (
+                    <div className="racing-card rounded-2xl p-8 sm:p-12 border-2 border-amber-500/40 bg-slate-950/90 shadow-2xl text-center max-w-xl mx-auto space-y-5 animate-fade-in">
+                      <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-950/40">
+                        <AlertTriangle className="w-8 h-8 text-amber-400" />
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-xs font-race font-bold uppercase tracking-widest text-amber-400">
+                          QUALIFICATION REQUIRED
+                        </span>
+                        <h4 className="font-race text-2xl font-black text-white">
+                          NO TEAMS QUALIFIED FOR FINAL ROUND
+                        </h4>
+                        <p className="text-xs text-slate-400 font-mono-code max-w-md mx-auto leading-relaxed">
+                          The Go Live option and Championship Winner Announcement are available only after teams have been qualified for Round 3. Please select and qualify teams in the Evaluation or Standings tab first.
+                        </p>
+                      </div>
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('evaluation')}
+                          className="px-5 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-race font-bold uppercase transition-all inline-flex items-center space-x-2 cursor-pointer shadow-sm"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                          <span>Go to Evaluation / Standings</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* GO LIVE CONTROL CONSOLE (Shown when results are NOT yet live AND teams are qualified) */}
                   {/* BEFORE GOING LIVE: ONLY CONTAINS THE TIMER & GO LIVE BUTTON */}
-                  {!isResultsAnnounced && !isCountdownActive && (
+                  {!isResultsAnnounced && !isCountdownActive && hasR3Qualifiers && (
                     <div className="racing-card rounded-2xl p-8 sm:p-12 border-2 border-amber-500/50 bg-gradient-to-b from-slate-950/95 via-slate-950/95 to-amber-950/20 shadow-2xl text-center max-w-xl mx-auto space-y-6 animate-fade-in">
                       <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-400/40 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-950/40">
                         <Clock className="w-8 h-8 text-amber-400 animate-pulse" />
@@ -4022,11 +4120,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                                 >
                                   {winner ? winner.team_name : 'Grand Champion'}
                                 </h3>
-                                {winner && (
-                                  <span className="text-[10px] font-mono-code font-bold text-amber-300 block">
-                                    Round 3 Marks: {(winner.r3_score !== undefined ? winner.r3_score : (winner.scores_by_round?.['3'] ?? 0))} Pts
-                                  </span>
-                                )}
+
                               </div>
                             </div>
                             <div className="p-3.5 sm:p-4 space-y-1.5">
@@ -4085,11 +4179,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                                 >
                                   {runnerUp ? runnerUp.team_name : '1st Runner Up'}
                                 </h3>
-                                {runnerUp && (
-                                  <span className="text-[10px] font-mono-code font-bold text-cyan-300 block">
-                                    Round 3 Marks: {(runnerUp.r3_score !== undefined ? runnerUp.r3_score : (runnerUp.scores_by_round?.['3'] ?? 0))} Pts
-                                  </span>
-                                )}
+
                               </div>
                             </div>
                             <div className="p-3.5 sm:p-4 space-y-1.5">

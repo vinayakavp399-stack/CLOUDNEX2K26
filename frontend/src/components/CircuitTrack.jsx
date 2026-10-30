@@ -206,7 +206,19 @@ export default function CircuitTrack({ rounds, onSelectRound, activeRoundNumber,
                 )}
 
                 {/* Round Duration & Live Timer Display */}
-                {isLive && round.deadline ? (
+                {isLive && isR3 ? (
+                  <div className="mb-4 p-3 rounded-xl bg-slate-950/90 border border-emerald-500/40 shadow-lg shadow-emerald-950/30">
+                    <div className="flex items-center justify-between text-[10px] font-mono-code">
+                      <span className="text-emerald-400 font-bold uppercase flex items-center space-x-1.5">
+                        <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                        <span>FINAL LAP LIVE (UNTIMED)</span>
+                      </span>
+                      <span className="text-emerald-300 font-bold px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-800 text-[10px]">
+                        NO TIMER
+                      </span>
+                    </div>
+                  </div>
+                ) : isLive && round.deadline && !isR3 ? (
                   <div className="mb-4 p-3 rounded-xl bg-slate-950/90 border border-cyan-500/40 shadow-lg shadow-cyan-950/30">
                     <div className="flex items-center justify-between text-[10px] font-mono-code mb-1.5">
                       <span className="text-cyan-400 font-bold uppercase flex items-center space-x-1">
@@ -214,7 +226,7 @@ export default function CircuitTrack({ rounds, onSelectRound, activeRoundNumber,
                         <span>REAL-TIME CLOCK</span>
                       </span>
                       <span className="text-cyan-300 font-bold px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-800 text-[10px]">
-                        {round.round_number === 1 ? '45 MIN' : round.round_number === 2 ? '3.30 HRS' : '3 HRS'}
+                        {round.round_number === 1 ? '45 MIN' : '3.30 HRS'}
                       </span>
                     </div>
                     <CountdownTimer
@@ -227,7 +239,7 @@ export default function CircuitTrack({ rounds, onSelectRound, activeRoundNumber,
                   <div className="mb-3 px-3 py-1.5 rounded-lg bg-slate-950/60 border border-white/5 text-[11px] font-mono-code flex items-center justify-between text-slate-400">
                     <span>Lap Time:</span>
                     <strong className="text-slate-300">
-                      {round.round_number === 1 ? '45 Minutes' : round.round_number === 2 ? '3 Hours 30 Mins' : 'Final Lap'}
+                      {round.round_number === 1 ? '45 Minutes' : round.round_number === 2 ? '3 Hours 30 Mins' : 'Untimed (Live Evaluation)'}
                     </strong>
                   </div>
                 )}

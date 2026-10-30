@@ -343,19 +343,38 @@ async def open_round(
     if not round_doc:
         raise HTTPException(status_code=404, detail="Round not found")
 
+    # Ensure teams are qualified before Round 3 can be started
+    if round_number == 3:
+        teams_col = db_manager.get_collection("teams")
+        num_qualified_r3 = teams_col.count_documents({"is_qualified_r3": True}) if hasattr(teams_col, "count_documents") else len([t for t in teams_col.find({}) if t.get("is_qualified_r3")])
+        if num_qualified_r3 == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot start Round 3: No teams have been selected or qualified for Round 3 yet. Please qualify teams from the Evaluation or Standings tab before starting Round 3."
+            )
+
     now = datetime.utcnow()
-    # Real Round Durations: Round 1 = 45 min, Round 2 = 3.30 hrs (210 min)
-    if deadline_minutes is not None:
+    # Real Round Durations: Round 1 = 45 min, Round 2 = 3.30 hrs (210 min), Round 3 = Untimed (No Timer)
+    if round_number == 3:
+        mins = None
+        deadline_iso = None
+    elif deadline_minutes is not None:
         mins = deadline_minutes
+        deadline = now + timedelta(minutes=mins)
+        deadline_iso = deadline.strftime("%Y-%m-%dT%H:%M:%SZ")
     elif round_number == 1:
         mins = 45
+        deadline = now + timedelta(minutes=mins)
+        deadline_iso = deadline.strftime("%Y-%m-%dT%H:%M:%SZ")
     elif round_number == 2:
         mins = 210  # 3 hours 30 minutes
+        deadline = now + timedelta(minutes=mins)
+        deadline_iso = deadline.strftime("%Y-%m-%dT%H:%M:%SZ")
     else:
         mins = 180
-    deadline = now + timedelta(minutes=mins)
+        deadline = now + timedelta(minutes=mins)
+        deadline_iso = deadline.strftime("%Y-%m-%dT%H:%M:%SZ")
     now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-    deadline_iso = deadline.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Ensure problem statements are distributed before Round 1 can be started
     if round_number == 1:
@@ -663,6 +682,16 @@ async def set_round_results_timer(
     if not round_doc:
         raise HTTPException(status_code=404, detail="Round not found")
 
+    # If setting timer or revealing Round 3 qualifiers, require at least one team qualified
+    if round_number == 3 and action in ["set", "announce_now", "reveal", "reveal_selection"]:
+        teams_col = db_manager.get_collection("teams")
+        num_qualified = teams_col.count_documents({"is_qualified_r3": True}) if hasattr(teams_col, "count_documents") else len([t for t in teams_col.find({}) if t.get("is_qualified_r3")])
+        if num_qualified == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot announce Round 3 qualifiers: No teams have been selected or qualified for Round 3 yet. Please qualify teams from the Evaluation or Standings tab first."
+            )
+
     now = datetime.utcnow()
     now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -869,6 +898,15 @@ async def set_winner_announcement(
     audit_col = db_manager.get_collection("audit_logs")
     now = datetime.utcnow()
     now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    if action in ["set", "announce_now"]:
+        teams_col = db_manager.get_collection("teams")
+        num_qualified = teams_col.count_documents({"is_qualified_r3": True}) if hasattr(teams_col, "count_documents") else len([t for t in teams_col.find({}) if t.get("is_qualified_r3")])
+        if num_qualified == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot announce winners: No teams have been qualified for Round 3 yet. Please qualify teams for Round 3 first before announcing winners."
+            )
 
     # Per championship regulations, winner and runner up are determined automatically based on Round 3 marks.
     # The admin cannot manually select winners; the system computes them automatically.
