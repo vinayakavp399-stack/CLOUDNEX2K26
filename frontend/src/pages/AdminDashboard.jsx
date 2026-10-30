@@ -194,7 +194,14 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
           localStorage.setItem('cloudnex_admin_overview', JSON.stringify(ovRes.value));
         } catch {}
         if (ovRes.value?.winner_announcement) {
-          setWinnerAnnouncement(ovRes.value.winner_announcement);
+          const wAnn = ovRes.value.winner_announcement;
+          setWinnerAnnouncement(prev => {
+            // Guard active timer from being overwritten by stale server response
+            if (prev?.is_timer_active && !prev?.is_announced && !wAnn?.is_timer_active && !wAnn?.is_announced) {
+              return prev;
+            }
+            return wAnn;
+          });
         }
       } else {
         console.error('Failed to load overview:', ovRes.reason);
@@ -335,6 +342,12 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
           if (event.data.is_announced) {
             setIsAnnouncing(false);
             setAnnouncementCountdown(null);
+          } else if (event.data.is_timer_active && event.data.announcement_time) {
+            setIsAnnouncing(true);
+            const skew = (typeof window !== 'undefined' && window.__cloudnex_server_time_skew) || 0;
+            const targetMs = parseUtcDate(event.data.announcement_time);
+            const rem = Math.max(0, Math.ceil((targetMs - (Date.now() + skew)) / 1000));
+            setAnnouncementCountdown(rem);
           }
         }
         if (event.type === 'ROUND_STATUS_CHANGED' && event.data) {
@@ -357,10 +370,10 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       }
     });
 
-    // Adaptive Admin Sync Heartbeat (paused during live countdowns to guarantee zero lag)
+    // Adaptive Admin Sync Heartbeat (paused during live countdowns to guarantee zero lag and prevent state wipe)
     const adminHeartbeat = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        if (!isGoingLiveRef.current) {
+        if (!isGoingLiveRef.current && !isAnnouncing && !winnerAnnouncement?.is_timer_active) {
           loadData(true);
         }
       }
@@ -766,66 +779,23 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
     setAnnouncementCountdown(0);
     setAnnouncementDismissed(false);
 
-    // Compute automatic winner & runner up based strictly on Round 3 marks
-    const qualified = (teams || [])
-      .filter((t) => t.is_qualified_r3)
-      .slice()
-      .sort((a, b) => {
-        const r3A = a.scores_by_round?.['3'] !== undefined && a.scores_by_round?.['3'] !== null
-          ? parseFloat(a.scores_by_round['3'])
-          : (a.r3_score !== undefined ? parseFloat(a.r3_score) : -1);
-        const r3B = b.scores_by_round?.['3'] !== undefined && b.scores_by_round?.['3'] !== null
-          ? parseFloat(b.scores_by_round['3'])
-          : (b.r3_score !== undefined ? parseFloat(b.r3_score) : -1);
-        if (r3B !== r3A) return r3B - r3A;
-        const totA = parseFloat(a.total_score || 0);
-        const totB = parseFloat(b.total_score || 0);
-        if (totB !== totA) return totB - totA;
-        return (a.team_name || '').localeCompare(b.team_name || '');
-      });
-
-    const candidates = qualified.length > 0 ? qualified : (teams || []).filter(t => !t.is_eliminated).slice().sort((a, b) => {
-      const r3A = a.scores_by_round?.['3'] !== undefined && a.scores_by_round?.['3'] !== null
-        ? parseFloat(a.scores_by_round['3'])
-        : (a.r3_score !== undefined ? parseFloat(a.r3_score) : -1);
-      const r3B = b.scores_by_round?.['3'] !== undefined && b.scores_by_round?.['3'] !== null
-        ? parseFloat(b.scores_by_round['3'])
-        : (b.r3_score !== undefined ? parseFloat(b.r3_score) : -1);
-      if (r3B !== r3A) return r3B - r3A;
-      const totA = parseFloat(a.total_score || 0);
-      const totB = parseFloat(b.total_score || 0);
-      if (totB !== totA) return totB - totA;
-      return (a.team_name || '').localeCompare(b.team_name || '');
-    });
-
-    const autoWinner = candidates[0] || null;
-    const autoRunnerUp = candidates.length > 1 ? candidates[1] : null;
-
-    const defaultWinner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner || autoWinner;
-    const defaultRunnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || autoRunnerUp;
-
-    // OPTIMISTIC UPDATE WINNER ANNOUNCEMENT IMMEDIATELY
-    const immediateWinnerDoc = {
-      is_announced: true,
-      is_timer_active: false,
-      held: false,
-      winner: defaultWinner,
-      runner_up: defaultRunnerUp
-    };
-    setWinnerAnnouncement(prev => ({
-      ...prev,
-      ...immediateWinnerDoc
-    }));
-    setSuccessMsg('🏆 WINNER & 1ST RUNNER UP ARE NOW LIVE ACROSS ALL PORTALS!');
-
-    if (typeof broadcastLocalEvent === 'function') {
-      broadcastLocalEvent('WINNER_ANNOUNCEMENT_UPDATED', immediateWinnerDoc);
-    }
-
     try {
       const res = await api.admin.setWinnerAnnouncement('announce_now', 0);
-      if (res) {
-        setWinnerAnnouncement(res);
+      const nextWinnerDoc = {
+        key: 'winner_announcement',
+        is_announced: true,
+        is_timer_active: false,
+        announcement_time: null,
+        held: false,
+        winner: res?.winner || winnerAnnouncement?.winner,
+        runner_up: res?.runner_up || winnerAnnouncement?.runner_up
+      };
+
+      setWinnerAnnouncement(nextWinnerDoc);
+      setSuccessMsg('🏆 WINNER & 1ST RUNNER UP ARE NOW LIVE ACROSS ALL PORTALS!');
+
+      if (typeof broadcastLocalEvent === 'function') {
+        broadcastLocalEvent('WINNER_ANNOUNCEMENT_UPDATED', nextWinnerDoc);
       }
     } catch (err) {
       setErrorMsg(err.message || 'Failed to publish results live');
@@ -856,7 +826,9 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       setIsAnnouncing(true);
 
       const tick = () => {
-        const remaining = Math.max(0, Math.ceil((targetTime - Date.now()) / 1000));
+        const skew = (typeof window !== 'undefined' && window.__cloudnex_server_time_skew) || 0;
+        const now = Date.now() + skew;
+        const remaining = Math.max(0, Math.ceil((targetTime - now) / 1000));
         setAnnouncementCountdown(prev => prev === remaining ? prev : remaining);
 
         if (remaining <= 0) {
@@ -889,84 +861,45 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
     if (seconds <= 0) {
       return await handleGoLiveInstant();
     }
+    if (isPublishingLive) return;
+    setIsPublishingLive(true);
+
     try {
       setErrorMsg('');
       setAnnouncementDismissed(false);
-      setIsAnnouncing(true);
-      setAnnouncementCountdown(seconds);
       isGoingLiveRef.current = false;
 
-      // Automatically determine winner and runner up strictly by Round 3 marks
-      const qualified = (teams || [])
-        .filter((t) => t.is_qualified_r3)
-        .slice()
-        .sort((a, b) => {
-          const r3A = a.scores_by_round?.['3'] !== undefined && a.scores_by_round?.['3'] !== null
-            ? parseFloat(a.scores_by_round['3'])
-            : (a.r3_score !== undefined ? parseFloat(a.r3_score) : -1);
-          const r3B = b.scores_by_round?.['3'] !== undefined && b.scores_by_round?.['3'] !== null
-            ? parseFloat(b.scores_by_round['3'])
-            : (b.r3_score !== undefined ? parseFloat(b.r3_score) : -1);
-          if (r3B !== r3A) return r3B - r3A;
-          const totA = parseFloat(a.total_score || 0);
-          const totB = parseFloat(b.total_score || 0);
-          if (totB !== totA) return totB - totA;
-          return (a.team_name || '').localeCompare(b.team_name || '');
-        });
+      // Single-click guarantee: await server confirmation
+      const res = await api.admin.setWinnerAnnouncement('set', seconds);
 
-      const candidates = qualified.length > 0 ? qualified : (teams || []).filter(t => !t.is_eliminated).slice().sort((a, b) => {
-        const r3A = a.scores_by_round?.['3'] !== undefined && a.scores_by_round?.['3'] !== null
-          ? parseFloat(a.scores_by_round['3'])
-          : (a.r3_score !== undefined ? parseFloat(a.r3_score) : -1);
-        const r3B = b.scores_by_round?.['3'] !== undefined && b.scores_by_round?.['3'] !== null
-          ? parseFloat(b.scores_by_round['3'])
-          : (b.r3_score !== undefined ? parseFloat(b.r3_score) : -1);
-        if (r3B !== r3A) return r3B - r3A;
-        const totA = parseFloat(a.total_score || 0);
-        const totB = parseFloat(b.total_score || 0);
-        if (totB !== totA) return totB - totA;
-        return (a.team_name || '').localeCompare(b.team_name || '');
-      });
-
-      const defaultWinner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner || candidates[0] || null;
-      const defaultRunnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || (candidates.length > 1 ? candidates[1] : null);
-
-      const targetTime = new Date(Date.now() + seconds * 1000).toISOString();
+      const targetIso = res?.announcement_time || new Date(Date.now() + seconds * 1000).toISOString();
       const nextWinnerDoc = {
+        key: 'winner_announcement',
         is_timer_active: true,
         is_announced: false,
         timer_seconds: seconds,
-        announcement_time: targetTime,
+        announcement_time: targetIso,
         held: false,
-        winner: defaultWinner,
-        runner_up: defaultRunnerUp
+        winner: res?.winner || winnerAnnouncement?.winner,
+        runner_up: res?.runner_up || winnerAnnouncement?.runner_up
       };
-      setWinnerAnnouncement(prev => ({
-        ...prev,
-        ...nextWinnerDoc
-      }));
+
+      setWinnerAnnouncement(nextWinnerDoc);
+      setIsAnnouncing(true);
+      setAnnouncementCountdown(seconds);
 
       if (typeof broadcastLocalEvent === 'function') {
         broadcastLocalEvent('WINNER_ANNOUNCEMENT_UPDATED', nextWinnerDoc);
       }
 
       setSuccessMsg(`🚀 Winner Go Live countdown initiated (${seconds}s)!`);
-
-      api.admin.setWinnerAnnouncement('set', seconds)
-        .then(res => {
-          if (res) setWinnerAnnouncement(res);
-        })
-        .catch(err => {
-          setErrorMsg(err.message || 'Failed to start countdown');
-          setIsAnnouncing(false);
-          setAnnouncementCountdown(null);
-          isGoingLiveRef.current = false;
-        });
     } catch (err) {
       setErrorMsg(err.message || 'Failed to start countdown');
       setIsAnnouncing(false);
       setAnnouncementCountdown(null);
       isGoingLiveRef.current = false;
+    } finally {
+      setIsPublishingLive(false);
     }
   };
 
@@ -3794,265 +3727,42 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
         {activeTab === 'winner_announcement' && (
           <div className="space-y-6">
             {(() => {
-              // Helper to retrieve Round 3 marks for any team
-              const getR3Score = (t) => {
-                if (!t) return -1;
-                const sc = t.scores_by_round?.['3'] ?? t.scores_by_round?.[3] ?? t.r3_score;
-                if (sc !== undefined && sc !== null) {
-                  const parsed = parseFloat(sc);
-                  return !isNaN(parsed) ? parsed : -1;
-                }
-                return -1;
-              };
-
-              // Finalists: teams qualified for Round 3, or active teams if not qualified
-              const qualified = (teams || []).filter((t) => t.is_qualified_r3);
-              const basePool = qualified.length > 0 ? qualified : (teams || []).filter((t) => !t.is_eliminated);
-              const eligiblePool = basePool.length > 0 ? basePool : (teams || []);
-
-              // Strict sort by Round 3 marks descending (tie-break by total_score descending)
-              const sortedByR3 = eligiblePool.slice().sort((a, b) => {
-                const r3A = getR3Score(a);
-                const r3B = getR3Score(b);
-                if (r3B !== r3A) return r3B - r3A;
-                const totA = parseFloat(a.total_score || 0);
-                const totB = parseFloat(b.total_score || 0);
-                if (totB !== totA) return totB - totA;
-                return (a.team_name || '').localeCompare(b.team_name || '');
-              });
-
-              // Winner and Runner Up are strictly and automatically determined from Round 3 marks
-              const autoWinner = sortedByR3[0] || null;
-              const autoRunnerUp = sortedByR3.length > 1 ? sortedByR3[1] : null;
-
-              const winner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner || autoWinner;
-              const runnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up || autoRunnerUp;
-
               const isResultsAnnounced = Boolean(winnerAnnouncement?.is_announced);
               const isCountdownActive = Boolean(
                 !isResultsAnnounced &&
                 (winnerAnnouncement?.is_timer_active || isAnnouncing || isPublishingLive || announcementCountdown !== null)
               );
 
+              const winner = winnerAnnouncement?.winner || overview?.winner_announcement?.winner;
+              const runnerUp = winnerAnnouncement?.runner_up || overview?.winner_announcement?.runner_up;
+
               return (
                 <div className="space-y-6">
 
                   {/* GO LIVE CONTROL CONSOLE (Shown when results are NOT yet live) */}
+                  {/* BEFORE GOING LIVE: ONLY CONTAINS THE TIMER & GO LIVE BUTTON */}
                   {!isResultsAnnounced && !isCountdownActive && (
-                    <div className="racing-card rounded-2xl p-6 sm:p-8 border-2 border-amber-500/50 bg-gradient-to-b from-slate-950/95 via-slate-950/95 to-amber-950/20 shadow-2xl max-w-4xl mx-auto space-y-6">
-                      
-                      {/* Header Badge */}
-                      <div className="text-center space-y-2">
-                        <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-400/40 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-950/40">
-                          <Trophy className="w-7 h-7 text-amber-400 animate-pulse" />
-                        </div>
-                        <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-[11px] font-race font-bold tracking-widest uppercase">
-                          <Lock className="w-3.5 h-3.5 text-amber-400" />
-                          <span>AUTOMATIC SELECTION &bull; STRICTLY BASED ON ROUND 3 MARKS</span>
-                        </div>
+                    <div className="racing-card rounded-2xl p-8 sm:p-12 border-2 border-amber-500/50 bg-gradient-to-b from-slate-950/95 via-slate-950/95 to-amber-950/20 shadow-2xl text-center max-w-xl mx-auto space-y-6 animate-fade-in">
+                      <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-400/40 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-950/40">
+                        <Clock className="w-8 h-8 text-amber-400 animate-pulse" />
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-xs font-race font-bold uppercase tracking-widest text-amber-400">
+                          ANNOUNCEMENT TIMER
+                        </span>
                         <h4 className="font-race text-2xl font-black text-white">
-                          CHAMPIONSHIP PODIUM REVEAL HQ
+                          START CHAMPIONSHIP COUNTDOWN
                         </h4>
-                        <p className="text-xs text-slate-300 font-mono-code max-w-2xl mx-auto leading-relaxed">
-                          The Grand Champion (1st Place) and 1st Runner Up (2nd Place) are automatically selected by the system strictly according to their evaluated Round 3 marks. Admin selection is locked to preserve championship integrity.
+                        <p className="text-xs text-slate-400 font-mono-code max-w-md mx-auto">
+                          Select the countdown timer duration and click Go Live to announce the winner &amp; 1st runner up.
                         </p>
                       </div>
 
-                      {/* AUTOMATIC PODIUM PREVIEW CARDS */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        
-                        {/* Winner Card (Gold) */}
-                        <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-950/40 via-slate-900/90 to-slate-950 border-2 border-amber-400/80 shadow-xl shadow-amber-950/40 space-y-4 relative overflow-hidden">
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-                          
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-race font-black text-amber-300 uppercase flex items-center space-x-2">
-                              <Trophy className="w-4 h-4 text-yellow-400" />
-                              <span>1ST PLACE &bull; GRAND CHAMPION</span>
-                            </span>
-                            <span className="text-[10px] font-race font-bold px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-sm">
-                              RANK #1 IN ROUND 3
-                            </span>
-                          </div>
-
-                          {winner ? (
-                            <div className="space-y-3">
-                              <div>
-                                <h3 className="font-race text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 truncate">
-                                  {winner.team_name}
-                                </h3>
-                                <p className="text-xs font-mono-code text-slate-300 truncate mt-0.5">
-                                  Leader: <span className="text-white font-bold">{winner.leader_name || 'Team Leader'}</span>
-                                </p>
-                                <p className="text-[11px] font-mono-code text-slate-400 truncate">
-                                  {winner.institution || 'Championship Contender'}
-                                </p>
-                              </div>
-
-                              {/* Highlighted Round 3 Score Pill */}
-                              <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-between">
-                                <div>
-                                  <span className="text-[10px] font-mono-code text-amber-300/90 uppercase block font-bold">
-                                    ROUND 3 MARKS
-                                  </span>
-                                  <span className="text-2xl font-race font-black text-amber-300">
-                                    {(getR3Score(winner) >= 0 ? getR3Score(winner) : (winner.r3_score ?? 0)).toFixed(1)} <span className="text-xs font-mono-code">Pts</span>
-                                  </span>
-                                </div>
-                                <div className="text-right border-l border-amber-400/20 pl-4">
-                                  <span className="text-[10px] font-mono-code text-slate-400 uppercase block font-bold">
-                                    TOTAL SCORE
-                                  </span>
-                                  <span className="text-sm font-mono-code font-bold text-slate-200">
-                                    {(winner.total_score || 0).toFixed(1)} Pts
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="py-8 text-center text-slate-500 text-xs font-mono-code">
-                              Awaiting Round 3 evaluations...
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Runner Up Card (Silver/Cyan) */}
-                        <div className="p-5 rounded-2xl bg-gradient-to-br from-cyan-950/40 via-slate-900/90 to-slate-950 border-2 border-cyan-400/80 shadow-xl shadow-cyan-950/40 space-y-4 relative overflow-hidden">
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
-                          
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-race font-black text-cyan-300 uppercase flex items-center space-x-2">
-                              <Award className="w-4 h-4 text-cyan-400" />
-                              <span>2ND PLACE &bull; 1ST RUNNER UP</span>
-                            </span>
-                            <span className="text-[10px] font-race font-bold px-2.5 py-0.5 rounded-full bg-cyan-400 text-slate-950 shadow-sm">
-                              RANK #2 IN ROUND 3
-                            </span>
-                          </div>
-
-                          {runnerUp ? (
-                            <div className="space-y-3">
-                              <div>
-                                <h3 className="font-race text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-teal-300 to-cyan-400 truncate">
-                                  {runnerUp.team_name}
-                                </h3>
-                                <p className="text-xs font-mono-code text-slate-300 truncate mt-0.5">
-                                  Leader: <span className="text-white font-bold">{runnerUp.leader_name || 'Team Leader'}</span>
-                                </p>
-                                <p className="text-[11px] font-mono-code text-slate-400 truncate">
-                                  {runnerUp.institution || 'Championship Contender'}
-                                </p>
-                              </div>
-
-                              {/* Highlighted Round 3 Score Pill */}
-                              <div className="p-3 rounded-xl bg-cyan-500/15 border border-cyan-400/40 flex items-center justify-between">
-                                <div>
-                                  <span className="text-[10px] font-mono-code text-cyan-300/90 uppercase block font-bold">
-                                    ROUND 3 MARKS
-                                  </span>
-                                  <span className="text-2xl font-race font-black text-cyan-300">
-                                    {(getR3Score(runnerUp) >= 0 ? getR3Score(runnerUp) : (runnerUp.r3_score ?? 0)).toFixed(1)} <span className="text-xs font-mono-code">Pts</span>
-                                  </span>
-                                </div>
-                                <div className="text-right border-l border-cyan-400/20 pl-4">
-                                  <span className="text-[10px] font-mono-code text-slate-400 uppercase block font-bold">
-                                    TOTAL SCORE
-                                  </span>
-                                  <span className="text-sm font-mono-code font-bold text-slate-200">
-                                    {(runnerUp.total_score || 0).toFixed(1)} Pts
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="py-8 text-center text-slate-500 text-xs font-mono-code">
-                              Awaiting Round 3 evaluations...
-                            </div>
-                          )}
-                        </div>
-
-                      </div>
-
-                      {/* ROUND 3 RANKINGS AUDIT TABLE */}
-                      <div className="rounded-xl bg-slate-900/80 border border-white/10 p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-race font-bold uppercase tracking-wider text-slate-300 flex items-center space-x-1.5">
-                            <Radio className="w-3.5 h-3.5 text-amber-400" />
-                            <span>ROUND 3 AUTOMATIC STANDINGS</span>
-                          </span>
-                          <span className="text-[10px] font-mono-code text-slate-400">
-                            Sorted strictly by Round 3 Marks descending
-                          </span>
-                        </div>
-
-                        <div className="overflow-x-auto max-h-56 overflow-y-auto">
-                          <table className="w-full text-left font-mono-code text-xs">
-                            <thead className="text-[10px] uppercase text-slate-400 bg-slate-950/60 sticky top-0">
-                              <tr>
-                                <th className="px-3 py-2">Rank</th>
-                                <th className="px-3 py-2">Team</th>
-                                <th className="px-3 py-2">Leader</th>
-                                <th className="px-3 py-2 text-right text-amber-300 font-bold">R3 Marks</th>
-                                <th className="px-3 py-2 text-right">Total Score</th>
-                                <th className="px-3 py-2 text-center">Podium Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                              {sortedByR3.map((t, idx) => {
-                                const r3Score = getR3Score(t);
-                                const isFirst = idx === 0;
-                                const isSecond = idx === 1;
-                                return (
-                                  <tr
-                                    key={t.team_id || t._id}
-                                    className={
-                                      isFirst
-                                        ? 'bg-amber-950/30 text-amber-200'
-                                        : isSecond
-                                        ? 'bg-cyan-950/30 text-cyan-200'
-                                        : 'hover:bg-slate-950/40 text-slate-300'
-                                    }
-                                  >
-                                    <td className="px-3 py-2 font-bold font-race text-xs">
-                                      {isFirst ? '🥇 #1' : isSecond ? '🥈 #2' : `#${idx + 1}`}
-                                    </td>
-                                    <td className="px-3 py-2 font-bold font-race">{t.team_name}</td>
-                                    <td className="px-3 py-2 text-slate-400">{t.leader_name || 'Leader'}</td>
-                                    <td className="px-3 py-2 text-right font-black text-sm">
-                                      <span className={isFirst ? 'text-amber-300' : isSecond ? 'text-cyan-300' : 'text-slate-200'}>
-                                        {(r3Score >= 0 ? r3Score : 0).toFixed(1)} Pts
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-2 text-right text-slate-400">
-                                      {(t.total_score || 0).toFixed(1)} Pts
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                      {isFirst ? (
-                                        <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-400/40">
-                                          👑 Grand Champion
-                                        </span>
-                                      ) : isSecond ? (
-                                        <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-bold border border-cyan-400/40">
-                                          🥈 1st Runner Up
-                                        </span>
-                                      ) : (
-                                        <span className="text-[10px] text-slate-500 font-mono-code">
-                                          Round 3 Finalist
-                                        </span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                      {/* COUNTDOWN TIMER SELECTOR */}
+                      {/* ONLY SHOWS THE TIMER */}
                       <div className="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-3">
-                        <span className="text-[11px] font-mono-code text-slate-400 uppercase block font-bold text-center">
-                          SELECT COUNTDOWN DURATION BEFORE REVEAL:
+                        <span className="text-[11px] font-mono-code text-slate-400 uppercase block font-bold">
+                          SELECT COUNTDOWN TIMER:
                         </span>
                         <div className="flex flex-wrap items-center justify-center gap-2">
                           {[5, 10, 15, 30, 60].map((s) => (
@@ -4072,37 +3782,37 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                         </div>
                       </div>
 
-                      {/* ACTION BUTTONS */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      {/* GO LIVE BUTTON */}
+                      <div className="pt-2 flex flex-col sm:flex-row gap-3">
                         <button
                           type="button"
                           onClick={() => handleStartGoLive(winnerTimerSeconds)}
-                          disabled={sortedByR3.length === 0 || isPublishingLive}
-                          className={`py-4 rounded-xl font-race font-black text-xs uppercase transition-all flex items-center justify-center space-x-2.5 shadow-2xl ${
-                            sortedByR3.length > 0 && !isPublishingLive
-                              ? 'bg-gradient-to-r from-red-600 via-amber-500 to-amber-400 hover:from-red-500 hover:to-amber-300 text-slate-950 shadow-red-950/70 glow-red cursor-pointer transform hover:scale-[1.02] active:scale-95'
-                              : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed'
-                          }`}
+                          disabled={isPublishingLive}
+                          className="flex-1 py-4 rounded-xl font-race font-black text-xs uppercase transition-all flex items-center justify-center space-x-2.5 shadow-2xl bg-gradient-to-r from-red-600 via-amber-500 to-amber-400 hover:from-red-500 hover:to-amber-300 text-slate-950 shadow-red-950/70 glow-red cursor-pointer transform hover:scale-[1.02] active:scale-95 disabled:opacity-50"
                         >
-                          <Rocket className="w-5 h-5 text-slate-950" />
-                          <span>GO LIVE ({winnerTimerSeconds}s COUNTDOWN)</span>
+                          {isPublishingLive ? (
+                            <>
+                              <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                              <span>STARTING COUNTDOWN...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Rocket className="w-5 h-5 text-slate-950" />
+                              <span>GO LIVE ({winnerTimerSeconds}s TIMER)</span>
+                            </>
+                          )}
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleGoLiveInstant()}
-                          disabled={sortedByR3.length === 0 || isPublishingLive}
-                          className={`py-4 rounded-xl font-race font-bold text-xs uppercase transition-all flex items-center justify-center space-x-2 shadow-xl ${
-                            sortedByR3.length > 0 && !isPublishingLive
-                              ? 'bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/40 cursor-pointer transform hover:scale-[1.02] active:scale-95'
-                              : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed'
-                          }`}
+                          disabled={isPublishingLive}
+                          className="py-4 px-5 rounded-xl font-race font-bold text-xs uppercase transition-all flex items-center justify-center space-x-2 shadow-xl bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/40 cursor-pointer transform hover:scale-[1.02] active:scale-95 disabled:opacity-50"
                         >
                           <Trophy className="w-4 h-4 text-amber-400" />
-                          <span>REVEAL IMMEDIATELY</span>
+                          <span>REVEAL NOW</span>
                         </button>
                       </div>
-
                     </div>
                   )}
 
@@ -4421,8 +4131,6 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                         </button>
                       </div>
 
-
-
                       {/* ── BACK TO COCKPIT BUTTON (Bottom-right) ── */}
                       <div className="absolute bottom-3 right-4 z-30">
                         <button
@@ -4442,8 +4150,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
             })()}
           </div>
         )}
-
-        {/* EVALUATION MODAL */}
+{/* EVALUATION MODAL */}
         {evalModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
             <div className="racing-card rounded-2xl p-6 sm:p-7 max-w-xl w-full max-h-[90vh] overflow-y-auto border border-red-500/40 shadow-2xl">

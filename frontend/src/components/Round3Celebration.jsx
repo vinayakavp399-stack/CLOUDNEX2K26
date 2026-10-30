@@ -119,17 +119,22 @@ export default function Round3Celebration({
 
   // When admin sets the countdown, countdown is active while seconds remain
   const remainingRealtime = getSecondsRemaining();
+  const targetMs = resultsAnnouncementTime ? parseUtcDate(resultsAnnouncementTime) : 0;
+  const skew = (typeof window !== 'undefined' && window.__cloudnex_server_time_skew) || 0;
+  const isTargetExpired = Boolean(targetMs > 0 && (Date.now() + skew) >= targetMs);
+
   const isCountdownActive = Boolean(
     resultsTimerActive &&
     resultsAnnouncementTime &&
     !resultsAnnounced &&
     !timerExpired &&
+    !isTargetExpired &&
     (secondsLeft > 0 || remainingRealtime > 0)
   );
 
   const isWinnerTimerExpired = Boolean(
     isWinnerTimer &&
-    (resultsAnnounced || timerExpired || secondsLeft <= 0 || remainingRealtime <= 0)
+    (resultsAnnounced || timerExpired || isTargetExpired)
   );
 
   const isWinnerAnnounced = Boolean(

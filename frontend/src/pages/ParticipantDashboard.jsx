@@ -179,7 +179,9 @@ export default function ParticipantDashboard() {
       hasFetchedWinnerExpiryRef.current = false;
       const targetMs = parseUtcDate(winnerAnnouncement.announcement_time);
       const update = () => {
-        const remaining = Math.max(0, Math.ceil((targetMs - Date.now()) / 1000));
+        const skew = (typeof window !== 'undefined' && window.__cloudnex_server_time_skew) || 0;
+        const now = Date.now() + skew;
+        const remaining = Math.max(0, Math.ceil((targetMs - now) / 1000));
         setWinnerSecondsLeft(prev => prev === remaining ? prev : remaining);
         if (remaining <= 0) {
           if (!hasFetchedWinnerExpiryRef.current) {
@@ -641,10 +643,11 @@ export default function ParticipantDashboard() {
     return false;
   };
 
+  const skew = (typeof window !== 'undefined' && window.__cloudnex_server_time_skew) || 0;
   const isWinnerTimerExpired = Boolean(
     winnerAnnouncement?.is_timer_active &&
     winnerAnnouncement?.announcement_time &&
-    parseUtcDate(winnerAnnouncement.announcement_time) <= Date.now()
+    parseUtcDate(winnerAnnouncement.announcement_time) <= (Date.now() + skew)
   );
 
   const isWinnerAnnounced = Boolean(
