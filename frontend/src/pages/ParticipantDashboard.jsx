@@ -29,8 +29,15 @@ export default function ParticipantDashboard({ onLogout }) {
       return [];
     }
   });
-  const [selectedRoundNumber, setSelectedRoundNumber] = useState(1);
+  const [selectedRoundNumber, setSelectedRoundNumber] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('cloudnex_participant_selected_round');
+      if (saved && [1, 2, 3].includes(Number(saved))) return Number(saved);
+    } catch {}
+    return 1;
+  });
   const selectedRoundNumberRef = useRef(1);
+  const userSelectedManuallyRef = useRef(Boolean(sessionStorage.getItem('cloudnex_participant_selected_round')));
   const round3SectionRef = useRef(null);
 
   const parseUtcDate = (val) => {
@@ -302,11 +309,10 @@ export default function ParticipantDashboard({ onLogout }) {
         scrollToAnnouncement();
       }
 
-      // Auto-focus on whichever round is currently LIVE if no round is selected or current round is locked/closed
-      const liveRound = safeR.find(r => r.status === 'LIVE');
-      if (liveRound && !r3?.results_timer_active) {
-        const curRound = safeR.find(r => r.round_number === selectedRoundNumberRef.current);
-        if (!curRound || curRound.status === 'LOCKED' || curRound.status === 'CLOSED') {
+      // Auto-focus on whichever round is currently LIVE on initial load ONLY if participant hasn't manually clicked a round
+      if (!userSelectedManuallyRef.current && !r3?.results_timer_active) {
+        const liveRound = safeR.find(r => r.status === 'LIVE' || r.submissions_open);
+        if (liveRound) {
           setSelectedRoundNumber(liveRound.round_number);
           selectedRoundNumberRef.current = liveRound.round_number;
         }
@@ -453,8 +459,8 @@ export default function ParticipantDashboard({ onLogout }) {
           return updated;
         });
 
-        // Automatically pivot participant viewport to the active LIVE round!
-        if (isLive) {
+        // Automatically pivot participant viewport to the active LIVE round ONLY if participant hasn't manually chosen a round
+        if (isLive && !userSelectedManuallyRef.current) {
           setSelectedRoundNumber(pRoundNum);
           selectedRoundNumberRef.current = pRoundNum;
         }
@@ -684,7 +690,9 @@ export default function ParticipantDashboard({ onLogout }) {
     : (Array.isArray(user?.members) && user.members.length > 0 ? user.members.filter(Boolean) : []);
 
   const handleSelectRound = (round) => {
-    const rNum = round.round_number;
+    const rNum = Number(round.round_number);
+    userSelectedManuallyRef.current = true;
+    try { sessionStorage.setItem('cloudnex_participant_selected_round', String(rNum)); } catch {}
     setSelectedRoundNumber(rNum);
     selectedRoundNumberRef.current = rNum;
     setActionSuccess('');
