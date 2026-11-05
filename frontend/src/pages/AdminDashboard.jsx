@@ -5,17 +5,19 @@ import {
   TrendingUp, Activity, Terminal, ArrowUpRight, ShieldAlert, Radio,
   Shuffle, Upload, Download, Layers, BarChart3, Sparkles, Check, X,
   PlusCircle, Database, HelpCircle, RotateCcw, Trophy, XCircle, ArrowLeft,
-  Search, LogOut
+  Search, LogOut, Sun, Moon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useRaceSocket } from '../context/RaceSocketContext';
+import { useTheme } from '../context/ThemeContext';
 import { api } from '../api/client';
 import CountdownTimer from '../components/CountdownTimer';
 import dashboardBg from '../assets/dashboard_bg.jpg';
 
-export default function AdminDashboard({ initialTab = 'rounds' }) {
-  const { user } = useAuth();
+export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
+  const { user, logout } = useAuth();
   const { registerListener, isConnected, broadcastLocalEvent, reconnect } = useRaceSocket();
+  const { isLight } = useTheme();
 
   const [overview, setOverview] = useState(() => {
     try {
@@ -120,6 +122,10 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   const pendingReloadRef = useRef(false);
   const debounceReloadTimerRef = useRef(null);
 
+  // Optimistic locks to prevent stale background fetches from reverting UI (0ms immunity)
+  const recentPublishActionRef = useRef({ status: null, timestamp: 0 });
+  const recentQualificationsRef = useRef({}); // { [teamId]: { shouldQualify, timestamp } }
+
   // Selected round for problem editor
   const [editingRoundNum, setEditingRoundNum] = useState(1);
   const [problemForm, setProblemForm] = useState({
@@ -209,10 +215,23 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       }
 
       if (teamsRes.status === 'fulfilled') {
-        setTeams(teamsRes.value);
+        const rawTeams = Array.isArray(teamsRes.value) ? teamsRes.value : [];
+        const mergedTeams = rawTeams.map(t => {
+          const recent = recentQualificationsRef.current[t.team_id];
+          if (recent && (Date.now() - recent.timestamp < 4000)) {
+            return {
+              ...t,
+              is_qualified_r3: recent.shouldQualify,
+              is_eliminated: !recent.shouldQualify,
+              status: recent.shouldQualify ? 'QUALIFIED_R3' : 'ELIMINATED'
+            };
+          }
+          return t;
+        });
+        setTeams(mergedTeams);
         try {
-          sessionStorage.setItem('cloudnex_admin_teams', JSON.stringify(teamsRes.value));
-          localStorage.setItem('cloudnex_admin_teams', JSON.stringify(teamsRes.value));
+          sessionStorage.setItem('cloudnex_admin_teams', JSON.stringify(mergedTeams));
+          localStorage.setItem('cloudnex_admin_teams', JSON.stringify(mergedTeams));
         } catch {}
       } else {
         console.error('Failed to load teams:', teamsRes.reason);
@@ -226,7 +245,11 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       }
 
       if (allocRes.status === 'fulfilled') {
-        setAllocationStats(allocRes.value);
+        let stats = allocRes.value;
+        if (Date.now() - recentPublishActionRef.current.timestamp < 4000 && recentPublishActionRef.current.status !== null) {
+          stats = { ...stats, is_published: recentPublishActionRef.current.status };
+        }
+        setAllocationStats(stats);
         if (allocRes.value?.max_teams_per_problem) {
           setMaxTeamsInput(allocRes.value.max_teams_per_problem);
         }
@@ -238,7 +261,11 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       }
 
       if (probsRes.status === 'fulfilled') {
-        setProblemStatements(probsRes.value);
+        let probs = probsRes.value;
+        if (Date.now() - recentPublishActionRef.current.timestamp < 4000 && recentPublishActionRef.current.status !== null) {
+          probs = (probs || []).map(p => ({ ...p, is_published: recentPublishActionRef.current.status }));
+        }
+        setProblemStatements(probs);
       } else {
         console.error('Failed to load problem statements:', probsRes.reason);
       }
@@ -310,6 +337,37 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
         });
         setOverview(prev => prev ? ({ ...prev, total_submissions: (prev.total_submissions || 0) + 1 }) : prev);
         scheduleLoadData(150);
+        return;
+      }
+
+      if (event.type === 'EVALUATION_RECORDED' && event.data) {
+        const { team_id, round_number, score, total_score, scores_by_round } = event.data;
+        if (team_id) {
+          setTeams(prevTeams => (Array.isArray(prevTeams) ? prevTeams : []).map(t => {
+            if (t.team_id === team_id) {
+              const updatedScores = scores_by_round || { ...(t.scores_by_round || {}), [String(round_number)]: score };
+              const newTotal = total_score !== undefined
+                ? total_score
+                : Object.values(updatedScores).reduce((acc, sc) => acc + (parseFloat(sc) || 0), 0);
+              return {
+                ...t,
+                scores_by_round: updatedScores,
+                total_score: newTotal
+              };
+            }
+            return t;
+          }));
+          setEvaluations(prevEvals => {
+            const list = Array.isArray(prevEvals) ? prevEvals : [];
+            const idx = list.findIndex(e => e.team_id === team_id && Number(e.round_number) === Number(round_number));
+            if (idx >= 0) {
+              const updated = [...list];
+              updated[idx] = { ...updated[idx], total_score: score };
+              return updated;
+            }
+            return [...list, { team_id, round_number, total_score: score }];
+          });
+        }
         return;
       }
 
@@ -537,6 +595,9 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   const handlePublishProblems = async (roundNumber = 1) => {
     try {
       setErrorMsg('');
+      // Record optimistic lock
+      recentPublishActionRef.current = { status: true, timestamp: Date.now() };
+
       // OPTIMISTIC UPDATE IMMEDIATELY
       setOverview(prev => {
         if (!prev) return prev;
@@ -559,8 +620,11 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       }
 
       api.admin.publishProblems(roundNumber)
-        .then(() => scheduleLoadData(400))
+        .then(() => {
+          recentPublishActionRef.current = { status: true, timestamp: Date.now() };
+        })
         .catch(err => {
+          recentPublishActionRef.current = { status: null, timestamp: 0 };
           setErrorMsg(err.message || 'Failed to approve and publish problem statements');
           loadData(true);
         });
@@ -572,6 +636,9 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   const handleUnpublishProblems = async (roundNumber = 1) => {
     try {
       setErrorMsg('');
+      // Record optimistic lock
+      recentPublishActionRef.current = { status: false, timestamp: Date.now() };
+
       // OPTIMISTIC UPDATE IMMEDIATELY
       setOverview(prev => {
         if (!prev) return prev;
@@ -594,8 +661,11 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       }
 
       api.admin.unpublishProblems(roundNumber)
-        .then(() => scheduleLoadData(400))
+        .then(() => {
+          recentPublishActionRef.current = { status: false, timestamp: Date.now() };
+        })
         .catch(err => {
+          recentPublishActionRef.current = { status: null, timestamp: 0 };
           setErrorMsg(err.message || 'Failed to unpublish problem statements');
           loadData(true);
         });
@@ -1436,6 +1506,9 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       const r2 = parseFloat(targetTeam?.scores_by_round?.['2'] || 0);
       const totalR12 = (r1 + r2) > 0 ? (r1 + r2) : parseFloat(targetTeam?.total_score || 0);
 
+      // Record optimistic lock to prevent bounce-back
+      recentQualificationsRef.current[teamId] = { shouldQualify, timestamp: Date.now() };
+
       // OPTIMISTIC UPDATE IMMEDIATELY
       let updatedList = [];
       setTeams(prevTeams => {
@@ -1483,10 +1556,19 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
         ]
       };
 
+      if (typeof broadcastLocalEvent === 'function') {
+        broadcastLocalEvent('QUALIFICATIONS_UPDATED', {
+          updated: [{ team_id: teamId, qualified: shouldQualify }]
+        });
+      }
+
       // Qualifications remain sealed and private to Race Control until admin starts the announcement timer or clicks reveal in Round Control (Lap 03).
       api.admin.qualify(payload)
-        .then(() => scheduleLoadData(400))
+        .then(() => {
+          recentQualificationsRef.current[teamId] = { shouldQualify, timestamp: Date.now() };
+        })
         .catch(err => {
+          delete recentQualificationsRef.current[teamId];
           setErrorMsg(err.message || 'Failed to update qualification');
           loadData(true);
         });
@@ -1693,6 +1775,14 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
       setSuccessMsg(`Marks for ${evalModal.team_name} (Lap 0${evalModal.round_number}) recorded: ${calculatedTotal.toFixed(1)} / ${maxLabel} Pts!`);
       setEvalModal(null);
 
+      if (typeof broadcastLocalEvent === 'function') {
+        broadcastLocalEvent('EVALUATION_RECORDED', {
+          team_id: evalModal.team_id,
+          round_number: evalModal.round_number,
+          score: calculatedTotal
+        });
+      }
+
       api.admin.evaluate(payload)
         .then(() => scheduleLoadData(400))
         .catch(err => {
@@ -1724,18 +1814,20 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#080a0f] py-8 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className={`min-h-screen py-8 px-4 sm:px-6 lg:px-8 relative overflow-hidden transition-colors duration-300 ${
+      isLight ? 'bg-slate-100 text-slate-900' : 'bg-[#080a0f] text-white'
+    }`}>
       {/* High-Tech Dashboard Background Image */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <img
           src={dashboardBg}
           alt="CLOUDNEX Admin Dashboard Atmosphere"
-          className="w-full h-full object-cover object-top opacity-40 filter brightness-95 contrast-110"
+          className={`w-full h-full object-cover object-top opacity-35 filter ${isLight ? 'brightness-110 contrast-100' : 'brightness-95 contrast-110'}`}
         />
         {/* Atmospheric gradients for readability */}
-        <div className="absolute inset-0 bg-[#080a0f]/75 backdrop-blur-[1px]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#080a0f] via-transparent to-[#080a0f]/90" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#080a0f]/80 via-transparent to-[#080a0f]/80" />
+        <div className={`absolute inset-0 ${isLight ? 'bg-slate-50/80 backdrop-blur-[2px]' : 'bg-[#080a0f]/75 backdrop-blur-[1px]'}`} />
+        <div className={`absolute inset-0 bg-gradient-to-t ${isLight ? 'from-slate-100 via-transparent to-slate-100/90' : 'from-[#080a0f] via-transparent to-[#080a0f]/90'}`} />
+        <div className={`absolute inset-0 bg-gradient-to-r ${isLight ? 'from-slate-100/80 via-transparent to-slate-100/80' : 'from-[#080a0f]/80 via-transparent to-[#080a0f]/80'}`} />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto space-y-8">
@@ -1773,9 +1865,14 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
             <div className="flex items-center space-x-3">
               <button
                 onClick={loadData}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-white/10 text-xs font-race flex items-center space-x-2 transition-colors"
+                className={`px-4 py-2 rounded-xl border text-xs font-race flex items-center space-x-2 transition-all cursor-pointer shadow-sm ${
+                  isLight
+                    ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-300 shadow-red-100 hover:shadow-md'
+                    : 'bg-red-950/60 hover:bg-red-900 text-red-300 hover:text-white border-red-500/40 shadow-red-950/40'
+                }`}
+                title="Sync Live Telemetry"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className="w-3.5 h-3.5 text-red-500" />
                 <span>Sync Telemetry</span>
               </button>
             </div>
@@ -1852,60 +1949,115 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex flex-wrap gap-2 border-b border-white/10 pb-4 text-xs font-race font-bold">
+        <div className={`flex flex-wrap gap-2 border-b pb-4 text-xs font-race font-bold ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
           <button
             onClick={() => setActiveTab('rounds')}
-            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 ${activeTab === 'rounds' ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'
-              }`}
+            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 shadow-sm ${
+              activeTab === 'rounds'
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 font-black'
+                : isLight
+                ? 'bg-white text-slate-900 hover:text-red-700 hover:bg-red-50 border border-slate-300'
+                : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-white/5'
+            }`}
           >
-            <Flag className="w-4 h-4" />
+            <Flag className={`w-4 h-4 ${activeTab === 'rounds' ? 'text-white' : 'text-red-500'}`} />
             <span>Round Control</span>
           </button>
 
           <button
             onClick={() => setActiveTab('problems')}
-            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 ${activeTab === 'problems' ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'
-              }`}
+            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 shadow-sm ${
+              activeTab === 'problems'
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 font-black'
+                : isLight
+                ? 'bg-white text-slate-900 hover:text-red-700 hover:bg-red-50 border border-slate-300'
+                : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-white/5'
+            }`}
           >
-            <Shuffle className="w-4 h-4" />
+            <Shuffle className={`w-4 h-4 ${activeTab === 'problems' ? 'text-white' : 'text-red-500'}`} />
             <span>Problem Allocation &amp; 10 PS Pool</span>
           </button>
 
           <button
             onClick={() => setActiveTab('evaluation')}
-            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 ${activeTab === 'evaluation' ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'
-              }`}
+            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 shadow-sm ${
+              activeTab === 'evaluation'
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 font-black'
+                : isLight
+                ? 'bg-white text-slate-900 hover:text-red-700 hover:bg-red-50 border border-slate-300'
+                : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-white/5'
+            }`}
           >
-            <Award className="w-4 h-4" />
-            <span>Judge Evaluations ({displayTeamCount} Live Teams)</span>
+            <Award className={`w-4 h-4 ${activeTab === 'evaluation' ? 'text-white' : 'text-red-500'}`} />
+            <span className={activeTab === 'evaluation' ? 'text-white' : (isLight ? 'text-slate-900 font-bold' : 'text-slate-300')}>Judge Evaluations</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono-code font-bold ${
+              activeTab === 'evaluation'
+                ? 'bg-white/20 text-white'
+                : isLight
+                ? 'bg-red-100 text-red-800 border border-red-300'
+                : 'bg-red-950/80 text-red-400 border border-red-800/50'
+            }`}>
+              {displayTeamCount} Live Teams
+            </span>
           </button>
 
           <button
             onClick={() => setActiveTab('qualification')}
-            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 ${activeTab === 'qualification' ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'
-              }`}
+            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 shadow-sm ${
+              activeTab === 'qualification'
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 font-black'
+                : isLight
+                ? 'bg-white text-slate-900 hover:text-red-700 hover:bg-red-50 border border-slate-300'
+                : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-white/5'
+            }`}
           >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>R3 Qualification ({teams.filter((t) => t.is_qualified_r3).length} Qualified)</span>
+            <CheckCircle2 className={`w-4 h-4 ${activeTab === 'qualification' ? 'text-white' : 'text-emerald-500'}`} />
+            <span className={activeTab === 'qualification' ? 'text-white' : (isLight ? 'text-slate-900 font-bold' : 'text-slate-300')}>R3 Qualification</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono-code font-bold ${
+              activeTab === 'qualification'
+                ? 'bg-white/20 text-white'
+                : isLight
+                ? 'bg-red-100 text-red-800 border border-red-300'
+                : 'bg-red-950/80 text-red-400 border border-red-800/50'
+            }`}>
+              {teams.filter((t) => t.is_qualified_r3).length} Qualified
+            </span>
           </button>
 
           <button
             onClick={() => setActiveTab('final_round')}
-            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 ${activeTab === 'final_round' ? 'bg-red-600 text-white shadow-lg shadow-red-950/50' : 'bg-slate-900 text-slate-400 hover:text-white'
-              }`}
+            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 shadow-sm ${
+              activeTab === 'final_round'
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 font-black'
+                : isLight
+                ? 'bg-white text-slate-900 hover:text-red-700 hover:bg-red-50 border border-slate-300'
+                : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-white/5'
+            }`}
           >
-            <Trophy className="w-4 h-4 text-amber-400" />
-            <span>Final Round ({teams.filter((t) => t.is_qualified_r3).length} Qualified)</span>
+            <Trophy className={`w-4 h-4 ${activeTab === 'final_round' ? 'text-white' : 'text-amber-500'}`} />
+            <span className={activeTab === 'final_round' ? 'text-white' : (isLight ? 'text-slate-900 font-bold' : 'text-slate-300')}>Final Round</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono-code font-bold ${
+              activeTab === 'final_round'
+                ? 'bg-white/20 text-white'
+                : isLight
+                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                : 'bg-amber-950/80 text-amber-300 border border-amber-800/50'
+            }`}>
+              {teams.filter((t) => t.is_qualified_r3).length} Qualified
+            </span>
           </button>
 
           <button
             onClick={() => setActiveTab('winner_announcement')}
-            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 ${activeTab === 'winner_announcement'
+            className={`px-4 py-2.5 rounded-xl transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-2 shadow-sm ${
+              activeTab === 'winner_announcement'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black shadow-lg shadow-amber-950/50 glow-amber'
+                : isLight
+                ? 'bg-white text-amber-900 hover:bg-amber-50 border border-amber-300 font-bold'
                 : 'bg-slate-900 text-amber-400 hover:text-white border border-amber-500/30'
-              }`}
+            }`}
           >
-            <Sparkles className="w-4 h-4 text-amber-400" />
+            <Sparkles className="w-4 h-4 text-amber-500" />
             <span>Winner Announcement</span>
             {Boolean(winnerAnnouncement?.is_announced) && (
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
@@ -1918,10 +2070,14 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
               setResetEventConfirmText('');
               setResetEventModalOpen(true);
             }}
-            className="ml-auto px-3.5 py-2 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-500/50 text-red-300 hover:text-white transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-1.5 shadow-md shadow-red-950/40 text-xs font-race font-bold uppercase tracking-wider"
+            className={`ml-auto px-3.5 py-2 rounded-xl border transition-all duration-75 active:scale-95 cursor-pointer flex items-center space-x-1.5 shadow-md text-xs font-race font-bold uppercase tracking-wider ${
+              isLight
+                ? 'bg-red-600 hover:bg-red-700 text-white border-red-600 shadow-red-200'
+                : 'bg-red-950/80 hover:bg-red-900 border-red-500/50 text-red-300 hover:text-white shadow-red-950/40'
+            }`}
             title="Reset entire event to initial state (preserves registered users and teams)"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-red-400" />
+            <RotateCcw className={`w-3.5 h-3.5 ${isLight ? 'text-white' : 'text-red-500'}`} />
             <span>Reset Event</span>
           </button>
         </div>
@@ -2927,42 +3083,44 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
         {/* TAB 3: ROUND 3 SELECTION & QUALIFICATION DESK */}
         {(activeTab === 'qualification' || activeTab === 'elimination' || activeTab === 'teams') && (
-          <div className="racing-card rounded-2xl p-6 sm:p-8 border border-white/10 shadow-2xl space-y-6">
+          <div className={`racing-card rounded-2xl p-6 sm:p-8 border shadow-2xl space-y-6 ${isLight ? 'border-slate-200 bg-white/95' : 'border-white/10'}`}>
             {/* Header & Context */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/10">
+            <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
               <div>
-                <div className="flex items-center space-x-2 text-xs font-race uppercase tracking-widest text-emerald-400 font-bold mb-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="flex items-center space-x-2 text-xs font-race uppercase tracking-widest text-emerald-500 font-bold mb-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span>F1 RACE CONTROL • ROUND 3 DESK</span>
                 </div>
-                <h3 className="font-race text-xl sm:text-2xl font-black text-white flex items-center space-x-3">
+                <h3 className={`font-race text-xl sm:text-2xl font-black flex items-center space-x-3 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   <span>ROUND 3 SELECTION &amp; QUALIFICATION DESK</span>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-mono-code font-bold">
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono-code font-bold ${
+                    isLight ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
+                  }`}>
                     {teams.filter((t) => t.is_qualified_r3).length} Qualified
                   </span>
                 </h3>
-                <p className="text-xs text-slate-400 font-mono-code mt-1 max-w-3xl">
+                <p className={`text-xs font-mono-code mt-1 max-w-3xl ${isLight ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
                   Qualify or eliminate participating teams for the Final Lap (Round 3) strictly based on their combined Round 1 &amp; Round 2 marks. Decisions broadcast live instantly to participant dashboards.
                 </p>
               </div>
 
               {/* Telemetry Summary Counters */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-center">
-                  <span className="text-[10px] font-mono-code text-emerald-300 uppercase block">R3 QUALIFIED</span>
-                  <span className="font-race text-lg sm:text-xl font-black text-emerald-400">
+                <div className={`p-3 rounded-xl border text-center ${isLight ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-emerald-950/40 border-emerald-500/30'}`}>
+                  <span className={`text-[10px] font-mono-code uppercase block ${isLight ? 'text-emerald-800 font-bold' : 'text-emerald-300'}`}>R3 QUALIFIED</span>
+                  <span className={`font-race text-lg sm:text-xl font-black ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
                     {teams.filter((t) => t.is_qualified_r3).length}
                   </span>
                 </div>
-                <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/30 text-center">
-                  <span className="text-[10px] font-mono-code text-red-300 uppercase block">ELIMINATED</span>
-                  <span className="font-race text-lg sm:text-xl font-black text-red-400">
+                <div className={`p-3 rounded-xl border text-center ${isLight ? 'bg-red-50 border-red-200 text-red-900' : 'bg-red-950/40 border-red-500/30'}`}>
+                  <span className={`text-[10px] font-mono-code uppercase block ${isLight ? 'text-red-800 font-bold' : 'text-red-300'}`}>ELIMINATED</span>
+                  <span className={`font-race text-lg sm:text-xl font-black ${isLight ? 'text-red-700' : 'text-red-400'}`}>
                     {teams.filter((t) => t.is_eliminated).length}
                   </span>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-900 border border-white/10 text-center">
-                  <span className="text-[10px] font-mono-code text-slate-400 uppercase block">PENDING</span>
-                  <span className="font-race text-lg sm:text-xl font-black text-slate-300">
+                <div className={`p-3 rounded-xl border text-center ${isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-900 border-white/10'}`}>
+                  <span className={`text-[10px] font-mono-code uppercase block ${isLight ? 'text-slate-600 font-bold' : 'text-slate-400'}`}>PENDING</span>
+                  <span className={`font-race text-lg sm:text-xl font-black ${isLight ? 'text-slate-800' : 'text-slate-300'}`}>
                     {teams.filter((t) => !t.is_qualified_r3 && !t.is_eliminated).length}
                   </span>
                 </div>
@@ -2971,8 +3129,10 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
             {/* Action Bar: Notice & Search Filter */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center space-x-2 text-xs font-mono-code text-amber-300/90 bg-amber-950/30 border border-amber-500/20 px-3.5 py-2 rounded-xl">
-                <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+              <div className={`flex items-center space-x-2 text-xs font-mono-code px-3.5 py-2 rounded-xl border ${
+                isLight ? 'bg-amber-50 text-amber-900 border-amber-300 shadow-sm' : 'text-amber-300/90 bg-amber-950/30 border border-amber-500/20'
+              }`}>
+                <Clock className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>
                   <strong>Steward Note:</strong> Qualify or eliminate teams below based on Round 1 &amp; 2 marks. Results remain private to Race Control until you trigger the announcement timer in Round Control (Lap 03).
                 </span>
@@ -2980,19 +3140,23 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
               {/* Search Option by Team ID / Name */}
               <div className="relative w-full sm:w-80 shrink-0">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-400 pointer-events-none" />
+                <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isLight ? 'text-slate-400' : 'text-cyan-400'}`} />
                 <input
                   type="text"
                   value={searchTeamQuery}
                   onChange={(e) => setSearchTeamQuery(e.target.value)}
                   placeholder="Search by Team ID (e.g. TEAM-01), name..."
-                  className="w-full pl-10 pr-9 py-2 bg-slate-950/90 border border-cyan-500/30 focus:border-cyan-400 rounded-xl text-xs font-mono-code text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 shadow-inner transition-all"
+                  className={`w-full pl-10 pr-9 py-2 rounded-xl text-xs font-mono-code focus:outline-none focus:ring-2 shadow-inner transition-all ${
+                    isLight
+                      ? 'bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-red-500 focus:ring-red-200'
+                      : 'bg-slate-950/90 border border-cyan-500/30 focus:border-cyan-400 text-white placeholder-slate-500 focus:ring-cyan-500/50'
+                  }`}
                 />
                 {searchTeamQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchTeamQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400 hover:text-slate-700' : 'text-slate-400 hover:text-white'}`}
                     title="Clear search"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -3005,7 +3169,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono-code">
                 <thead>
-                  <tr className="border-b border-white/10 text-slate-400 uppercase font-race">
+                  <tr className={`border-b uppercase font-race ${isLight ? 'border-slate-200 text-slate-700 font-bold' : 'border-white/10 text-slate-400'}`}>
                     <th className="py-3 px-4">Rank</th>
                     <th className="py-3 px-4">Team &amp; ID</th>
                     <th className="py-3 px-4">Institution</th>
@@ -3016,7 +3180,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                     <th className="py-3 px-4 text-right">R3 Qualification Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className={`divide-y ${isLight ? 'divide-slate-200' : 'divide-white/5'}`}>
                   {(() => {
                     const filteredTeams = teams.filter((t) => {
                       if (!searchTeamQuery) return true;
@@ -3032,10 +3196,10 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                     if (loading && teams.length === 0) {
                       return (
                         <tr>
-                          <td colSpan="8" className="py-12 text-center text-slate-400 font-mono-code bg-slate-950/30">
+                          <td colSpan="8" className={`py-12 text-center font-mono-code ${isLight ? 'text-slate-500 bg-slate-50' : 'text-slate-400 bg-slate-950/30'}`}>
                             <div className="flex flex-col items-center justify-center space-y-3">
-                              <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                              <p className="text-sm text-cyan-300 font-race tracking-wider">CONNECTING TO GRID TELEMETRY...</p>
+                              <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                              <p className={`text-sm font-race tracking-wider ${isLight ? 'text-cyan-800' : 'text-cyan-300'}`}>CONNECTING TO GRID TELEMETRY...</p>
                             </div>
                           </td>
                         </tr>
@@ -3045,15 +3209,19 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                     if (filteredTeams.length === 0) {
                       return (
                         <tr>
-                          <td colSpan="8" className="py-12 text-center text-slate-400 font-mono-code bg-slate-950/30">
+                          <td colSpan="8" className={`py-12 text-center font-mono-code ${isLight ? 'text-slate-500 bg-slate-50' : 'text-slate-400 bg-slate-950/30'}`}>
                             <div className="flex flex-col items-center justify-center space-y-3">
-                              <Search className="w-8 h-8 text-slate-600" />
+                              <Search className={`w-8 h-8 ${isLight ? 'text-slate-400' : 'text-slate-600'}`} />
                               <p className="text-sm">No registered teams found matching &ldquo;{searchTeamQuery}&rdquo;</p>
                               {searchTeamQuery && (
                                 <button
                                   type="button"
                                   onClick={() => setSearchTeamQuery('')}
-                                  className="px-4 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 text-xs font-race font-bold uppercase transition-all"
+                                  className={`px-4 py-1.5 rounded-lg text-xs font-race font-bold uppercase transition-all ${
+                                    isLight
+                                      ? 'bg-cyan-100 hover:bg-cyan-200 text-cyan-900 border border-cyan-300'
+                                      : 'bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40'
+                                  }`}
                                 >
                                   Clear Search Filter
                                 </button>
@@ -3092,23 +3260,23 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                           key={t.team_id}
                           className={`transition-colors ${
                             isQualified
-                              ? 'bg-emerald-950/15 hover:bg-emerald-950/25 border-l-2 border-emerald-500'
+                              ? (isLight ? 'bg-emerald-50/70 hover:bg-emerald-100/70 border-l-4 border-emerald-500' : 'bg-emerald-950/15 hover:bg-emerald-950/25 border-l-2 border-emerald-500')
                               : isEliminated
-                              ? 'bg-red-950/15 hover:bg-red-950/25 border-l-2 border-red-500/60 opacity-80'
-                              : 'hover:bg-white/5'
+                              ? (isLight ? 'bg-red-50/70 hover:bg-red-100/70 border-l-4 border-red-500/60 opacity-85' : 'bg-red-950/15 hover:bg-red-950/25 border-l-2 border-red-500/60 opacity-80')
+                              : (isLight ? 'hover:bg-slate-50' : 'hover:bg-white/5')
                           }`}
                         >
                           {/* Rank */}
-                          <td className="py-3 px-4 font-bold font-race text-white">
+                          <td className="py-3 px-4 font-bold font-race">
                             <span
                               className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-black ${
                                 idx === 0
-                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                                  ? (isLight ? 'bg-amber-100 text-amber-950 border border-amber-300 shadow-sm' : 'bg-amber-500/20 text-amber-300 border border-amber-500/50')
                                   : idx === 1
-                                  ? 'bg-slate-300/20 text-slate-200 border border-slate-300/40'
+                                  ? (isLight ? 'bg-slate-200 text-slate-900 border border-slate-300 shadow-sm' : 'bg-slate-300/20 text-slate-200 border border-slate-300/40')
                                   : idx === 2
-                                  ? 'bg-amber-700/20 text-amber-500 border border-amber-700/40'
-                                  : 'text-slate-400'
+                                  ? (isLight ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-sm' : 'bg-amber-700/20 text-amber-500 border border-amber-700/40')
+                                  : (isLight ? 'text-slate-700 font-bold' : 'text-slate-400')
                               }`}
                             >
                               P{idx + 1}
@@ -3117,49 +3285,57 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
                           {/* Team & ID */}
                           <td className="py-3 px-4">
-                            <strong className="text-white block font-sans font-bold text-sm">
+                            <strong className={`block font-sans font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>
                               {t.team_name}
                             </strong>
                             <div className="flex items-center space-x-1.5 mt-0.5">
-                              <span className="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                isLight ? 'bg-cyan-100 text-cyan-900 border border-cyan-300' : 'bg-cyan-950 text-cyan-300 border border-cyan-500/40'
+                              }`}>
                                 {t.team_id}
                               </span>
-                              <span className="text-slate-400 text-[11px] truncate max-w-[130px]">
+                              <span className={`text-[11px] truncate max-w-[130px] ${isLight ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
                                 {t.leader_name ? `Lead: ${t.leader_name}` : ''}
                               </span>
                             </div>
                           </td>
 
                           {/* Institution */}
-                          <td className="py-3 px-4 text-slate-300 text-xs">
+                          <td className={`py-3 px-4 text-xs ${isLight ? 'text-slate-700 font-medium' : 'text-slate-300'}`}>
                             {t.institution || 'Independent'}
                           </td>
 
                           {/* Round 1 Marks */}
                           <td className="py-3 px-4">
                             {r1Pts !== undefined ? (
-                              <span className="px-2 py-1 rounded-md bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 text-xs font-bold">
+                              <span className={`px-2 py-1 rounded-md text-xs font-bold ${
+                                isLight ? 'bg-cyan-100 text-cyan-950 border border-cyan-300' : 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/40'
+                              }`}>
                                 {parseFloat(r1Pts).toFixed(1)} pts
                               </span>
                             ) : (
-                              <span className="text-slate-500 italic">-</span>
+                              <span className={`${isLight ? 'text-slate-400' : 'text-slate-500'} italic font-medium`}>-</span>
                             )}
                           </td>
 
                           {/* Round 2 Marks */}
                           <td className="py-3 px-4">
                             {r2Pts !== undefined ? (
-                              <span className="px-2 py-1 rounded-md bg-purple-950/80 text-purple-300 border border-purple-500/40 text-xs font-bold">
+                              <span className={`px-2 py-1 rounded-md text-xs font-bold ${
+                                isLight ? 'bg-purple-100 text-purple-950 border border-purple-300' : 'bg-purple-950/80 text-purple-300 border border-purple-500/40'
+                              }`}>
                                 {parseFloat(r2Pts).toFixed(1)} pts
                               </span>
                             ) : (
-                              <span className="text-slate-500 italic">-</span>
+                              <span className={`${isLight ? 'text-slate-400' : 'text-slate-500'} italic font-medium`}>-</span>
                             )}
                           </td>
 
                           {/* Combined Marks (R1 + R2) */}
-                          <td className="py-3 px-4 font-bold text-amber-400 text-sm">
-                            <span className="px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-500/40 font-mono-code">
+                          <td className="py-3 px-4 font-bold text-sm">
+                            <span className={`px-2.5 py-1 rounded-lg font-mono-code ${
+                              isLight ? 'bg-amber-100 text-amber-950 border border-amber-300 font-black shadow-sm' : 'bg-amber-950/60 text-amber-400 border border-amber-500/40'
+                            }`}>
                               {combinedScore.toFixed(1)} Pts
                             </span>
                           </td>
@@ -3167,18 +3343,24 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                           {/* R3 Status Badge */}
                           <td className="py-3 px-4 text-center">
                             {isQualified ? (
-                              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-mono-code font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/60 shadow-sm shadow-emerald-950/60">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                              <span className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-mono-code font-bold ${
+                                isLight ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-sm' : 'bg-emerald-950 text-emerald-300 border border-emerald-500/60 shadow-sm shadow-emerald-950/60'
+                              }`}>
+                                <CheckCircle2 className={`w-3.5 h-3.5 ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`} />
                                 <span>QUALIFIED (R3)</span>
                               </span>
                             ) : isEliminated ? (
-                              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-mono-code font-bold bg-red-950 text-red-300 border border-red-500/60 shadow-sm shadow-red-950/60">
-                                <XCircle className="w-3.5 h-3.5 text-red-400" />
+                              <span className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-mono-code font-bold ${
+                                isLight ? 'bg-red-100 text-red-900 border border-red-300 shadow-sm' : 'bg-red-950 text-red-300 border border-red-500/60 shadow-sm shadow-red-950/60'
+                              }`}>
+                                <XCircle className={`w-3.5 h-3.5 ${isLight ? 'text-red-700' : 'text-red-400'}`} />
                                 <span>ELIMINATED</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-mono-code font-bold bg-slate-900 text-slate-400 border border-white/10">
-                                <Clock className="w-3.5 h-3.5 text-slate-500" />
+                              <span className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-mono-code font-bold ${
+                                isLight ? 'bg-slate-100 text-slate-800 border border-slate-300 shadow-sm' : 'bg-slate-900 text-slate-400 border border-white/10'
+                              }`}>
+                                <Clock className={`w-3.5 h-3.5 ${isLight ? 'text-slate-600' : 'text-slate-500'}`} />
                                 <span>PENDING</span>
                               </span>
                             )}
@@ -3194,11 +3376,13 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                                 className={`px-3 py-1.5 rounded-lg text-xs font-race font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer ${
                                   isQualified
                                     ? 'bg-emerald-600 text-white border border-emerald-400 shadow-emerald-900/50 glow-green'
+                                    : isLight
+                                    ? 'bg-emerald-100 hover:bg-emerald-600 text-emerald-900 hover:text-white border border-emerald-400 font-bold'
                                     : 'bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-600/50'
                                 }`}
                                 title="Qualify team for Round 3 (Final Lap)"
                               >
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                <CheckCircle2 className={`w-3.5 h-3.5 ${isQualified ? 'text-white' : isLight ? 'text-emerald-700' : 'text-emerald-400'}`} />
                                 <span>{isQualified ? 'Qualified ✓' : 'Qualify'}</span>
                               </button>
 
@@ -3209,11 +3393,13 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                                 className={`px-3 py-1.5 rounded-lg text-xs font-race font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer ${
                                   isEliminated
                                     ? 'bg-red-600 text-white border border-red-400 shadow-red-900/50 glow-red'
+                                    : isLight
+                                    ? 'bg-red-100 hover:bg-red-600 text-red-900 hover:text-white border border-red-400 font-bold'
                                     : 'bg-red-950/70 hover:bg-red-900 text-red-300 hover:text-white border border-red-600/50'
                                 }`}
                                 title="Eliminate team from competing in Round 3"
                               >
-                                <XCircle className="w-3.5 h-3.5 text-red-400" />
+                                <XCircle className={`w-3.5 h-3.5 ${isEliminated ? 'text-white' : isLight ? 'text-red-700' : 'text-red-400'}`} />
                                 <span>{isEliminated ? 'Eliminated ✗' : 'Eliminate'}</span>
                               </button>
                             </div>
@@ -3230,29 +3416,29 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
         {/* TAB 4: JUDGE EVALUATION STUDIO */}
         {activeTab === 'evaluation' && (
-          <div className="racing-card rounded-2xl p-6 sm:p-8 border border-white/10 shadow-2xl space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+          <div className={`racing-card rounded-2xl p-6 sm:p-8 border shadow-2xl space-y-6 ${isLight ? 'border-slate-200 bg-white/95' : 'border-white/10'}`}>
+            <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
               <div>
                 <div className="flex items-center space-x-2 text-xs font-race uppercase tracking-widest text-red-500 font-bold mb-1">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
                   <span>RACE STEWARDS • SCORING SYSTEM</span>
                 </div>
-                <h3 className="font-race text-xl sm:text-2xl font-black text-white">
+                <h3 className={`font-race text-xl sm:text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   JUDGE EVALUATION &amp; MARKS ALLOCATION DESK
                 </h3>
-                <p className="text-xs text-slate-400 font-mono-code mt-1">
+                <p className={`text-xs font-mono-code mt-1 ${isLight ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
                   Allocate marks directly to all live participating teams for Rounds 1 &amp; 2. Scores reflect live on the championship leaderboard.
                 </p>
               </div>
 
               {/* Lap Filter Switcher */}
-              <div className="flex items-center space-x-1.5 p-1 bg-slate-950 rounded-xl border border-white/10 shrink-0">
+              <div className={`flex items-center space-x-1.5 p-1 rounded-xl shrink-0 border ${isLight ? 'bg-slate-100 border-slate-300' : 'bg-slate-950 border-white/10'}`}>
                 <button
                   type="button"
                   onClick={() => setEvalRoundFilter('all')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-race font-bold uppercase transition-all ${evalRoundFilter === 'all'
                     ? 'bg-red-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
+                    : isLight ? 'text-slate-700 hover:text-slate-900 hover:bg-white' : 'text-slate-400 hover:text-white'
                     }`}
                 >
                   All Laps Overview
@@ -3264,7 +3450,7 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
                     onClick={() => setEvalRoundFilter(rNum)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-race font-bold uppercase transition-all ${evalRoundFilter === rNum
                       ? 'bg-red-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
+                      : isLight ? 'text-slate-700 hover:text-slate-900 hover:bg-white' : 'text-slate-400 hover:text-white'
                       }`}
                   >
                     Lap 0{rNum}
@@ -3275,21 +3461,21 @@ export default function AdminDashboard({ initialTab = 'rounds' }) {
 
             {/* Quick Metrics Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="p-3.5 rounded-xl bg-slate-950/80 border border-white/5">
-                <div className="text-[11px] font-race text-slate-400 uppercase">Live Registered Teams</div>
-                <div className="text-xl font-race font-bold text-white mt-0.5">{teams.length}</div>
+              <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/80 border-white/5'}`}>
+                <div className={`text-[11px] font-race uppercase ${isLight ? 'text-slate-600 font-bold' : 'text-slate-400'}`}>Live Registered Teams</div>
+                <div className={`text-xl font-race font-bold mt-0.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>{teams.length}</div>
               </div>
-              <div className="p-3.5 rounded-xl bg-slate-950/80 border border-white/5">
-                <div className="text-[11px] font-race text-slate-400 uppercase">Artifacts Received</div>
-                <div className="text-xl font-race font-bold text-cyan-400 mt-0.5">{submissions.length}</div>
+              <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-sky-50 border-sky-200' : 'bg-slate-950/80 border-white/5'}`}>
+                <div className={`text-[11px] font-race uppercase ${isLight ? 'text-sky-800 font-bold' : 'text-slate-400'}`}>Artifacts Received</div>
+                <div className={`text-xl font-race font-bold mt-0.5 ${isLight ? 'text-sky-700' : 'text-cyan-400'}`}>{submissions.length}</div>
               </div>
-              <div className="p-3.5 rounded-xl bg-slate-950/80 border border-white/5">
-                <div className="text-[11px] font-race text-slate-400 uppercase">Evaluations Graded</div>
-                <div className="text-xl font-race font-bold text-emerald-400 mt-0.5">{evaluations.length}</div>
+              <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-950/80 border-white/5'}`}>
+                <div className={`text-[11px] font-race uppercase ${isLight ? 'text-emerald-800 font-bold' : 'text-slate-400'}`}>Evaluations Graded</div>
+                <div className={`text-xl font-race font-bold mt-0.5 ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>{evaluations.length}</div>
               </div>
-              <div className="p-3.5 rounded-xl bg-slate-950/80 border border-white/5">
-                <div className="text-[11px] font-race text-slate-400 uppercase">Championship Round</div>
-                <div className="text-xl font-race font-bold text-amber-400 mt-0.5">
+              <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-amber-50 border-amber-200' : 'bg-slate-950/80 border-white/5'}`}>
+                <div className={`text-[11px] font-race uppercase ${isLight ? 'text-amber-800 font-bold' : 'text-slate-400'}`}>Championship Round</div>
+                <div className={`text-xl font-race font-bold mt-0.5 ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>
                   {overview?.current_live_round ? `Lap 0${overview.current_live_round} Live` : 'Grid Standby'}
                 </div>
               </div>

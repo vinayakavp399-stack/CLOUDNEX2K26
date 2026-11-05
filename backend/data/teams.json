@@ -1,6 +1,6 @@
 [
   {
-    "_id": "6ae4285942b34d125dea71ea",
+    "_id": "6aecc88f36e9ab64699a4da3",
     "team_id": "1",
     "team_name": "Ab",
     "leader_name": "Ab",
@@ -17,7 +17,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2e47512331f063b716",
+    "_id": "6aecc88f36e9ab64699a4da4",
     "team_id": "12345",
     "team_name": "XYZ",
     "leader_name": "YUSUF",
@@ -36,7 +36,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2e47512331f063b718",
+    "_id": "6aecc88f36e9ab64699a4da5",
     "team_id": "APEX 2",
     "team_name": "Race",
     "leader_name": "Shreya",
@@ -56,7 +56,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2e47512331f063b71a",
+    "_id": "6aecc88f36e9ab64699a4da6",
     "team_id": "11111111",
     "team_name": "god",
     "leader_name": "Vedanth Gowda",
@@ -76,7 +76,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2e47512331f063b71b",
+    "_id": "6aecc88f36e9ab64699a4da7",
     "team_id": "U26E01CC045",
     "team_name": "apex racers",
     "leader_name": "Dolly Kumari",
@@ -95,7 +95,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2e47512331f063b71d",
+    "_id": "6aecc88f36e9ab64699a4da8",
     "team_id": "U26E01CC038",
     "team_name": "TECNO",
     "leader_name": "MOHAMMED SAMEER",
@@ -114,7 +114,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2e47512331f063b71e",
+    "_id": "6aecc88f36e9ab64699a4da9",
     "team_id": "U24E01CC080",
     "team_name": "Apex",
     "leader_name": "Yallapu Naaga Shrivalli",
@@ -135,7 +135,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2e47512331f063b720",
+    "_id": "6aecc89036e9ab64699a4daa",
     "team_id": "U260EO1CC021",
     "team_name": "TECHNO",
     "leader_name": "SUHANA",
@@ -156,7 +156,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2e47512331f063b722",
+    "_id": "6aecc89036e9ab64699a4dab",
     "team_id": "U26E01BS003",
     "team_name": "SMS",
     "leader_name": "SHIVAMATHASHRI S K",
@@ -173,7 +173,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2e47512331f063b724",
+    "_id": "6aecc89036e9ab64699a4dac",
     "team_id": "U26E01BS017",
     "team_name": "GM",
     "leader_name": "GIRISHMA K",
@@ -190,7 +190,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2e47512331f063b725",
+    "_id": "6aecc89036e9ab64699a4dad",
     "team_id": "U26E01CC022",
     "team_name": "QUADX",
     "leader_name": "SHIVANI",
@@ -212,7 +212,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2f47512331f063b727",
+    "_id": "6aecc89036e9ab64699a4dae",
     "team_id": "1111",
     "team_name": "apecc",
     "leader_name": "jjjjj",
@@ -231,7 +231,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2f47512331f063b728",
+    "_id": "6aecc89036e9ab64699a4daf",
     "team_id": "U26E01CC058",
     "team_name": "Kamala",
     "leader_name": "Kamala M K",
@@ -251,7 +251,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2f47512331f063b729",
+    "_id": "6aecc89036e9ab64699a4db0",
     "team_id": "MASIRA F",
     "team_name": "Alpha minds",
     "leader_name": "Masira F",
@@ -268,7 +268,7 @@
     "director_feedback": ""
   },
   {
-    "_id": "6ae42a2f47512331f063b72a",
+    "_id": "6aecc89036e9ab64699a4db1",
     "team_id": "ALIYA KHANUM",
     "team_name": "Alpha minds",
     "leader_name": "Aliya Khanum",
@@ -282,6 +282,159 @@
     "scores_by_round": {},
     "created_at": "2026-10-29T09:15:06.077533+00:00",
     "registered_at": "2026-10-29T09:15:06.077533+00:00",
+    "director_feedback": ""
+  },
+  {
+    "_id": "6aecc89036e9ab64699a4db2",
+    "team_id": "U25E01CC009",
+    "team_name": "CC Dept",
+    "leader_name": "DEEKSHITH HM",
+    "email": "deekshith172005@gmail.com",
+    "institution": "G M UNIVERSITY",
+    "members": [
+      "VINYAS",
+      "KOTTRAIYA"
+    ],
+    "status": "ACTIVE",
+    "is_qualified_r3": false,
+    "is_eliminated": false,
+    "total_score": 0.0,
+    "scores_by_round": {},
+    "created_at": "2026-11-05T06:19:03.904266+00:00",
+    "registered_at": "2026-11-05T06:19:03.904266+00:00",
+    "director_feedback": ""
+  },
+  {
+    "_id": "6aecc89036e9ab64699a4db3",
+    "team_id": "U25E01CC021",
+    "team_name": "Racers",
+    "leader_name": "Leena S T",
+    "email": "lst417467@gmail.com",
+    "institution": "GM University",
+    "members": [
+      "Spoorthi"
+    ],
+    "status": "ACTIVE",
+    "is_qualified_r3": false,
+    "is_eliminated": false,
+    "total_score": 0.0,
+    "scores_by_round": {},
+    "created_at": "2026-11-05T06:19:09.731921+00:00",
+    "registered_at": "2026-11-05T06:19:09.731921+00:00",
+    "director_feedback": ""
+  },
+  {
+    "_id": "6aecc89036e9ab64699a4db4",
+    "team_id": "UE25E01CC045",
+    "team_name": "Legends",
+    "leader_name": "Spoorthi BR",
+    "email": "spoorthirajinikanth@gmail.com",
+    "institution": "GM university ,Davangere",
+    "members": [],
+    "status": "ACTIVE",
+    "is_qualified_r3": false,
+    "is_eliminated": false,
+    "total_score": 0.0,
+    "scores_by_round": {},
+    "created_at": "2026-11-05T06:19:22.161535+00:00",
+    "registered_at": "2026-11-05T06:19:22.161535+00:00",
+    "director_feedback": ""
+  },
+  {
+    "_id": "6aecc89036e9ab64699a4db5",
+    "team_id": "U25E01CC025",
+    "team_name": "helloworl",
+    "leader_name": "gauss",
+    "email": "gauss@gmail.com",
+    "institution": "GMUNIVERSITY",
+    "members": [
+      "gauss",
+      "jeevan"
+    ],
+    "status": "ACTIVE",
+    "is_qualified_r3": false,
+    "is_eliminated": false,
+    "total_score": 0.0,
+    "scores_by_round": {},
+    "created_at": "2026-11-05T06:19:44.801974+00:00",
+    "registered_at": "2026-11-05T06:19:44.801974+00:00",
+    "director_feedback": ""
+  },
+  {
+    "_id": "6aecc89136e9ab64699a4db6",
+    "team_id": "U25E01CC044",
+    "team_name": "Apex racers",
+    "leader_name": "SOWMYA CT",
+    "email": "sowmyact94@gmail.com",
+    "institution": "Gm university",
+    "members": [
+      "Sowmya",
+      "Leena"
+    ],
+    "status": "ACTIVE",
+    "is_qualified_r3": false,
+    "is_eliminated": false,
+    "total_score": 0.0,
+    "scores_by_round": {},
+    "created_at": "2026-11-05T06:20:13.241341+00:00",
+    "registered_at": "2026-11-05T06:20:13.241341+00:00",
+    "director_feedback": ""
+  },
+  {
+    "_id": "6aecc89136e9ab64699a4db7",
+    "team_id": "U25E01CC043",
+    "team_name": "Still thinking\u2026",
+    "leader_name": "Shreeya V Anapur",
+    "email": "shreeyaanapur1904@gmail.com",
+    "institution": "GM University Davangere",
+    "members": [],
+    "status": "ACTIVE",
+    "is_qualified_r3": false,
+    "is_eliminated": false,
+    "total_score": 0.0,
+    "scores_by_round": {},
+    "created_at": "2026-11-05T06:20:13.246376+00:00",
+    "registered_at": "2026-11-05T06:20:13.246376+00:00",
+    "director_feedback": ""
+  },
+  {
+    "_id": "6aecc89136e9ab64699a4db8",
+    "team_id": "U25E01CC027",
+    "team_name": "Rock",
+    "leader_name": "Rahul",
+    "email": "manu@gmail.com",
+    "institution": "Gm university",
+    "members": [
+      "Rahul",
+      "Ajay"
+    ],
+    "status": "ACTIVE",
+    "is_qualified_r3": false,
+    "is_eliminated": false,
+    "total_score": 0.0,
+    "scores_by_round": {},
+    "created_at": "2026-11-05T06:20:26.824712+00:00",
+    "registered_at": "2026-11-05T06:20:26.824712+00:00",
+    "director_feedback": ""
+  },
+  {
+    "_id": "6aecc89136e9ab64699a4db9",
+    "team_id": "U123",
+    "team_name": "Eaza",
+    "leader_name": "Raza",
+    "email": "raza@gmail.com",
+    "institution": "gmuniversity",
+    "members": [
+      "gauss",
+      "raza"
+    ],
+    "status": "ACTIVE",
+    "is_qualified_r3": false,
+    "is_eliminated": false,
+    "total_score": 0.0,
+    "scores_by_round": {},
+    "created_at": "2026-11-05T06:21:02.646384+00:00",
+    "registered_at": "2026-11-05T06:21:02.646384+00:00",
     "director_feedback": ""
   }
 ]

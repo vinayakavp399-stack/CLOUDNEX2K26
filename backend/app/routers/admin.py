@@ -1417,7 +1417,14 @@ async def evaluate_submission(
         "timestamp": now
     })
 
-    # Broadcast live leaderboard refresh
+    # Broadcast live evaluation recorded and leaderboard refresh
+    await ws_manager.broadcast("EVALUATION_RECORDED", {
+        "team_id": evaluation.team_id,
+        "round_number": evaluation.round_number,
+        "score": round(final_score, 2),
+        "total_score": round(total, 2),
+        "scores_by_round": scores_by_round
+    })
     await ws_manager.broadcast("LEADERBOARD_UPDATED", {"team_id": evaluation.team_id, "new_total": round(total, 2)})
 
     return {
@@ -1478,6 +1485,9 @@ async def update_qualifications(
             {"round_number": 3},
             {"$set": {"selection_revealed": False, "results_announced": False}}
         )
+
+    # Instantly notify all race control & qualification consoles
+    await ws_manager.broadcast("QUALIFICATIONS_UPDATED", {"updated": updated})
 
     return {
         "message": f"Successfully updated qualification decisions for {len(updated)} teams.",

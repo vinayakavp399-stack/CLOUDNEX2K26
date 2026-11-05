@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, AlertCircle } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export const parseUtcDate = (val) => {
   if (!val) return 0;
@@ -12,6 +13,7 @@ export const parseUtcDate = (val) => {
 };
 
 export default function CountdownTimer({ targetDate, title = "LAP TIME REMAINING", onExpire }) {
+  const { isLight } = useTheme();
   const [timeLeft, setTimeLeft] = useState({
     hours: 0,
     minutes: 0,
@@ -86,21 +88,23 @@ export default function CountdownTimer({ targetDate, title = "LAP TIME REMAINING
   const pad = (n) => String(n).padStart(2, '0');
 
   return (
-    <div className={`inline-flex items-center space-x-3 px-4 py-2 rounded-lg border ${
+    <div className={`inline-flex items-center space-x-3 px-4 py-2 rounded-lg border transition-colors ${
       timeLeft.isExpired 
-        ? 'bg-red-950/40 border-red-800 text-red-400' 
-        : 'bg-slate-950/80 border-cyan-500/30 text-white shadow-lg shadow-cyan-950/20'
+        ? isLight ? 'bg-red-50 border-red-300 text-red-700' : 'bg-red-950/40 border-red-800 text-red-400' 
+        : isLight ? 'bg-white border-sky-300 text-slate-900 shadow-md' : 'bg-slate-950/80 border-cyan-500/30 text-white shadow-lg shadow-cyan-950/20'
     }`}>
       <div className="flex items-center space-x-2">
         <span className="relative flex h-2.5 w-2.5">
           <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-            timeLeft.isExpired ? 'bg-red-500' : 'bg-cyan-400'
+            timeLeft.isExpired ? 'bg-red-500' : isLight ? 'bg-sky-500' : 'bg-cyan-400'
           }`} />
           <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-            timeLeft.isExpired ? 'bg-red-500' : 'bg-cyan-500'
+            timeLeft.isExpired ? 'bg-red-500' : isLight ? 'bg-sky-600' : 'bg-cyan-500'
           }`} />
         </span>
-        <span className="text-[11px] font-race uppercase tracking-wider text-slate-300 font-bold">
+        <span className={`text-[11px] font-race uppercase tracking-wider font-bold ${
+          isLight ? 'text-slate-700' : 'text-slate-300'
+        }`}>
           {title}
         </span>
       </div>
@@ -113,19 +117,35 @@ export default function CountdownTimer({ targetDate, title = "LAP TIME REMAINING
           </span>
         ) : (
           <>
-            <div className="bg-slate-900 px-2 py-0.5 rounded border border-white/10 text-cyan-300">
+            <div className={`px-2 py-0.5 rounded border ${
+              isLight ? 'bg-sky-50/80 border-sky-200 text-sky-800' : 'bg-slate-900 border-white/10 text-cyan-300'
+            }`}>
               {pad(timeLeft.hours)}
-              <span className="text-[9px] text-slate-400 block text-center font-sans font-normal">HR</span>
+              <span className={`text-[9px] block text-center font-sans font-normal ${
+                isLight ? 'text-slate-500' : 'text-slate-400'
+              }`}>HR</span>
             </div>
-            <span className="text-cyan-400 text-sm font-bold animate-pulse">:</span>
-            <div className="bg-slate-900 px-2 py-0.5 rounded border border-white/10 text-cyan-300">
+            <span className={`text-sm font-bold animate-pulse ${
+              isLight ? 'text-sky-600' : 'text-cyan-400'
+            }`}>:</span>
+            <div className={`px-2 py-0.5 rounded border ${
+              isLight ? 'bg-sky-50/80 border-sky-200 text-sky-800' : 'bg-slate-900 border-white/10 text-cyan-300'
+            }`}>
               {pad(timeLeft.minutes)}
-              <span className="text-[9px] text-slate-400 block text-center font-sans font-normal">MIN</span>
+              <span className={`text-[9px] block text-center font-sans font-normal ${
+                isLight ? 'text-slate-500' : 'text-slate-400'
+              }`}>MIN</span>
             </div>
-            <span className="text-cyan-400 text-sm font-bold animate-pulse">:</span>
-            <div className="bg-slate-900 px-2 py-0.5 rounded border border-white/10 text-red-400">
+            <span className={`text-sm font-bold animate-pulse ${
+              isLight ? 'text-sky-600' : 'text-cyan-400'
+            }`}>:</span>
+            <div className={`px-2 py-0.5 rounded border ${
+              isLight ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-900 border-white/10 text-red-400'
+            }`}>
               {pad(timeLeft.seconds)}
-              <span className="text-[9px] text-slate-400 block text-center font-sans font-normal">SEC</span>
+              <span className={`text-[9px] block text-center font-sans font-normal ${
+                isLight ? 'text-slate-500' : 'text-slate-400'
+              }`}>SEC</span>
             </div>
           </>
         )}

@@ -19,10 +19,18 @@ class EventManager:
         self._lock = asyncio.Lock()
         # Track active team heartbeats: team_id -> timestamp of last poll
         self._team_heartbeats: Dict[str, float] = {}
+        # Active long-polling subscribers awaiting instant push notifications
+        self._waiters: set = set()
 
     def _next_event_id(self) -> int:
         self._event_counter += 1
         return self._event_counter
+
+    def _notify_waiters(self):
+        """Immediately wake up all active HTTP long-polling connections in 0ms."""
+        for w in list(self._waiters):
+            if not w.is_set():
+                w.set()
 
     async def broadcast(self, event_type: str, payload: dict):
         """Append a broadcast event for all connected clients (participants & admins)."""
@@ -34,6 +42,7 @@ class EventManager:
             "timestamp": time.time()
         }
         self._events.append(event)
+        self._notify_waiters()
         logger.debug(f"Telemetry broadcast: {event_type} (ID: {event['id']})")
         return event
 
@@ -48,6 +57,7 @@ class EventManager:
             "timestamp": time.time()
         }
         self._events.append(event)
+        self._notify_waiters()
         logger.debug(f"Telemetry team message for {clean_team_id}: {event_type} (ID: {event['id']})")
         return event
 
@@ -63,6 +73,23 @@ class EventManager:
         if team_id:
             clean_id = str(team_id).strip().upper()
             self._team_heartbeats[clean_id] = time.time()
+
+    def remove_heartbeat(self, team_id: Optional[str] = None):
+        """Removes client activity/heartbeat immediately upon signout."""
+        if team_id:
+            clean_id = str(team_id).strip().upper()
+            self._team_heartbeats.pop(clean_id, None)
+
+    async def wait_for_new_events(self, timeout: float = 6.0):
+        """Asynchronously wait for any new event to be broadcast, or until timeout."""
+        waiter = asyncio.Event()
+        self._waiters.add(waiter)
+        try:
+            await asyncio.wait_for(waiter.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            pass
+        finally:
+            self._waiters.discard(waiter)
 
     def is_team_online(self, team_id: Optional[str], timeout_seconds: float = 15.0) -> bool:
         """Checks if a team has polled within the last timeout_seconds."""

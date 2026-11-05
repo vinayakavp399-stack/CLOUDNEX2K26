@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Shield, User, Lock, ArrowRight, Zap, CheckCircle2, AlertCircle, Building, Users } from 'lucide-react';
+import { Shield, User, Lock, ArrowRight, Zap, CheckCircle2, AlertCircle, Building, Users, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { api } from '../api/client';
 import dashboardBg from '../assets/dashboard_bg.jpg';
 
 export default function LoginPage({ initialRole = 'participant', lockedPortal = null, onSuccess, onBack, onSwitchPortal }) {
+  const { isLight } = useTheme();
   const [activeTab, setActiveTab] = useState(() => {
     if (lockedPortal === 'admin') return 'admin';
     if (lockedPortal === 'participant') {
@@ -14,6 +16,8 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
   });
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showParticipantPassword, setShowParticipantPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
 
   // Synchronize tab if lockedPortal changes
   React.useEffect(() => {
@@ -28,7 +32,6 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
   const [regTeamId, setRegTeamId] = useState('');
   const [regTeamName, setRegTeamName] = useState('');
   const [regLeaderName, setRegLeaderName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regInstitution, setRegInstitution] = useState('');
   const [regMembers, setRegMembers] = useState('');
@@ -82,7 +85,6 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
     const cleanTeamId = regTeamId.trim();
     const cleanTeamName = regTeamName.trim();
     const cleanLeader = regLeaderName.trim();
-    const cleanEmail = regEmail.trim();
 
     if (!cleanLeader) {
       setError('Registration must be completed by the Team Leader. Please enter the Team Leader name.');
@@ -94,10 +96,6 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
     }
     if (!cleanTeamId) {
       setError('Please provide a unique Team ID.');
-      return;
-    }
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setError('Please enter a valid Team Leader email address.');
       return;
     }
     if (!regPassword) {
@@ -117,7 +115,7 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
         team_id: cleanTeamId,
         team_name: cleanTeamName,
         leader_name: cleanLeader,
-        email: cleanEmail,
+        email: '',
         password: regPassword,
         institution: regInstitution.trim(),
         members: membersArray
@@ -140,17 +138,19 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
   };
 
   return (
-    <div className="min-h-screen py-16 px-4 sm:px-6 lg:px-8 flex items-center justify-center bg-[#080a0f] relative overflow-hidden">
+    <div className={`min-h-screen py-16 px-4 sm:px-6 lg:px-8 flex items-center justify-center relative overflow-hidden transition-colors duration-300 ${
+      isLight ? 'bg-gradient-to-b from-sky-50 via-slate-50 to-indigo-50/40 text-slate-900' : 'bg-[#080a0f] text-white'
+    }`}>
       {/* High-Tech Dashboard Background Image */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <img
           src={dashboardBg}
           alt="CLOUDNEX Atmosphere"
-          className="w-full h-full object-cover object-top opacity-35 filter brightness-95 contrast-110"
+          className={`w-full h-full object-cover object-top opacity-35 filter ${isLight ? 'brightness-110 contrast-100' : 'brightness-95 contrast-110'}`}
         />
-        <div className="absolute inset-0 bg-[#080a0f]/80 backdrop-blur-[1px]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#080a0f] via-transparent to-[#080a0f]/90" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#080a0f]/80 via-transparent to-[#080a0f]/80" />
+        <div className={`absolute inset-0 ${isLight ? 'bg-slate-50/85 backdrop-blur-[2px]' : 'bg-[#080a0f]/80 backdrop-blur-[1px]'}`} />
+        <div className={`absolute inset-0 bg-gradient-to-t ${isLight ? 'from-slate-100 via-transparent to-slate-100/90' : 'from-[#080a0f] via-transparent to-[#080a0f]/90'}`} />
+        <div className={`absolute inset-0 bg-gradient-to-r ${isLight ? 'from-slate-100/80 via-transparent to-slate-100/80' : 'from-[#080a0f]/80 via-transparent to-[#080a0f]/80'}`} />
       </div>
 
       {/* Background neon glows */}
@@ -163,43 +163,49 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
           <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
             <span className={`px-3 py-1 border rounded-full text-xs font-race font-bold tracking-wider flex items-center space-x-1.5 shadow-sm ${
               activeTab === 'admin'
-                ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                ? isLight ? 'bg-red-50 text-red-700 border-red-300' : 'bg-red-500/20 text-red-300 border-red-500/40'
+                : isLight ? 'bg-sky-50 text-sky-700 border-sky-300' : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
             }`}>
-              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${activeTab === 'admin' ? 'bg-red-400' : 'bg-cyan-400'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${activeTab === 'admin' ? 'bg-red-500' : 'bg-cyan-500'}`} />
               <span>GM UNIVERSITY</span>
             </span>
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-white/10 text-slate-300 text-xs font-mono-code font-bold">
+            <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full border text-xs font-mono-code font-bold ${
+              isLight ? 'bg-white border-slate-200 text-slate-700 shadow-sm' : 'bg-slate-900 border-white/10 text-slate-300'
+            }`}>
               <span>{activeTab === 'admin' ? 'CHIEF STEWARDS & RACE CONTROL' : 'CLOUDNEX 2K26 GRID'}</span>
             </div>
           </div>
-          <h2 className="font-race text-3xl font-black text-white tracking-wider">
+          <h2 className={`font-race text-3xl font-black tracking-wider ${isLight ? 'text-slate-900' : 'text-white'}`}>
             {activeTab === 'admin'
               ? 'RACE DIRECTOR CONTROL'
               : activeTab === 'register'
                 ? 'REGISTER TEAM GRID'
                 : 'PARTICIPANT COCKPIT'}
           </h2>
-          <p className="text-xs text-slate-400 mt-2">
+          <p className={`text-xs mt-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
             {activeTab === 'admin' ? (
-              <>Restricted Organizer Portal &bull; <strong className="text-red-400">Chief Steward Authorization Required</strong></>
+              <>Restricted Organizer Portal &bull; <strong className="text-red-500 font-bold">Chief Steward Authorization Required</strong></>
             ) : (
-              <>Formula 1 Racing Competition &bull; <strong className="text-cyan-300">GM University, Davangere</strong></>
+              <>Formula 1 Racing Competition &bull; <strong className={isLight ? 'text-sky-700 font-bold' : 'text-cyan-300'}>GM University, Davangere</strong></>
             )}
           </p>
         </div>
 
         {/* Card */}
-        <div className="racing-card rounded-2xl p-6 sm:p-8 shadow-2xl border border-white/10">
+        <div className={`rounded-2xl p-6 sm:p-8 shadow-2xl border transition-all ${
+          isLight ? 'bg-white/95 border-sky-200 shadow-slate-200/80 text-slate-900' : 'racing-card border-white/10 text-white'
+        }`}>
           {/* Tab selector or Portal indicator */}
           {lockedPortal === 'participant' ? (
-            <div className="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl mb-6 border border-white/5 text-xs font-race font-bold">
+            <div className={`grid grid-cols-2 gap-1 p-1 rounded-xl mb-6 border text-xs font-race font-bold ${
+              isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-950 border-white/5'
+            }`}>
               <button
                 type="button"
                 onClick={() => { setActiveTab('participant'); setError(''); setSuccessMsg(''); }}
                 className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'participant'
                     ? 'bg-cyan-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'
                   }`}
               >
                 Participant Sign In
@@ -209,28 +215,34 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
                 onClick={() => { setActiveTab('register'); setError(''); setSuccessMsg(''); }}
                 className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'register'
                     ? 'bg-cyan-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'
                   }`}
               >
                 Register Team
               </button>
             </div>
           ) : lockedPortal === 'admin' ? (
-            <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-xs font-race font-bold mb-6">
-              <div className="flex items-center space-x-2 text-red-400">
+            <div className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-xs font-race font-bold mb-6 ${
+              isLight ? 'bg-red-50 border-red-200 text-red-700' : 'bg-red-950/40 border-red-500/30 text-red-400'
+            }`}>
+              <div className="flex items-center space-x-2">
                 <Shield className="w-4 h-4 text-red-500" />
                 <span>RESTRICTED ORGANIZER ACCESS</span>
               </div>
-              <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-red-500/20 text-red-300 font-bold">ADMIN ONLY</span>
+              <span className={`text-[10px] font-mono-code px-2 py-0.5 rounded font-bold ${
+                isLight ? 'bg-red-100 text-red-800' : 'bg-red-500/20 text-red-300'
+              }`}>ADMIN ONLY</span>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl mb-6 border border-white/5 text-xs font-race font-bold">
+            <div className={`grid grid-cols-3 gap-1 p-1 rounded-xl mb-6 border text-xs font-race font-bold ${
+              isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-950 border-white/5'
+            }`}>
               <button
                 type="button"
                 onClick={() => { setActiveTab('participant'); setError(''); setSuccessMsg(''); }}
                 className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'participant'
                     ? 'bg-slate-800 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'
                   }`}
               >
                 Participant
@@ -240,7 +252,7 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
                 onClick={() => { setActiveTab('admin'); setError(''); setSuccessMsg(''); }}
                 className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'admin'
                     ? 'bg-red-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'
                   }`}
               >
                 Race Director
@@ -250,10 +262,10 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
                 onClick={() => { setActiveTab('register'); setError(''); setSuccessMsg(''); }}
                 className={`py-2 rounded-lg transition-all duration-75 active:scale-95 cursor-pointer ${activeTab === 'register'
                     ? 'bg-cyan-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'
                   }`}
               >
-                Register Team
+                Register
               </button>
             </div>
           )}
@@ -307,36 +319,58 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
           {activeTab !== 'register' ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-race font-bold text-slate-300 uppercase mb-1.5">
+                <label className={`block text-xs font-race font-bold uppercase mb-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                   {activeTab === 'admin' ? 'Director Username' : 'Team ID or Email'}
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
                     type="text"
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder={activeTab === 'admin' ? 'e.g. race_director' : 'e.g. TEAM-RED-BULL-01'}
-                    className="w-full bg-slate-950 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-red-500 font-mono-code placeholder:text-slate-600"
+                    className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm font-mono-code transition-colors ${
+                      isLight
+                        ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-cyan-600 focus:bg-white'
+                        : 'bg-slate-950 border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500'
+                    }`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-race font-bold text-slate-300 uppercase mb-1.5">
+                <label className={`block text-xs font-race font-bold uppercase mb-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
-                    type="password"
+                    type={activeTab !== 'admin' && showParticipantPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter security key"
-                    className="w-full bg-slate-950 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-red-500 font-mono-code placeholder:text-slate-600"
+                    className={`w-full border rounded-xl pl-10 pr-11 py-2.5 text-sm font-mono-code transition-colors ${
+                      isLight
+                        ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-cyan-600 focus:bg-white'
+                        : 'bg-slate-950 border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500'
+                    }`}
                   />
+                  {activeTab !== 'admin' && (
+                    <button
+                      type="button"
+                      onClick={() => setShowParticipantPassword(!showParticipantPassword)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer transition-colors"
+                      title={showParticipantPassword ? 'Hide password' : 'View password'}
+                    >
+                      {showParticipantPassword ? (
+                        <EyeOff className={`w-4 h-4 ${isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-cyan-400'}`} />
+                      ) : (
+                        <Eye className={`w-4 h-4 ${isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-cyan-400'}`} />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -366,7 +400,7 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
             <form onSubmit={handleRegister} className="space-y-3.5">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-race text-slate-300 uppercase mb-1">
+                  <label className={`block text-[11px] font-race uppercase mb-1 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                     Team ID
                   </label>
                   <input
@@ -375,11 +409,15 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
                     value={regTeamId}
                     onChange={(e) => setRegTeamId(e.target.value)}
                     placeholder="e.g. APEX-07"
-                    className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono-code"
+                    className={`w-full border rounded-lg px-3 py-2 text-xs font-mono-code ${
+                      isLight
+                        ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400'
+                        : 'bg-slate-950 border-white/10 text-white placeholder:text-slate-600'
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-race text-slate-300 uppercase mb-1">
+                  <label className={`block text-[11px] font-race uppercase mb-1 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                     Team Name
                   </label>
                   <input
@@ -388,42 +426,35 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
                     value={regTeamName}
                     onChange={(e) => setRegTeamName(e.target.value)}
                     placeholder="Apex Racers"
-                    className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-race text-slate-300 uppercase mb-1">
-                    Team Leader
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={regLeaderName}
-                    onChange={(e) => setRegLeaderName(e.target.value)}
-                    placeholder="Full Name"
-                    className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-race text-slate-300 uppercase mb-1">
-                    Leader Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="leader@college.edu"
-                    className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white"
+                    className={`w-full border rounded-lg px-3 py-2 text-xs ${
+                      isLight
+                        ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400'
+                        : 'bg-slate-950 border-white/10 text-white placeholder:text-slate-600'
+                    }`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-race text-slate-300 uppercase mb-1">
+                <label className={`block text-[11px] font-race uppercase mb-1 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                  Team Leader Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={regLeaderName}
+                  onChange={(e) => setRegLeaderName(e.target.value)}
+                  placeholder="Full Name of Team Leader"
+                  className={`w-full border rounded-lg px-3 py-2 text-xs ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400'
+                      : 'bg-slate-950 border-white/10 text-white placeholder:text-slate-600'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-[11px] font-race uppercase mb-1 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                   Institution Name
                 </label>
                 <input
@@ -432,12 +463,16 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
                   value={regInstitution}
                   onChange={(e) => setRegInstitution(e.target.value)}
                   placeholder="e.g. GM University, Davangere"
-                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white"
+                  className={`w-full border rounded-lg px-3 py-2 text-xs ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400'
+                      : 'bg-slate-950 border-white/10 text-white placeholder:text-slate-600'
+                  }`}
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-race text-slate-300 uppercase mb-1">
+                <label className={`block text-[11px] font-race uppercase mb-1 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                   Team Members (One per line)
                 </label>
                 <textarea
@@ -445,22 +480,44 @@ export default function LoginPage({ initialRole = 'participant', lockedPortal = 
                   value={regMembers}
                   onChange={(e) => setRegMembers(e.target.value)}
                   placeholder="Karthik V&#10;Divya R"
-                  className="w-full bg-slate-950 border border-white/10 rounded-lg p-2.5 text-xs text-white font-mono-code"
+                  className={`w-full border rounded-lg p-2.5 text-xs font-mono-code ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400'
+                      : 'bg-slate-950 border-white/10 text-white placeholder:text-slate-600'
+                  }`}
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-race text-slate-300 uppercase mb-1">
+                <label className={`block text-[11px] font-race uppercase mb-1 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                   Password
                 </label>
-                <input
-                  type="password"
-                  required
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  placeholder="Create team password"
-                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono-code"
-                />
+                <div className="relative">
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    required
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="Create team password"
+                    className={`w-full border rounded-lg pl-3 pr-10 py-2 text-xs font-mono-code ${
+                      isLight
+                        ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400'
+                        : 'bg-slate-950 border-white/10 text-white placeholder:text-slate-600'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="absolute right-2.5 top-1.5 text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer transition-colors"
+                    title={showRegPassword ? 'Hide password' : 'View password'}
+                  >
+                    {showRegPassword ? (
+                      <EyeOff className={`w-4 h-4 ${isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-cyan-400'}`} />
+                    ) : (
+                      <Eye className={`w-4 h-4 ${isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-cyan-400'}`} />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <button

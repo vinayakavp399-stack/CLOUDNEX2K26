@@ -1,8 +1,10 @@
 import React from 'react';
 import { Cpu, Rocket, AlertTriangle, CheckCircle2, Lock, Flag, Award, ShieldAlert, Clock, Upload } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 import CountdownTimer from './CountdownTimer';
 
 export default function CircuitTrack({ rounds, onSelectRound, activeRoundNumber, teamStatus, isQualifiedR3, isEliminated, onExpire }) {
+  const { isLight } = useTheme();
   const getRoundStatusBadge = (r) => {
     switch (r.status) {
       case 'LIVE':
@@ -47,18 +49,24 @@ export default function CircuitTrack({ rounds, onSelectRound, activeRoundNumber,
   };
 
   return (
-    <div className="relative py-8 px-4 sm:px-6 bg-slate-950/60 rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+    <div className={`relative py-8 px-4 sm:px-6 rounded-2xl overflow-hidden shadow-2xl transition-colors ${
+      isLight ? 'bg-white/95 border border-slate-200' : 'bg-slate-950/60 border border-white/10'
+    }`}>
       {/* Background Circuit Asphalt Grid Lines */}
       <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:24px_24px]" />
 
       {/* Track Header */}
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-white/10 gap-4">
+      <div className={`relative z-10 flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b gap-4 ${
+        isLight ? 'border-slate-200' : 'border-white/10'
+      }`}>
         <div>
           <div className="flex items-center space-x-2 text-xs font-race uppercase tracking-widest text-red-500 font-bold">
             <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
             <span>F1 RACE TELEMETRY CIRCUIT</span>
           </div>
-          <h3 className="text-xl sm:text-2xl font-race font-black text-white mt-1">
+          <h3 className={`text-xl sm:text-2xl font-race font-black mt-1 ${
+            isLight ? 'text-slate-900' : 'text-white'
+          }`}>
             THREE-ROUND CHAMPIONSHIP TRACK
           </h3>
         </div>
@@ -67,17 +75,23 @@ export default function CircuitTrack({ rounds, onSelectRound, activeRoundNumber,
         {teamStatus && (
           <div className="flex items-center space-x-2">
             {isEliminated ? (
-              <div className="flex items-center space-x-2 px-3.5 py-1.5 bg-red-950/80 border border-red-700 rounded-lg text-red-300 text-xs font-race font-bold">
-                <ShieldAlert className="w-4 h-4 text-red-400" />
+              <div className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-race font-bold ${
+                isLight ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-red-950/80 border border-red-700 text-red-300'
+              }`}>
+                <ShieldAlert className="w-4 h-4 text-red-500" />
                 <span>RACE COMPLETED (ELIMINATED)</span>
               </div>
             ) : isQualifiedR3 ? (
-              <div className="flex items-center space-x-2 px-3.5 py-1.5 bg-cyan-950/80 border border-cyan-500 rounded-lg text-cyan-300 text-xs font-race font-bold shadow-lg shadow-cyan-950/50 glow-blue">
-                <Award className="w-4 h-4 text-cyan-400" />
+              <div className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-race font-bold shadow-lg ${
+                isLight ? 'bg-sky-50 border border-sky-300 text-sky-700' : 'bg-cyan-950/80 border border-cyan-500 text-cyan-300 shadow-cyan-950/50 glow-blue'
+              }`}>
+                <Award className="w-4 h-4 text-sky-600" />
                 <span>QUALIFIED FOR FINAL LAP</span>
               </div>
             ) : (
-              <div className="flex items-center space-x-2 px-3.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 text-xs font-race">
+              <div className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-race ${
+                isLight ? 'bg-slate-100 border border-slate-200 text-slate-700' : 'bg-slate-900 border border-slate-700 text-slate-300'
+              }`}>
                 <span>GRID STATUS: ACTIVE</span>
               </div>
             )}
@@ -137,7 +151,11 @@ export default function CircuitTrack({ rounds, onSelectRound, activeRoundNumber,
               onClick={() => onSelectRound && onSelectRound(round)}
               className={`relative rounded-xl p-5 cursor-pointer transition-all duration-75 active:scale-[0.99] border flex flex-col justify-between ${
                 isSelected
-                  ? 'bg-slate-900/90 border-red-500 shadow-xl shadow-red-950/50 scale-[1.02]'
+                  ? isLight
+                    ? 'bg-sky-50/80 border-sky-500 shadow-md scale-[1.02]'
+                    : 'bg-slate-900/90 border-red-500 shadow-xl shadow-red-950/50 scale-[1.02]'
+                  : isLight
+                  ? 'bg-slate-50/70 border-slate-200 hover:border-slate-300 hover:bg-slate-100/70'
                   : 'bg-slate-900/50 border-white/10 hover:border-white/20 hover:bg-slate-900/70'
               }`}
             >
@@ -147,16 +165,20 @@ export default function CircuitTrack({ rounds, onSelectRound, activeRoundNumber,
                   <div className="flex items-center space-x-3">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center border shadow-inner ${
                       round.status === 'LIVE'
-                        ? 'bg-red-950/50 border-red-500/50'
-                        : 'bg-slate-800/60 border-white/10'
+                        ? isLight ? 'bg-red-50 border-red-300' : 'bg-red-950/50 border-red-500/50'
+                        : isLight ? 'bg-white border-slate-200' : 'bg-slate-800/60 border-white/10'
                     }`}>
                       {getRoundIcon(round.round_number)}
                     </div>
                     <div>
-                      <span className="text-[11px] font-mono-code text-slate-400 block uppercase">
+                      <span className={`text-[11px] font-mono-code block uppercase ${
+                        isLight ? 'text-slate-600' : 'text-slate-400'
+                      }`}>
                         CHECKPOINT 0{round.round_number}
                       </span>
-                      <span className="font-race font-bold text-sm text-white">
+                      <span className={`font-race font-bold text-sm ${
+                        isLight ? 'text-slate-900' : 'text-white'
+                      }`}>
                         LAP {round.round_number} OF 3
                       </span>
                     </div>
@@ -168,7 +190,9 @@ export default function CircuitTrack({ rounds, onSelectRound, activeRoundNumber,
                       <span>{badge.label}</span>
                     </div>
                     {round.submissions_open && (
-                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[9px] font-mono-code font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/40 animate-pulse">
+                      <span className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[9px] font-mono-code font-bold ${
+                        isLight ? 'bg-sky-100 text-sky-700 border border-sky-300' : 'bg-cyan-950 text-cyan-300 border border-cyan-500/40 animate-pulse'
+                      }`}>
                         <Upload className="w-2.5 h-2.5" />
                         <span>SUBMISSIONS OPEN</span>
                       </span>
@@ -177,13 +201,17 @@ export default function CircuitTrack({ rounds, onSelectRound, activeRoundNumber,
                 </div>
 
                 {/* Title */}
-                <h4 className="font-race text-lg font-bold text-white mb-2">
+                <h4 className={`font-race text-lg font-bold mb-2 ${
+                  isLight ? 'text-slate-900' : 'text-white'
+                }`}>
                   {spec.title}
                 </h4>
 
                 {/* Description (Round 3 only) */}
                 {num === 3 && spec.description && (
-                  <p className="text-xs text-slate-300 line-clamp-3 mb-3 leading-relaxed">
+                  <p className={`text-xs line-clamp-3 mb-3 leading-relaxed ${
+                    isLight ? 'text-slate-600' : 'text-slate-300'
+                  }`}>
                     {spec.description}
                   </p>
                 )}

@@ -258,6 +258,12 @@ async def poll_events(
 
     events = event_manager.get_events(since_id=effective_since, team_id=effective_team_id)
 
+    # Real-Time Long-Polling: If client has already initialized baseline and there are no immediate events,
+    # hold connection open for up to 6.0s to push any incoming event instantly (0ms latency!)
+    if effective_since is not None and len(events) == 0:
+        await event_manager.wait_for_new_events(timeout=6.0)
+        events = event_manager.get_events(since_id=effective_since, team_id=effective_team_id)
+
     return {
         "status": "ok",
         "server_time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),

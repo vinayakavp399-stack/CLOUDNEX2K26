@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Component } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { RaceSocketProvider, useRaceSocket } from './context/RaceSocketContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { getUserData } from './api/client';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -55,6 +56,7 @@ class ErrorBoundary extends Component {
 function AppContent() {
   const { user, isAuthenticated, isAdmin, isParticipant, logout } = useAuth();
   const { registerListener } = useRaceSocket();
+  const { isLight } = useTheme();
 
   // Restore active view from localStorage or user role so reloading stays on dashboard
   const [currentView, setView] = useState(() => {
@@ -78,23 +80,14 @@ function AppContent() {
     }
   };
 
-  // If user is authenticated and currentView is unassigned/landing, automatically take them to their console
-  useEffect(() => {
-    if (isAuthenticated) {
-      const saved = localStorage.getItem('cloudnex_view');
-      if (!saved || saved === 'landing' || !VALID_VIEWS.includes(saved)) {
-        const target = isAdmin ? 'admin' : 'participant';
-        setView(target);
-        localStorage.setItem('cloudnex_view', target);
-      }
-    }
-  }, [isAuthenticated, isAdmin]);
-
   // If user logs out or is unauthenticated, redirect to main dashboard (landing) immediately
   useEffect(() => {
     if (!isAuthenticated) {
       if (currentView === 'admin' || currentView === 'participant' || currentView === 'teams') {
-        handleSetView('landing');
+        setView('landing');
+        try {
+          localStorage.removeItem('cloudnex_view');
+        } catch {}
       }
     }
   }, [isAuthenticated, currentView]);
@@ -141,7 +134,7 @@ function AppContent() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#080a0f] text-slate-100">
+    <div className={`flex flex-col min-h-screen ${isLight ? 'bg-slate-100 text-slate-900' : 'bg-[#080a0f] text-slate-100'} transition-colors duration-300`}>
       <Navbar currentView={currentView} setView={handleSetView} />
 
       <main className="flex-1">
@@ -175,9 +168,9 @@ function AppContent() {
           {currentView === 'participant' && (
             isAuthenticated ? (
               isParticipant ? (
-                <ParticipantDashboard />
+                <ParticipantDashboard onLogout={() => handleSetView('landing')} />
               ) : (
-                <AdminDashboard />
+                <AdminDashboard onLogout={() => handleSetView('landing')} />
               )
             ) : (
               <LoginPage
@@ -192,9 +185,9 @@ function AppContent() {
           {currentView === 'admin' && (
             isAuthenticated ? (
               isAdmin ? (
-                <AdminDashboard initialTab="rounds" />
+                <AdminDashboard initialTab="rounds" onLogout={() => handleSetView('landing')} />
               ) : (
-                <ParticipantDashboard />
+                <ParticipantDashboard onLogout={() => handleSetView('landing')} />
               )
             ) : (
               <LoginPage
@@ -209,9 +202,9 @@ function AppContent() {
           {currentView === 'teams' && (
             isAuthenticated ? (
               isAdmin ? (
-                <TeamsPage />
+                <TeamsPage onLogout={() => handleSetView('landing')} />
               ) : (
-                <ParticipantDashboard />
+                <ParticipantDashboard onLogout={() => handleSetView('landing')} />
               )
             ) : (
               <LoginPage
@@ -249,10 +242,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <RaceSocketProvider>
-        <AppContent />
-      </RaceSocketProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <RaceSocketProvider>
+          <AppContent />
+        </RaceSocketProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

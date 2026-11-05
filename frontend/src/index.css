@@ -171,3 +171,582 @@ body {
   background: transparent !important;
 }
 
+/* ── CloudNex 3D Logo Animations ── */
+@keyframes gyroX {
+  0%   { transform: rotateX(68deg) rotateZ(0deg); }
+  100% { transform: rotateX(68deg) rotateZ(360deg); }
+}
+@keyframes gyroY {
+  0%   { transform: rotateY(68deg) rotateZ(0deg); }
+  100% { transform: rotateY(68deg) rotateZ(-360deg); }
+}
+@keyframes cloudFloat {
+  0%,100% { transform: translateY(0px); }
+  33%  { transform: translateY(-10px) rotate(0.4deg); }
+  66%  { transform: translateY(-5px) rotate(-0.3deg); }
+}
+@keyframes orbitSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes glowPulseCloud {
+  0%,100% { opacity: 0.5; filter: drop-shadow(0 0 12px rgba(0,245,255,0.35)); }
+  50%     { opacity: 1;   filter: drop-shadow(0 0 32px rgba(0,245,255,0.75)); }
+}
+@keyframes scanLine {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+@keyframes particleDrift {
+  0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0.6; }
+  50%  { transform: translateY(-30px) translateX(12px) scale(1.2); opacity: 1; }
+  100% { transform: translateY(-60px) translateX(-8px) scale(0.8); opacity: 0; }
+}
+
+.anim-cloud-float  { animation: cloudFloat 7s ease-in-out infinite; }
+.anim-glow-cloud   { animation: glowPulseCloud 3s ease-in-out infinite; }
+
+/* Holographic scan overlay */
+.holo-scan::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 0%, rgba(0,245,255,0.04) 50%, transparent 100%);
+  animation: scanLine 4s linear infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Neon border pulse */
+.neon-border-pulse {
+  box-shadow: 0 0 0 1px rgba(0,245,255,0.3), 0 0 20px rgba(0,245,255,0.15);
+  animation: neonBorderPulse 3s ease-in-out infinite;
+}
+@keyframes neonBorderPulse {
+  0%,100% { box-shadow: 0 0 0 1px rgba(0,245,255,0.3), 0 0 20px rgba(0,245,255,0.15); }
+  50%     { box-shadow: 0 0 0 1px rgba(0,245,255,0.7), 0 0 40px rgba(0,245,255,0.35), 0 0 60px rgba(99,102,241,0.2); }
+}
+
+/* Cloud glassmorphism card upgrade */
+.cloud-card {
+  background: linear-gradient(135deg, rgba(8,15,32,0.88) 0%, rgba(4,8,18,0.94) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(14,165,233,0.18);
+  box-shadow: 0 12px 35px -10px rgba(0,0,0,0.85),
+              0 0 0 1px rgba(255,255,255,0.04) inset,
+              0 0 25px -8px rgba(0,245,255,0.1);
+  transition: all 0.35s cubic-bezier(0.16,1,0.3,1);
+  position: relative;
+  overflow: hidden;
+}
+.cloud-card:hover {
+  border-color: rgba(0,245,255,0.42);
+  box-shadow: 0 20px 50px -10px rgba(0,0,0,0.9),
+              0 0 35px -5px rgba(0,245,255,0.28),
+              0 0 60px -10px rgba(99,102,241,0.22);
+  transform: translateY(-3px);
+}
+
+/* Text gradient cloud */
+.text-gradient-cloud {
+  background: linear-gradient(135deg, #a5f3fc 0%, #38bdf8 40%, #6366f1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #e0f2fe 0%, #38bdf8 35%, #00f5ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LITE / LIGHT THEME SYSTEM (HIGH CONTRAST & ACCESSIBLE)
+   ═══════════════════════════════════════════════════════════════ */
+html.light {
+  color-scheme: light;
+}
+
+html.light body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+html.light .bg-carbon-pattern {
+  background-color: #f8fafc;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.12) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+    linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+}
+
+/* Light Mode Cards */
+html.light .racing-card,
+html.light .cloud-card {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(14, 165, 233, 0.25) !important;
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08), 0 0 15px -3px rgba(14, 165, 233, 0.08) !important;
+  color: #0f172a !important;
+}
+
+html.light .racing-card:hover,
+html.light .cloud-card:hover {
+  border-color: rgba(14, 165, 233, 0.45) !important;
+  box-shadow: 0 15px 35px -5px rgba(14, 165, 233, 0.15), 0 0 20px -5px rgba(99, 102, 241, 0.08) !important;
+}
+
+/* Inner tiles & slate containers inside light mode dashboards */
+html.light .bg-slate-950,
+html.light .bg-slate-950\/95,
+html.light .bg-slate-950\/90,
+html.light .bg-slate-950\/85,
+html.light .bg-slate-950\/80,
+html.light .bg-slate-950\/70,
+html.light .bg-slate-950\/60,
+html.light .bg-slate-950\/50,
+html.light .bg-slate-950\/40,
+html.light .bg-slate-950\/30,
+html.light .bg-slate-900,
+html.light .bg-slate-900\/95,
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/70,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/50,
+html.light .bg-slate-900\/40,
+html.light .bg-slate-900\/30,
+html.light .bg-slate-800\/60,
+html.light .bg-slate-800\/50,
+html.light .bg-slate-800\/40,
+html.light .bg-black\/40,
+html.light .bg-black\/50,
+html.light .bg-black\/60 {
+  background-color: #ffffff !important;
+  border-color: rgba(203, 213, 225, 0.8) !important;
+  color: #0f172a;
+}
+
+/* Inactive button / tile hover in light mode */
+html.light .hover\:bg-slate-800:hover,
+html.light .hover\:bg-slate-900\/70:hover,
+html.light .hover\:bg-white\/5:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Light mode footer */
+html.light footer {
+  background-color: #f8fafc !important;
+  border-top-color: #e2e8f0 !important;
+  color: #334155;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TYPOGRAPHY: REPLACE INVISIBLE WHITE & YELLOW TEXT IN LIGHT MODE
+   ───────────────────────────────────────────────────────────── */
+
+/* 1. White text turns to crisp, deep dark slate #0f172a on light surfaces */
+html.light .text-white {
+  color: #0f172a !important;
+}
+
+/* Preserve white text ONLY on solid dark colored buttons & badges */
+html.light button.bg-red-600,
+html.light button.bg-red-600 *,
+html.light button.bg-red-700,
+html.light button.bg-red-700 *,
+html.light button.bg-red-800,
+html.light button.bg-red-800 *,
+html.light button.bg-cyan-600,
+html.light button.bg-cyan-600 *,
+html.light button.bg-blue-600,
+html.light button.bg-blue-600 *,
+html.light button.bg-indigo-600,
+html.light button.bg-indigo-600 *,
+html.light button.bg-emerald-600,
+html.light button.bg-emerald-600 *,
+html.light button.bg-purple-600,
+html.light button.bg-purple-600 *,
+html.light .bg-red-600,
+html.light .bg-red-600 *,
+html.light .bg-red-700,
+html.light .bg-red-700 *,
+html.light .bg-blue-600,
+html.light .bg-blue-600 *,
+html.light .bg-emerald-600,
+html.light .bg-emerald-600 *,
+html.light .bg-purple-600,
+html.light .bg-purple-600 *,
+html.light .bg-red-600.text-white,
+html.light .bg-red-600 .text-white,
+html.light span.bg-red-600 {
+  color: #ffffff !important;
+}
+
+/* Red badges & light pink buttons in light mode: deep dark red text for crystal-clear legibility */
+html.light .bg-red-50,
+html.light .bg-red-50 *,
+html.light .bg-red-100,
+html.light .bg-red-100 *,
+html.light .bg-red-950,
+html.light .bg-red-950 *,
+html.light .bg-red-950\/40,
+html.light .bg-red-950\/40 *,
+html.light .bg-red-950\/60,
+html.light .bg-red-950\/60 *,
+html.light .bg-red-950\/80,
+html.light .bg-red-950\/80 * {
+  color: #991b1b !important; /* Deep Red 800: AAA accessible, 7.5:1 contrast */
+}
+
+/* Ensure winner celebration screen & podium modal remain in their glorious dark championship theme in BOTH light and dark mode */
+html.light .celebration-screen-theme,
+html.light .celebration-screen-theme *,
+html.light .winner-modal-podium,
+html.light .winner-modal-podium * {
+  color: initial;
+}
+
+html.light .celebration-screen-theme .text-white,
+html.light .winner-modal-podium .text-white {
+  color: #ffffff !important;
+}
+
+html.light .celebration-screen-theme .text-yellow-100,
+html.light .celebration-screen-theme .text-yellow-200,
+html.light .celebration-screen-theme .text-yellow-300,
+html.light .winner-modal-podium .text-yellow-300 {
+  color: #fde047 !important;
+}
+
+html.light .celebration-screen-theme .text-yellow-400,
+html.light .winner-modal-podium .text-yellow-400 {
+  color: #facc15 !important;
+}
+
+html.light .celebration-screen-theme .text-amber-100,
+html.light .celebration-screen-theme .text-amber-200,
+html.light .celebration-screen-theme .text-amber-300,
+html.light .winner-modal-podium .text-amber-300 {
+  color: #fcd34d !important;
+}
+
+html.light .celebration-screen-theme .text-amber-400,
+html.light .winner-modal-podium .text-amber-400 {
+  color: #fbbf24 !important;
+}
+
+html.light .celebration-screen-theme .text-cyan-100,
+html.light .celebration-screen-theme .text-cyan-200,
+html.light .celebration-screen-theme .text-cyan-300,
+html.light .winner-modal-podium .text-cyan-300 {
+  color: #67e8f9 !important;
+}
+
+html.light .celebration-screen-theme .text-cyan-400,
+html.light .winner-modal-podium .text-cyan-400 {
+  color: #22d3ee !important;
+}
+
+html.light .celebration-screen-theme .text-emerald-300,
+html.light .winner-modal-podium .text-emerald-300 {
+  color: #6ee7b7 !important;
+}
+
+html.light .celebration-screen-theme .text-emerald-400,
+html.light .winner-modal-podium .text-emerald-400 {
+  color: #34d399 !important;
+}
+
+html.light .celebration-screen-theme .text-slate-300,
+html.light .winner-modal-podium .text-slate-300 {
+  color: #cbd5e1 !important;
+}
+
+html.light .celebration-screen-theme .text-slate-400,
+html.light .winner-modal-podium .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+/* Ensure slate-400, slate-300, slate-500 are crisp, dark, and neatly visible in light mode */
+html.light .text-slate-400 {
+  color: #334155 !important; /* slate-700: clear, dark readable text */
+}
+
+html.light .text-slate-300 {
+  color: #1e293b !important; /* slate-800 */
+}
+
+html.light .text-slate-500 {
+  color: #475569 !important; /* slate-600 */
+}
+
+/* Light mode table borders and row contrast */
+html.light tr.border-b {
+  border-color: rgba(226, 232, 240, 0.9) !important;
+}
+
+html.light table thead tr {
+  background-color: rgba(248, 250, 252, 0.85);
+  color: #1e293b !important;
+}
+
+html.light table tbody tr:hover {
+  background-color: rgba(241, 245, 249, 0.6) !important;
+}
+
+html.light .border-white\/10,
+html.light .border-white\/5,
+html.light .border-white\/20 {
+  border-color: rgba(203, 213, 225, 0.7) !important;
+}
+
+html.light .divide-white\/5 > * + *,
+html.light .divide-white\/10 > * + * {
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+/* 2. Yellow & Light Amber text -> Rich, High-Contrast Bronze-Amber (#92400e) */
+html.light .text-yellow-100,
+html.light .text-yellow-200,
+html.light .text-yellow-300,
+html.light .text-yellow-400,
+html.light .text-yellow-500,
+html.light .text-amber-100,
+html.light .text-amber-200,
+html.light .text-amber-300,
+html.light .text-amber-400 {
+  color: #92400e !important; /* Amber-800: AAA accessible, 7.3:1 contrast on white */
+}
+
+html.light .text-yellow-600,
+html.light .text-amber-500,
+html.light .text-amber-600 {
+  color: #78350f !important; /* Amber-900: deep golden bronze */
+}
+
+/* Yellow & amber borders */
+html.light .border-yellow-300,
+html.light .border-yellow-400,
+html.light .border-yellow-500,
+html.light .border-amber-300,
+html.light .border-amber-400,
+html.light .border-amber-500,
+html.light .border-amber-500\/50,
+html.light .border-amber-500\/40,
+html.light .border-amber-500\/30,
+html.light .border-amber-500\/20 {
+  border-color: rgba(217, 119, 6, 0.45) !important;
+}
+
+/* Yellow & amber badges/pills in light mode */
+html.light .bg-amber-950,
+html.light .bg-amber-950\/90,
+html.light .bg-amber-950\/80,
+html.light .bg-amber-950\/60,
+html.light .bg-amber-950\/50,
+html.light .bg-amber-950\/40,
+html.light .bg-amber-950\/30,
+html.light .bg-amber-950\/20,
+html.light .bg-yellow-950,
+html.light .bg-yellow-950\/90,
+html.light .bg-yellow-950\/80,
+html.light .bg-yellow-950\/60,
+html.light .bg-yellow-950\/40,
+html.light .bg-amber-500\/10,
+html.light .bg-amber-500\/20,
+html.light .bg-amber-500\/30,
+html.light .bg-yellow-500\/10,
+html.light .bg-yellow-500\/20,
+html.light .bg-yellow-500\/30 {
+  background-color: rgba(254, 243, 199, 0.85) !important;
+  border-color: rgba(217, 119, 6, 0.45) !important;
+  color: #92400e !important;
+}
+
+html.light .bg-amber-950 *,
+html.light .bg-amber-500\/10 *,
+html.light .bg-amber-500\/20 * {
+  color: #92400e !important;
+}
+
+/* 3. Cyan & Sky: Rich Azure (#0284c7) instead of neon cyan */
+html.light .text-cyan-200,
+html.light .text-cyan-300,
+html.light .text-cyan-400,
+html.light .text-sky-300,
+html.light .text-sky-400 {
+  color: #0284c7 !important; /* Sky-600 */
+}
+
+html.light .text-cyan-500,
+html.light .text-sky-500 {
+  color: #0369a1 !important; /* Sky-700 */
+}
+
+html.light .bg-cyan-950,
+html.light .bg-cyan-950\/90,
+html.light .bg-cyan-950\/80,
+html.light .bg-cyan-950\/60,
+html.light .bg-cyan-950\/50,
+html.light .bg-cyan-950\/40,
+html.light .bg-cyan-950\/30,
+html.light .bg-cyan-950\/20,
+html.light .bg-cyan-500\/10,
+html.light .bg-cyan-500\/20 {
+  background-color: rgba(224, 242, 254, 0.85) !important;
+  border-color: rgba(2, 132, 199, 0.4) !important;
+  color: #0369a1 !important;
+}
+
+/* 4. Emerald & Green: Deep Forest Emerald (#047857) */
+html.light .text-emerald-300,
+html.light .text-emerald-400,
+html.light .text-green-300,
+html.light .text-green-400 {
+  color: #047857 !important; /* Emerald-700 */
+}
+
+html.light .bg-emerald-950,
+html.light .bg-emerald-950\/90,
+html.light .bg-emerald-950\/80,
+html.light .bg-emerald-950\/60,
+html.light .bg-emerald-950\/50,
+html.light .bg-emerald-950\/40,
+html.light .bg-emerald-950\/30,
+html.light .bg-emerald-950\/20,
+html.light .bg-emerald-950\/15,
+html.light .bg-emerald-950\/25,
+html.light .bg-emerald-500\/10,
+html.light .bg-emerald-500\/20 {
+  background-color: rgba(209, 250, 229, 0.85) !important;
+  border-color: rgba(5, 150, 105, 0.4) !important;
+  color: #065f46 !important;
+}
+
+/* 5. Red & Danger: Rich Crimson (#b91c1c) */
+html.light .text-red-300,
+html.light .text-red-400 {
+  color: #b91c1c !important; /* Red-700 */
+}
+
+html.light .bg-red-950,
+html.light .bg-red-950\/90,
+html.light .bg-red-950\/80,
+html.light .bg-red-950\/60,
+html.light .bg-red-950\/50,
+html.light .bg-red-950\/40,
+html.light .bg-red-950\/30,
+html.light .bg-red-950\/20,
+html.light .bg-red-950\/15,
+html.light .bg-red-950\/25,
+html.light .bg-red-600\/30,
+html.light .bg-red-500\/10,
+html.light .bg-red-500\/20 {
+  background-color: rgba(254, 226, 226, 0.85) !important;
+  border-color: rgba(220, 38, 38, 0.4) !important;
+  color: #991b1b !important;
+}
+
+/* 6. Purple: Deep Violet (#6d28d9) */
+html.light .text-purple-300,
+html.light .text-purple-400 {
+  color: #6d28d9 !important; /* Purple-700 */
+}
+
+html.light .bg-purple-950,
+html.light .bg-purple-950\/90,
+html.light .bg-purple-950\/80,
+html.light .bg-purple-950\/60,
+html.light .bg-purple-950\/50,
+html.light .bg-purple-950\/40,
+html.light .bg-purple-500\/10,
+html.light .bg-purple-500\/20 {
+  background-color: rgba(243, 232, 255, 0.85) !important;
+  border-color: rgba(147, 51, 234, 0.4) !important;
+  color: #581c87 !important;
+}
+
+/* 7. Slate Texts for High Legibility */
+html.light .text-slate-100,
+html.light .text-slate-200 {
+  color: #1e293b !important; /* Slate-800 */
+}
+
+html.light .text-slate-300 {
+  color: #334155 !important; /* Slate-700 */
+}
+
+html.light .text-slate-400 {
+  color: #475569 !important; /* Slate-600 */
+}
+
+html.light .text-slate-500 {
+  color: #64748b !important; /* Slate-500 */
+}
+
+/* 8. Neutral & Subtle Borders in Light Mode */
+html.light .border-white\/5,
+html.light .border-white\/10,
+html.light .border-white\/15,
+html.light .border-white\/20,
+html.light .border-slate-800,
+html.light .border-slate-700 {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+/* 9. Tables in Light Mode */
+html.light table {
+  color: #0f172a !important;
+}
+html.light thead {
+  background-color: #f1f5f9 !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+html.light thead th {
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+html.light tbody tr {
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+html.light tbody tr:hover {
+  background-color: rgba(241, 245, 249, 0.7) !important;
+}
+
+/* 10. Gradient Text: Convert Pale Yellow to Rich Metallic Bronze */
+html.light [class*="from-yellow-200"],
+html.light [class*="from-yellow-300"],
+html.light [class*="from-amber-200"],
+html.light [class*="from-amber-300"] {
+  background-image: linear-gradient(135deg, #b45309 0%, #d97706 50%, #92400e 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Scrollbars in Light Mode */
+html.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #0284c7;
+}
+
+/* Form fields & inputs in light mode */
+html.light input,
+html.light textarea,
+html.light select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+

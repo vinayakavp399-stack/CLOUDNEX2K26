@@ -53,7 +53,7 @@ class RegisterParticipantRequest(BaseModel):
     team_id: str
     team_name: str
     leader_name: str
-    email: str
+    email: Optional[str] = ""
     password: str
     institution: str
     members: List[str] = []

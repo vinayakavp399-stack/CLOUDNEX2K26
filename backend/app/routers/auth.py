@@ -201,6 +201,11 @@ async def login(credentials: LoginRequest, background_tasks: BackgroundTasks):
             team_dict = _apply_r3_rules_to_team(dict(team))
             user_info["team"] = team_dict
             team_data = team_dict
+
+        # Immediately register active heartbeat and broadcast instant presence update to Race Control (0ms)
+        clean_t_id = str(user["team_id"]).strip().upper()
+        ws_manager.record_heartbeat(clean_t_id)
+        await ws_manager.broadcast("TEAM_STATUS_CHANGED", {"team_id": clean_t_id, "is_online": True})
     else:
         await db_update_task
 
@@ -235,6 +240,12 @@ async def logout(current_user: dict = Depends(get_current_user)):
 
     # Only participants enforce single-device active session clearing
     if current_user.get("role") == UserRole.PARTICIPANT:
+        clean_t_id = str(team_id).strip().upper() if team_id else None
+        if clean_t_id:
+            ws_manager.remove_heartbeat(clean_t_id)
+            # Immediately notify all Admin & Teams dashboards in 0ms!
+            await ws_manager.broadcast("TEAM_STATUS_CHANGED", {"team_id": clean_t_id, "is_online": False})
+
         query = {"team_id": team_id} if team_id else {"username": username}
         await asyncio.to_thread(
             users_col.update_one,
@@ -260,7 +271,9 @@ async def register_participant(data: RegisterParticipantRequest):
     clean_team_id = data.team_id.strip().upper()
     clean_team_name = data.team_name.strip()
     clean_leader_name = data.leader_name.strip()
-    clean_email = data.email.strip().lower()
+    clean_email = (data.email or "").strip().lower()
+    if not clean_email:
+        clean_email = f"{clean_team_id.lower()}@cloudnex.gmu.ac.in"
     clean_institution = data.institution.strip()
 
     # Rule 1: Registration must be performed by the Team Leader
@@ -282,34 +295,33 @@ async def register_participant(data: RegisterParticipantRequest):
             detail="Team ID is required."
         )
 
-    if not clean_email or "@" not in clean_email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A valid Team Leader email address is required."
-        )
-
     # 2 ultra-fast index-accelerated checks + password hashing in parallel (<10ms total)
+    team_query_conditions = [
+        {"team_id": clean_team_id},
+        {"team_id": clean_team_id.lower()},
+        {"team_id": clean_team_id.upper()},
+        {"team_name": clean_team_name}
+    ]
+    if data.email and data.email.strip():
+        team_query_conditions.append({"email": clean_email})
+
+    user_query_conditions = [
+        {"username": clean_team_id.lower()},
+        {"username": clean_team_id},
+        {"team_id": clean_team_id},
+        {"team_id": clean_team_id.lower()},
+        {"team_id": clean_team_id.upper()}
+    ]
+    if data.email and data.email.strip():
+        user_query_conditions.append({"email": clean_email})
+
     team_check_task = asyncio.to_thread(
         teams_col.find_one,
-        {
-            "$or": [
-                {"team_id": clean_team_id},
-                {"team_id": clean_team_id.lower()},
-                {"team_name": clean_team_name},
-                {"email": clean_email}
-            ]
-        }
+        {"$or": team_query_conditions}
     )
     user_check_task = asyncio.to_thread(
         users_col.find_one,
-        {
-            "$or": [
-                {"username": clean_team_id.lower()},
-                {"team_id": clean_team_id},
-                {"team_id": clean_team_id.lower()},
-                {"email": clean_email}
-            ]
-        }
+        {"$or": user_query_conditions}
     )
     hash_task = asyncio.to_thread(get_password_hash, data.password)
 
@@ -334,7 +346,7 @@ async def register_participant(data: RegisterParticipantRequest):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Team Name '{clean_team_name}' is already taken. Please choose a unique Team Name."
             )
-        if t_email == clean_email:
+        if data.email and data.email.strip() and t_email == clean_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Email '{clean_email}' is already registered with another team."
@@ -345,12 +357,12 @@ async def register_participant(data: RegisterParticipantRequest):
         u_tid = str(existing_user.get("team_id", "")).strip().upper()
         u_email = str(existing_user.get("email", "")).strip().lower()
 
-        if u_name == clean_team_id.lower() or u_tid == clean_team_id:
+        if u_name == clean_team_id.lower() or u_tid == clean_team_id or u_tid.lower() == clean_team_id.lower():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Team ID '{clean_team_id}' is already registered. Teams must not have the same Team ID. Please enter a unique Team ID."
             )
-        if u_email == clean_email:
+        if data.email and data.email.strip() and u_email == clean_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Email '{clean_email}' is already registered with another team."

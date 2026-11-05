@@ -141,13 +141,14 @@ export function RaceSocketProvider({ children }) {
     } finally {
       isPollingRef.current = false;
       if (!unmountedRef.current) {
-        // Adaptive delay: 2.5s when active, 6s when tab is backgrounded, 1.5s on rapid retry
+        // High-speed real-time long-polling listener:
+        // When connected, loop immediately (50ms - 150ms) because server holds the request until an event occurs!
         const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
-        let delay = 2500;
+        let delay = 100;
         if (retryCountRef.current > 0) {
-          delay = Math.min(1200 * Math.pow(1.3, Math.min(retryCountRef.current, 4)), 5000);
+          delay = Math.min(1000 * Math.pow(1.3, Math.min(retryCountRef.current, 4)), 4000);
         } else if (isHidden) {
-          delay = 6000;
+          delay = 1200;
         }
 
         if (pollTimerRef.current) clearTimeout(pollTimerRef.current);

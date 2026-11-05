@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Users, Radio, Search, X, LogOut, RefreshCw, CheckCircle2, AlertTriangle, Shield
+  Users, Radio, Search, X, RefreshCw, CheckCircle2, AlertTriangle, Shield, LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useRaceSocket } from '../context/RaceSocketContext';
+import { useTheme } from '../context/ThemeContext';
 import { api } from '../api/client';
 import dashboardBg from '../assets/dashboard_bg.jpg';
 
-export default function TeamsPage() {
-  const { user } = useAuth();
+export default function TeamsPage({ onLogout }) {
+  const { user, logout } = useAuth();
   const { registerListener, isConnected, reconnect } = useRaceSocket();
+  const { isLight } = useTheme();
 
   const [teams, setTeams] = useState(() => {
     try {
@@ -151,19 +153,21 @@ export default function TeamsPage() {
         <img
           src={dashboardBg}
           alt="CLOUDNEX Registered Teams Atmosphere"
-          className="w-full h-full object-cover object-top opacity-40 filter brightness-95 contrast-110"
+          className={`w-full h-full object-cover object-top ${isLight ? 'opacity-10' : 'opacity-40'} filter brightness-95 contrast-110`}
         />
-        <div className="absolute inset-0 bg-[#080a0f]/80 backdrop-blur-[1px]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#080a0f] via-transparent to-[#080a0f]/90" />
+        <div className={`absolute inset-0 ${isLight ? 'bg-slate-100/80' : 'bg-[#080a0f]/80'} backdrop-blur-[1px]`} />
+        <div className={`absolute inset-0 bg-gradient-to-t ${isLight ? 'from-slate-100 via-transparent to-slate-100/90' : 'from-[#080a0f] via-transparent to-[#080a0f]/90'}`} />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto space-y-6">
         {/* Top Header Card */}
-        <div className="racing-card rounded-2xl p-6 sm:p-8 border border-white/10 shadow-2xl">
+        <div className={`racing-card rounded-2xl p-6 sm:p-8 border shadow-2xl ${isLight ? 'bg-white border-slate-200 shadow-slate-200/50' : 'border-white/10'}`}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded-full text-xs font-race font-bold tracking-widest uppercase flex items-center space-x-1.5 shadow-sm">
+                <span className={`px-3 py-1 rounded-full text-xs font-race font-bold tracking-widest uppercase flex items-center space-x-1.5 shadow-sm ${
+                  isLight ? 'bg-cyan-100 text-cyan-900 border border-cyan-300' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                }`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                   <span>GM UNIVERSITY &bull; IGNITRON 2K26</span>
                 </span>
@@ -175,31 +179,37 @@ export default function TeamsPage() {
                   type="button"
                   onClick={() => !isConnected && reconnect && reconnect()}
                   title={isConnected ? 'Telemetry active' : 'Click to reconnect telemetry'}
-                  className={`flex items-center space-x-1.5 text-xs font-mono-code transition-colors ${isConnected ? 'text-emerald-400 cursor-default' : 'text-amber-400 hover:text-amber-300 cursor-pointer underline decoration-dotted'}`}
+                  className={`flex items-center space-x-1.5 text-xs font-mono-code transition-colors ${isConnected ? (isLight ? 'text-emerald-700 font-bold' : 'text-emerald-400') : (isLight ? 'text-amber-800 hover:text-amber-900 font-bold underline' : 'text-amber-400 hover:text-amber-300 underline decoration-dotted')}`}
                 >
-                  <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400 animate-pulse' : 'text-amber-400'}`} />
+                  <Radio className={`w-3.5 h-3.5 ${isConnected ? (isLight ? 'text-emerald-700 animate-pulse' : 'text-emerald-400 animate-pulse') : 'text-amber-500'}`} />
                   <span>{isConnected ? 'LIVE GRID TELEMETRY' : 'DISCONNECTED (RECONNECT)'}</span>
                 </button>
               </div>
-              <h2 className="font-race text-2xl sm:text-3xl font-black text-white">
+              <h2 className={`font-race text-2xl sm:text-3xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
                 REGISTERED TEAMS &amp; LIVE SESSIONS
               </h2>
-              <p className="text-xs text-slate-400 mt-1 font-mono-code">
+              <p className={`text-xs mt-1 font-mono-code ${isLight ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
                 Real-time monitor of participating teams, credential details, online/offline session indicators, and remote participant session termination.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="px-3.5 py-2 rounded-xl bg-slate-950/80 border border-white/10 flex items-center space-x-2.5 text-xs font-mono-code">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-emerald-400 font-bold">{onlineCount} ONLINE</span>
-                <span className="text-slate-600">/</span>
-                <span className="text-slate-300 font-bold">{teams.length} REGISTERED</span>
+              <div className={`px-3.5 py-2 rounded-xl border flex items-center space-x-2.5 text-xs font-mono-code ${
+                isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950/80 border-white/10'
+              }`}>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className={isLight ? 'text-emerald-700 font-bold' : 'text-emerald-400 font-bold'}>{onlineCount} ONLINE</span>
+                <span className={isLight ? 'text-slate-400' : 'text-slate-600'}>/</span>
+                <span className={isLight ? 'text-slate-800 font-bold' : 'text-slate-300 font-bold'}>{teams.length} REGISTERED</span>
               </div>
 
               <button
                 onClick={() => loadTeams(false)}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-white/10 text-xs font-race flex items-center space-x-2 transition-colors cursor-pointer"
+                className={`px-4 py-2 rounded-xl border text-xs font-race flex items-center space-x-2 transition-colors cursor-pointer ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300 shadow-sm font-bold'
+                    : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-white/10'
+                }`}
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                 <span>Refresh Grid</span>
@@ -230,35 +240,41 @@ export default function TeamsPage() {
         )}
 
         {/* Registered Teams Table Card */}
-        <div className="racing-card rounded-2xl p-6 sm:p-8 border border-white/10 shadow-2xl space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+        <div className={`racing-card rounded-2xl p-6 sm:p-8 border shadow-2xl space-y-6 ${isLight ? 'bg-white border-slate-200 shadow-slate-200/50' : 'border-white/10'}`}>
+          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
             <div>
-              <h3 className="font-race text-xl font-bold text-white flex items-center space-x-2">
+              <h3 className={`font-race text-xl font-bold flex items-center space-x-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                 <span>REGISTERED TEAMS DIRECTORY</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/40 font-mono-code font-bold">
+                <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono-code font-bold ${
+                  isLight ? 'bg-cyan-100 text-cyan-900 border border-cyan-300' : 'bg-cyan-950 text-cyan-300 border border-cyan-500/40'
+                }`}>
                   {filteredTeams.length} of {teams.length} Teams
                 </span>
               </h3>
-              <p className="text-xs text-slate-400 font-mono-code mt-1">
+              <p className={`text-xs font-mono-code mt-1 ${isLight ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
                 Search teams by Team ID or name to inspect connection state and manage participant sessions.
               </p>
             </div>
 
             {/* Top Team ID Search Bar */}
             <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-400 pointer-events-none" />
+              <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isLight ? 'text-slate-400' : 'text-cyan-400'}`} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search team by ID (e.g. TEAM-01), name..."
-                className="w-full pl-10 pr-9 py-2 bg-slate-950/90 border border-cyan-500/30 focus:border-cyan-400 rounded-xl text-xs font-mono-code text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 shadow-inner transition-all"
+                className={`w-full pl-10 pr-9 py-2 rounded-xl text-xs font-mono-code shadow-inner transition-all focus:outline-none focus:ring-2 ${
+                  isLight
+                    ? 'bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-red-500 focus:ring-red-200'
+                    : 'bg-slate-950/90 border border-cyan-500/30 focus:border-cyan-400 text-white placeholder-slate-500 focus:ring-cyan-500/50'
+                }`}
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400 hover:text-slate-700' : 'text-slate-400 hover:text-white'}`}
                   title="Clear search"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -271,7 +287,7 @@ export default function TeamsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono-code">
               <thead>
-                <tr className="border-b border-white/10 text-slate-400 uppercase font-race">
+                <tr className={`border-b uppercase font-race ${isLight ? 'border-slate-200 text-slate-700' : 'border-white/10 text-slate-400'}`}>
                   <th className="py-3 px-4">#</th>
                   <th className="py-3 px-4">Team &amp; ID</th>
                   <th className="py-3 px-4">Leader &amp; Contact</th>
@@ -283,12 +299,12 @@ export default function TeamsPage() {
                   <th className="py-3 px-4 text-right">Participant Session Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className={`divide-y ${isLight ? 'divide-slate-200' : 'divide-white/5'}`}>
                 {sortedTeams.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="py-12 text-center text-slate-400 font-mono-code bg-slate-950/30">
+                    <td colSpan="9" className={`py-12 text-center font-mono-code ${isLight ? 'text-slate-500 bg-slate-50' : 'text-slate-400 bg-slate-950/30'}`}>
                       <div className="flex flex-col items-center justify-center space-y-3">
-                        <Search className="w-8 h-8 text-slate-600" />
+                        <Search className={`w-8 h-8 ${isLight ? 'text-slate-400' : 'text-slate-600'}`} />
                         <p className="text-sm">
                           {searchQuery
                             ? `No registered teams found matching "${searchQuery}"`
@@ -298,7 +314,11 @@ export default function TeamsPage() {
                           <button
                             type="button"
                             onClick={() => setSearchQuery('')}
-                            className="px-4 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 text-xs font-race font-bold uppercase transition-all"
+                            className={`px-4 py-1.5 rounded-lg text-xs font-race font-bold uppercase transition-all ${
+                              isLight
+                                ? 'bg-cyan-100 hover:bg-cyan-200 text-cyan-900 border border-cyan-300'
+                                : 'bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40'
+                            }`}
                           >
                             Clear Search Filter
                           </button>
@@ -315,54 +335,64 @@ export default function TeamsPage() {
                       : parseFloat(t.total_score || 0);
 
                     return (
-                      <tr key={t.team_id} className="hover:bg-white/5 transition-colors">
-                        <td className="py-3 px-4 font-bold font-race text-white">#{idx + 1}</td>
+                      <tr key={t.team_id} className={`transition-colors ${isLight ? 'hover:bg-slate-50' : 'hover:bg-white/5'}`}>
+                        <td className={`py-3 px-4 font-bold font-race ${isLight ? 'text-slate-900' : 'text-white'}`}>#{idx + 1}</td>
                         <td className="py-3 px-4">
-                          <strong className="text-white block font-sans font-bold text-sm">{t.team_name}</strong>
+                          <strong className={`block font-sans font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>{t.team_name}</strong>
                           <div className="flex items-center space-x-1.5 mt-0.5">
-                            <span className="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              isLight ? 'bg-cyan-100 text-cyan-900 border border-cyan-300' : 'bg-cyan-950 text-cyan-300 border border-cyan-500/40'
+                            }`}>
                               {t.team_id}
                             </span>
-                            <span className="text-slate-500 text-[11px] truncate max-w-[140px]">{t.institution}</span>
+                            <span className={`text-[11px] truncate max-w-[140px] ${isLight ? 'text-slate-600 font-medium' : 'text-slate-500'}`}>{t.institution}</span>
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-slate-200 block font-medium">{t.leader_name || 'Leader N/A'}</span>
-                          <span className="text-slate-500 text-[11px] block">{t.email || '-'}</span>
+                          <span className={`block font-medium ${isLight ? 'text-slate-900' : 'text-slate-200'}`}>{t.leader_name || 'Leader N/A'}</span>
+                          <span className={`text-[11px] block ${isLight ? 'text-slate-500 font-medium' : 'text-slate-500'}`}>{t.email || '-'}</span>
                         </td>
-                        <td className="py-3 px-4 text-slate-400 text-[11px]">
+                        <td className={`py-3 px-4 text-[11px] ${isLight ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
                           {formatRegDate(t.registered_at)}
                         </td>
                         <td className="py-3 px-4">
                           {t.is_online ? (
-                            <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono-code font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-950/50">
-                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono-code font-bold ${
+                              isLight ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-sm' : 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-950/50'
+                            }`}>
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                               <span>ONLINE</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono-code font-bold bg-slate-900/90 text-slate-400 border border-white/10">
-                              <span className="w-2 h-2 rounded-full bg-slate-600" />
+                            <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono-code font-bold ${
+                              isLight ? 'bg-slate-100 text-slate-700 border border-slate-300' : 'bg-slate-900/90 text-slate-400 border border-white/10'
+                            }`}>
+                              <span className={`w-2 h-2 rounded-full ${isLight ? 'bg-slate-400' : 'bg-slate-600'}`} />
                               <span>OFFLINE</span>
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-cyan-400 font-bold">{r1Pts !== undefined ? `${r1Pts} pts` : '-'}</td>
-                        <td className="py-3 px-4 text-red-400 font-bold">{r2Pts !== undefined ? `${r2Pts} pts` : '-'}</td>
-                        <td className="py-3 px-4 font-bold text-amber-400 text-sm">{combinedScore.toFixed(1)} Pts</td>
+                        <td className={`py-3 px-4 font-bold ${isLight ? 'text-cyan-800' : 'text-cyan-400'}`}>{r1Pts !== undefined ? `${r1Pts} pts` : '-'}</td>
+                        <td className={`py-3 px-4 font-bold ${isLight ? 'text-red-700' : 'text-red-400'}`}>{r2Pts !== undefined ? `${r2Pts} pts` : '-'}</td>
+                        <td className={`py-3 px-4 font-bold text-sm ${isLight ? 'text-amber-800' : 'text-amber-400'}`}>{combinedScore.toFixed(1)} Pts</td>
                         <td className="py-3 px-4 text-right">
                           {t.is_online ? (
                             <button
                               type="button"
                               onClick={() => handleForceLogoutTeam(t.team_id)}
                               disabled={loggingOutTeamId === t.team_id}
-                              className="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 text-red-300 hover:text-white border border-red-700/60 text-xs font-race font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer disabled:opacity-50"
+                              className={`px-3 py-1.5 rounded-lg text-xs font-race font-bold transition-all inline-flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer disabled:opacity-50 ${
+                                isLight
+                                  ? 'bg-red-600 hover:bg-red-700 text-white border border-red-600 shadow-md'
+                                  : 'bg-red-950 hover:bg-red-900 text-red-300 hover:text-white border border-red-700/60'
+                              }`}
                               title="Remotely terminate team session on participant dashboard"
                             >
-                              <LogOut className="w-3.5 h-3.5 text-red-400" />
+                              <LogOut className={`w-3.5 h-3.5 ${isLight ? 'text-white' : 'text-red-400'}`} />
                               <span>{loggingOutTeamId === t.team_id ? 'Logging Out...' : 'Force Logout'}</span>
                             </button>
                           ) : (
-                            <span className="text-[11px] text-slate-600 font-mono-code italic pr-2">
+                            <span className={`text-[11px] font-mono-code italic pr-2 ${isLight ? 'text-slate-400' : 'text-slate-600'}`}>
                               Not Logged In
                             </span>
                           )}

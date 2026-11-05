@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Trophy, Sparkles, ShieldAlert, Heart, Clock, Radio, Timer, Award, Medal, CheckCircle2 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Round3Celebration({
   isQualified,
@@ -14,6 +15,7 @@ export default function Round3Celebration({
   isWinnerTimer = false,
   onAnnounced
 }) {
+  const { isLight } = useTheme();
   const canvasRef = useRef(null);
   const hasTriggeredAnnouncedRef = useRef(false);
   const [timerExpired, setTimerExpired] = useState(false);
@@ -311,7 +313,7 @@ export default function Round3Celebration({
   // =========================================================================
   if (isWinnerAnnounced && isWinner) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border-2 border-yellow-400/80 bg-gradient-to-b from-[#1c1305] via-[#090d16] to-[#04060a] shadow-2xl shadow-yellow-500/30 p-6 sm:p-8 max-w-3xl mx-auto">
+      <div className="celebration-screen-theme relative overflow-hidden rounded-2xl border-2 p-6 sm:p-8 max-w-3xl mx-auto border-yellow-400/80 bg-gradient-to-b from-[#1c1305] via-[#090d16] to-[#04060a] shadow-2xl shadow-yellow-500/30">
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-10" />
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-amber-500/25 rounded-full blur-3xl pointer-events-none" />
 
@@ -380,7 +382,7 @@ export default function Round3Celebration({
   // =========================================================================
   if (isWinnerAnnounced && isRunnerUp) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border-2 border-cyan-400/80 bg-gradient-to-b from-[#061926] via-[#090d16] to-[#04060a] shadow-2xl shadow-cyan-500/30 p-6 sm:p-8 max-w-3xl mx-auto">
+      <div className="celebration-screen-theme relative overflow-hidden rounded-2xl border-2 p-6 sm:p-8 max-w-3xl mx-auto border-cyan-400/80 bg-gradient-to-b from-[#061926] via-[#090d16] to-[#04060a] shadow-2xl shadow-cyan-500/30">
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-10" />
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
 
@@ -450,7 +452,7 @@ export default function Round3Celebration({
   // =========================================================================
   if (isWinnerAnnounced && isTeamQualified && !isWinner && !isRunnerUp) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/60 bg-gradient-to-b from-[#0a1e17] via-[#090d16] to-[#04060a] shadow-xl shadow-emerald-950/50 p-6 sm:p-8 max-w-3xl mx-auto">
+      <div className="celebration-screen-theme relative overflow-hidden rounded-2xl border-2 p-6 sm:p-8 max-w-3xl mx-auto border-emerald-500/60 bg-gradient-to-b from-[#0a1e17] via-[#090d16] to-[#04060a] shadow-xl shadow-emerald-950/50">
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-10" />
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
 
@@ -524,7 +526,7 @@ export default function Round3Celebration({
       : 0;
 
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-b from-[#111827] via-[#090d16] to-[#04060a] shadow-xl shadow-amber-950/40 p-4 sm:p-6 max-w-xl mx-auto text-center space-y-4">
+      <div className="celebration-screen-theme relative overflow-hidden rounded-2xl border p-4 sm:p-6 max-w-xl mx-auto text-center space-y-4 border-amber-500/40 bg-gradient-to-b from-[#111827] via-[#090d16] to-[#04060a] shadow-xl shadow-amber-950/40">
         {/* Ambient Neon Atmosphere */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -631,7 +633,7 @@ export default function Round3Celebration({
   // =========================================================================
   if (isAnnounced && isTeamQualified) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-b from-[#0e1726] via-[#090d16] to-[#04060a] shadow-xl shadow-cyan-950/60 p-5 sm:p-7 max-w-3xl mx-auto">
+      <div className="celebration-screen-theme relative overflow-hidden rounded-2xl border p-5 sm:p-7 max-w-3xl mx-auto border-amber-500/40 bg-gradient-to-b from-[#0e1726] via-[#090d16] to-[#04060a] shadow-xl shadow-cyan-950/60">
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-10" />
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 left-1/3 -translate-x-1/2 w-64 h-64 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -709,9 +711,9 @@ export default function Round3Celebration({
   // =========================================================================
   if (!isAnnounced) {
     return (
-      <div className="p-6 sm:p-8 rounded-2xl bg-slate-950/80 border border-amber-500/30 text-center max-w-xl mx-auto space-y-4">
-        <div className="w-14 h-14 rounded-full bg-slate-900 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-950/40">
-          <Clock className="w-7 h-7 animate-pulse text-amber-400" />
+      <div className="celebration-screen-theme p-6 sm:p-8 rounded-2xl border text-center max-w-xl mx-auto space-y-4 bg-slate-950/80 border-amber-500/30">
+        <div className="w-14 h-14 rounded-full border mx-auto flex items-center justify-center shadow-lg bg-slate-900 border-amber-500/40 text-amber-400 shadow-amber-950/40">
+          <Clock className="w-7 h-7 animate-pulse text-amber-500" />
         </div>
 
         <div className="space-y-1.5">
@@ -744,7 +746,7 @@ export default function Round3Celebration({
   // Respectful completion card (NO points, NO leaderboard)
   // =========================================================================
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-b from-[#130b0f] via-[#0d090f] to-[#080a0f] shadow-xl p-5 sm:p-7 max-w-2xl mx-auto">
+    <div className="celebration-screen-theme relative overflow-hidden rounded-2xl border p-5 sm:p-7 max-w-2xl mx-auto border-red-500/30 bg-gradient-to-b from-[#130b0f] via-[#0d090f] to-[#080a0f] shadow-xl">
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 max-w-lg mx-auto text-center space-y-4">

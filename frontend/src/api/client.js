@@ -49,16 +49,13 @@ export function setAuthToken(token, role) {
       sessionStorage.setItem('cloudnex_participant_token', token);
     }
   } else {
+    // Purge ALL token keys completely on logout
     localStorage.removeItem('cloudnex_token');
     sessionStorage.removeItem('cloudnex_token');
-    if (role === 'admin' || !role) {
-      localStorage.removeItem('cloudnex_admin_token');
-      sessionStorage.removeItem('cloudnex_admin_token');
-    }
-    if (role === 'participant' || !role) {
-      localStorage.removeItem('cloudnex_participant_token');
-      sessionStorage.removeItem('cloudnex_participant_token');
-    }
+    localStorage.removeItem('cloudnex_admin_token');
+    sessionStorage.removeItem('cloudnex_admin_token');
+    localStorage.removeItem('cloudnex_participant_token');
+    sessionStorage.removeItem('cloudnex_participant_token');
   }
 }
 
@@ -92,6 +89,7 @@ export function setUserData(user) {
       sessionStorage.setItem('cloudnex_participant_user', str);
     }
   } else {
+    // Purge ALL user keys completely on logout
     localStorage.removeItem('cloudnex_user');
     sessionStorage.removeItem('cloudnex_user');
     localStorage.removeItem('cloudnex_admin_user');

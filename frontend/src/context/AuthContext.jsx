@@ -95,19 +95,56 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    const role = user?.role;
-    // 1. Immediately clear state and token synchronously for 0ms instant UI response
-    setAuthToken(null, role);
-    setUserData(null);
-    setUser(null);
-    localStorage.removeItem('cloudnex_view');
-    sessionStorage.removeItem('cloudnex_view');
+    const currentTeam = user?.team_id || null;
 
-    // 2. Fire backend session termination asynchronously in the background
+    // 1. Fire backend session termination asynchronously with existing token before clearing
     try {
-      await api.auth.logout();
+      api.auth.logout().catch(() => {});
     } catch {
       // Ignore network errors on logout
+    }
+
+    // 2. Immediately and synchronously clear all tokens, storage, and auth state for instant UI response
+    try {
+      setAuthToken(null);
+      setUserData(null);
+      setUser(null);
+    } catch {}
+
+    try {
+      const keys = [
+        'cloudnex_view',
+        'cloudnex_token',
+        'cloudnex_admin_token',
+        'cloudnex_participant_token',
+        'cloudnex_user',
+        'cloudnex_admin_user',
+        'cloudnex_participant_user',
+        'cloudnex_admin_overview',
+        'cloudnex_admin_teams',
+        'cloudnex_admin_subs',
+        'cloudnex_cached_rounds',
+        'cloudnex_cached_subs',
+        'cloudnex_cached_winner',
+        'cloudnex_cached_leaderboard'
+      ];
+      keys.forEach(k => {
+        try {
+          localStorage.removeItem(k);
+          sessionStorage.removeItem(k);
+        } catch {}
+      });
+    } catch {}
+
+    // 3. Notify any open tabs locally of team offline status
+    if (typeof window !== 'undefined') {
+      try {
+        if (currentTeam) {
+          window.dispatchEvent(new CustomEvent('cloudnex:team_status', {
+            detail: { team_id: currentTeam, is_online: false }
+          }));
+        }
+      } catch {}
     }
   };
 
