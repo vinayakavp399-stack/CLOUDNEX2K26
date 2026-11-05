@@ -349,26 +349,34 @@ export default function Round3Celebration({
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-950/90 border-2 border-yellow-400/60 backdrop-blur-md shadow-xl text-left max-w-lg mx-auto space-y-2.5">
+          <div
+            className="p-4 rounded-xl border-2 backdrop-blur-md shadow-xl text-left max-w-lg mx-auto space-y-2.5"
+            style={{
+              backgroundColor: 'rgba(6, 11, 20, 0.95)',
+              borderColor: 'rgba(250, 204, 21, 0.6)',
+              color: '#ffffff',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6)'
+            }}
+          >
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <div>
-                <span className="text-[9px] font-mono-code uppercase text-yellow-400/80 block font-bold">CHAMPIONSHIP WINNER</span>
-                <strong className="text-base font-race font-black text-white block">
+                <span className="text-[9px] font-mono-code uppercase block font-bold" style={{ color: '#facc15' }}>CHAMPIONSHIP WINNER</span>
+                <strong className="text-base font-race font-black block" style={{ color: '#ffffff' }}>
                   {user?.team_name || team?.team_name || 'Champion Team'}
                 </strong>
               </div>
-              <span className="px-3 py-1 rounded-lg bg-yellow-400 text-slate-950 font-race font-black text-xs uppercase shadow-md">
+              <span className="px-3 py-1 rounded-lg font-race font-black text-xs uppercase shadow-md" style={{ backgroundColor: '#facc15', color: '#090d16' }}>
                 1ST PLACE
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-[11px] font-mono-code">
               <div>
-                <span className="text-slate-400 block text-[9px]">CHAMPIONSHIP VENUE:</span>
-                <span className="text-white font-semibold">GM University, Davangere</span>
+                <span className="block text-[9px]" style={{ color: '#94a3b8' }}>CHAMPIONSHIP VENUE:</span>
+                <span className="font-semibold" style={{ color: '#ffffff' }}>GM University, Davangere</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[9px]">EVENT:</span>
-                <span className="text-amber-400 font-semibold">IGNITRON 2K26</span>
+                <span className="block text-[9px]" style={{ color: '#94a3b8' }}>EVENT:</span>
+                <span className="font-semibold" style={{ color: '#fbbf24' }}>IGNITRON 2K26</span>
               </div>
             </div>
           </div>
@@ -418,26 +426,34 @@ export default function Round3Celebration({
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-950/90 border-2 border-cyan-400/60 backdrop-blur-md shadow-xl text-left max-w-lg mx-auto space-y-2.5">
+          <div
+            className="p-4 rounded-xl border-2 backdrop-blur-md shadow-xl text-left max-w-lg mx-auto space-y-2.5"
+            style={{
+              backgroundColor: 'rgba(6, 11, 20, 0.95)',
+              borderColor: 'rgba(34, 211, 238, 0.6)',
+              color: '#ffffff',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6)'
+            }}
+          >
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <div>
-                <span className="text-[9px] font-mono-code uppercase text-cyan-400/80 block font-bold">PODIUM RUNNER UP</span>
-                <strong className="text-base font-race font-black text-white block">
+                <span className="text-[9px] font-mono-code uppercase block font-bold" style={{ color: '#22d3ee' }}>PODIUM RUNNER UP</span>
+                <strong className="text-base font-race font-black block" style={{ color: '#ffffff' }}>
                   {user?.team_name || team?.team_name || 'Runner Up Team'}
                 </strong>
               </div>
-              <span className="px-3 py-1 rounded-lg bg-cyan-400 text-slate-950 font-race font-black text-xs uppercase shadow-md">
+              <span className="px-3 py-1 rounded-lg font-race font-black text-xs uppercase shadow-md" style={{ backgroundColor: '#22d3ee', color: '#090d16' }}>
                 2ND PLACE
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-[11px] font-mono-code">
               <div>
-                <span className="text-slate-400 block text-[9px]">CHAMPIONSHIP VENUE:</span>
-                <span className="text-white font-semibold">GM University, Davangere</span>
+                <span className="block text-[9px]" style={{ color: '#94a3b8' }}>CHAMPIONSHIP VENUE:</span>
+                <span className="font-semibold" style={{ color: '#ffffff' }}>GM University, Davangere</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[9px]">EVENT:</span>
-                <span className="text-amber-400 font-semibold">IGNITRON 2K26</span>
+                <span className="block text-[9px]" style={{ color: '#94a3b8' }}>EVENT:</span>
+                <span className="font-semibold" style={{ color: '#fbbf24' }}>IGNITRON 2K26</span>
               </div>
             </div>
           </div>
@@ -483,31 +499,53 @@ export default function Round3Celebration({
             </p>
           </div>
 
-          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950/85 border border-emerald-500/40 backdrop-blur-md shadow-lg text-left max-w-lg mx-auto space-y-2.5">
+          <div
+            className="p-3.5 sm:p-4 rounded-xl border backdrop-blur-md shadow-lg text-left max-w-lg mx-auto space-y-2.5"
+            style={{
+              backgroundColor: 'rgba(6, 11, 20, 0.95)',
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              color: '#ffffff',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6)'
+            }}
+          >
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <div>
-                <span className="text-[9px] font-mono-code uppercase text-emerald-400 block font-bold">QUALIFIED FINALIST SQUAD</span>
-                <strong className="text-sm font-race font-bold text-white block">
+                <span className="text-[9px] font-mono-code uppercase block font-bold" style={{ color: '#34d399' }}>QUALIFIED FINALIST SQUAD</span>
+                <strong className="text-sm font-race font-bold block" style={{ color: '#ffffff' }}>
                   {user?.team_name || team?.team_name || 'Finalist Squad'}
                 </strong>
               </div>
-              <span className="px-2.5 py-0.5 rounded-lg bg-emerald-950 border border-emerald-500/50 text-emerald-300 font-mono-code text-[11px] font-bold">
+              <span
+                className="px-2.5 py-0.5 rounded-lg border font-mono-code text-[11px] font-bold"
+                style={{
+                  backgroundColor: 'rgba(2, 44, 34, 0.9)',
+                  borderColor: 'rgba(16, 185, 129, 0.5)',
+                  color: '#6ee7b7'
+                }}
+              >
                 QUALIFIED FINALIST
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-[11px] font-mono-code">
               <div>
-                <span className="text-slate-400 block text-[9px]">CHAMPIONSHIP VENUE:</span>
-                <span className="text-white font-semibold">GM University, Davangere</span>
+                <span className="block text-[9px]" style={{ color: '#94a3b8' }}>CHAMPIONSHIP VENUE:</span>
+                <span className="font-semibold" style={{ color: '#ffffff' }}>GM University, Davangere</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[9px]">EVENT:</span>
-                <span className="text-amber-400 font-semibold">IGNITRON 2K26</span>
+                <span className="block text-[9px]" style={{ color: '#94a3b8' }}>EVENT:</span>
+                <span className="font-semibold" style={{ color: '#fbbf24' }}>IGNITRON 2K26</span>
               </div>
             </div>
             {team?.director_feedback && (
-              <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-[11px] font-mono-code text-emerald-200">
-                <span className="text-[9px] uppercase font-bold text-emerald-400 block mb-0.5">CHIEF STEWARD COMMENDATION:</span>
+              <div
+                className="p-2.5 rounded-lg border text-[11px] font-mono-code leading-relaxed"
+                style={{
+                  backgroundColor: 'rgba(2, 44, 34, 0.55)',
+                  borderColor: 'rgba(16, 185, 129, 0.35)',
+                  color: '#a7f3d0'
+                }}
+              >
+                <span className="text-[9px] uppercase font-bold block mb-0.5" style={{ color: '#34d399' }}>CHIEF STEWARD COMMENDATION:</span>
                 &ldquo;{cleanCommendation(team.director_feedback)}&rdquo;
               </div>
             )}
@@ -532,13 +570,27 @@ export default function Round3Celebration({
 
         {/* Header Telemetry Badge */}
         <div className="relative z-10 flex flex-wrap items-center justify-center gap-1.5">
-          <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-red-950/90 border border-red-500/50 text-red-300 text-[9px] font-race font-bold uppercase tracking-widest shadow-sm">
+          <div
+            className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full border text-[9px] font-race font-bold uppercase tracking-widest shadow-sm"
+            style={{
+              backgroundColor: 'rgba(69, 10, 10, 0.9)',
+              borderColor: 'rgba(239, 68, 68, 0.5)',
+              color: '#fca5a5'
+            }}
+          >
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
             <Radio className="w-3 h-3 text-red-400" />
             <span>LIVE STEWARDS BROADCAST</span>
           </div>
 
-          <div className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-amber-950/80 border border-amber-500/30 text-amber-300 text-[9px] font-race font-bold uppercase tracking-wider">
+          <div
+            className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full border text-[9px] font-race font-bold uppercase tracking-wider"
+            style={{
+              backgroundColor: 'rgba(69, 26, 3, 0.8)',
+              borderColor: 'rgba(245, 158, 11, 0.4)',
+              color: '#fcd34d'
+            }}
+          >
             <span>IGNITRON 2K26</span>
           </div>
         </div>
@@ -548,7 +600,7 @@ export default function Round3Celebration({
           <h3 className="text-base sm:text-lg font-race font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-500">
             {isWinnerTimer ? 'CHAMPIONSHIP WINNERS ANNOUNCEMENT COUNTDOWN' : 'ROUND 3 RESULTS ANNOUNCEMENT COUNTDOWN'}
           </h3>
-          <p className="text-[11px] font-mono-code text-slate-300 max-w-md mx-auto leading-relaxed">
+          <p className="text-[11px] font-mono-code max-w-md mx-auto leading-relaxed" style={{ color: '#cbd5e1' }}>
             {isWinnerTimer
               ? 'Race Stewards are finalizing the Grand Champion & 1st Runner Up. Stand by for the live broadcast!'
               : 'Race Stewards are finalizing qualifiers. Results will unlock live when countdown hits zero!'}
@@ -557,8 +609,14 @@ export default function Round3Celebration({
 
         {/* F1 Starting Lights Gantry (Compact) */}
         <div className="relative z-10 flex justify-center py-0.5">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-black/80 border border-white/10 shadow-lg backdrop-blur-md">
-            <span className="text-[9px] font-race font-bold text-slate-400 mr-0.5">GRID LIGHTS:</span>
+          <div
+            className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl border shadow-lg backdrop-blur-md"
+            style={{
+              backgroundColor: 'rgba(3, 7, 18, 0.9)',
+              borderColor: 'rgba(255, 255, 255, 0.12)'
+            }}
+          >
+            <span className="text-[9px] font-race font-bold mr-0.5" style={{ color: '#94a3b8' }}>GRID LIGHTS:</span>
             {[1, 2, 3, 4, 5].map((lightIndex) => {
               const isLit = secondsLeft <= 5 ? (6 - lightIndex) >= secondsLeft : true;
               return (
@@ -579,11 +637,20 @@ export default function Round3Celebration({
 
         {/* Centerpiece Live Countdown Ticker */}
         <div className="relative z-10 my-1 flex flex-col items-center justify-center">
-          <div className="relative px-6 py-2.5 rounded-2xl bg-slate-950/90 border border-amber-500/40 shadow-xl backdrop-blur-lg">
+          <div
+            className="relative px-6 py-2.5 rounded-2xl border shadow-xl backdrop-blur-lg"
+            style={{
+              backgroundColor: 'rgba(6, 11, 20, 0.95)',
+              borderColor: 'rgba(245, 158, 11, 0.5)'
+            }}
+          >
             <div className="text-4xl sm:text-5xl font-race font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-amber-400 to-yellow-600 drop-shadow-[0_0_20px_rgba(245,158,11,0.5)] select-none">
               {secondsLeft}
             </div>
-            <div className="text-[10px] font-race font-bold uppercase tracking-widest text-amber-400 mt-0.5 flex items-center justify-center space-x-1.5">
+            <div
+              className="text-[10px] font-race font-bold uppercase tracking-widest mt-0.5 flex items-center justify-center space-x-1.5"
+              style={{ color: '#fbbf24' }}
+            >
               <Timer className="w-3 h-3 animate-spin text-amber-400" />
               <span>SECONDS REMAINING</span>
             </div>
@@ -592,11 +659,11 @@ export default function Round3Celebration({
 
         {/* Telemetry Progress Bar */}
         <div className="relative z-10 max-w-xs mx-auto space-y-1">
-          <div className="flex justify-between text-[9px] font-mono-code text-slate-400">
+          <div className="flex justify-between text-[9px] font-mono-code" style={{ color: '#94a3b8' }}>
             <span>PROGRESS</span>
-            <span className="text-amber-300 font-bold">{Math.round(progressPercent)}%</span>
+            <span className="font-bold" style={{ color: '#fcd34d' }}>{Math.round(progressPercent)}%</span>
           </div>
-          <div className="w-full h-1.5 rounded-full bg-slate-900 border border-white/10 overflow-hidden p-0.5">
+          <div className="w-full h-1.5 rounded-full overflow-hidden p-0.5" style={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
             <div
               className="h-full rounded-full bg-gradient-to-r from-yellow-500 via-amber-400 to-red-500 transition-all duration-200 shadow-[0_0_6px_rgba(245,158,11,0.7)]"
               style={{ width: `${progressPercent}%` }}
@@ -605,20 +672,34 @@ export default function Round3Celebration({
         </div>
 
         {/* Sealed Team Identifier Card */}
-        <div className="relative z-10 p-3 rounded-xl bg-slate-950/80 border border-white/10 backdrop-blur-md max-w-sm mx-auto text-left space-y-1.5">
+        <div
+          className="relative z-10 p-3 rounded-xl border backdrop-blur-md max-w-sm mx-auto text-left space-y-1.5"
+          style={{
+            backgroundColor: 'rgba(6, 11, 20, 0.9)',
+            borderColor: 'rgba(255, 255, 255, 0.12)',
+            color: '#ffffff'
+          }}
+        >
           <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
             <div>
-              <span className="text-[8px] font-mono-code text-slate-400 uppercase block">TEAM RECORD</span>
-              <strong className="text-xs font-race text-white">{user?.team_name || team?.team_name || 'Contender Team'}</strong>
+              <span className="text-[8px] font-mono-code uppercase block" style={{ color: '#94a3b8' }}>TEAM RECORD</span>
+              <strong className="text-xs font-race" style={{ color: '#ffffff' }}>{user?.team_name || team?.team_name || 'Contender Team'}</strong>
             </div>
-            <span className="px-2 py-0.5 rounded-md bg-slate-900 border border-white/10 text-cyan-300 font-mono-code text-[10px] font-bold">
+            <span
+              className="px-2 py-0.5 rounded-md border font-mono-code text-[10px] font-bold"
+              style={{
+                backgroundColor: 'rgba(8, 51, 68, 0.9)',
+                borderColor: 'rgba(6, 182, 212, 0.5)',
+                color: '#67e8f9'
+              }}
+            >
               {teamId}
             </span>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] font-mono-code text-slate-300">
+          <div className="flex items-center justify-between text-[11px] font-mono-code" style={{ color: '#cbd5e1' }}>
             <span>SELECTION STATUS:</span>
-            <span className="text-amber-400 font-race font-bold text-[10px] animate-pulse">
+            <span className="font-race font-bold text-[10px] animate-pulse" style={{ color: '#fbbf24' }}>
               SEALED &bull; UNLOCKS AT ZERO
             </span>
           </div>
@@ -666,37 +747,69 @@ export default function Round3Celebration({
               Qualified teams will face unexpected real-world cloud infrastructure challenges introduced by the organizers. Teams must diagnose the issue, implement an appropriate solution, and demonstrate how their application maintains availability, performance, and reliability under pressure. Challenges will use controlled simulations or safely configured test environments.
             </p>
             <div className="pt-2">
-              <span className="inline-block px-3 py-1 rounded-md bg-amber-950/80 border border-amber-500/40 text-amber-300 font-race text-[11px] font-bold uppercase tracking-wider">
+              <span
+                className="inline-block px-3.5 py-1.5 rounded-md border font-race text-[11px] font-bold uppercase tracking-wider shadow-sm"
+                style={{
+                  backgroundColor: 'rgba(69, 26, 3, 0.95)',
+                  borderColor: 'rgba(245, 158, 11, 0.5)',
+                  color: '#fcd34d',
+                  boxShadow: '0 0 12px rgba(245, 158, 11, 0.25)'
+                }}
+              >
                 Key Deliverable: Crises &amp; Presentation
               </span>
             </div>
           </div>
 
-          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950/85 border border-white/10 backdrop-blur-md shadow-lg text-left max-w-lg mx-auto space-y-2.5">
+          <div
+            className="p-3.5 sm:p-4 rounded-xl border backdrop-blur-md shadow-xl text-left max-w-lg mx-auto space-y-2.5"
+            style={{
+              backgroundColor: 'rgba(6, 11, 20, 0.95)',
+              borderColor: 'rgba(255, 255, 255, 0.15)',
+              color: '#ffffff',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6)'
+            }}
+          >
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <div>
-                <span className="text-[9px] font-mono-code uppercase text-slate-400 block">QUALIFIED SQUAD</span>
-                <strong className="text-sm font-race font-bold text-white block">
+                <span className="text-[9px] font-mono-code uppercase block tracking-wider" style={{ color: '#94a3b8' }}>QUALIFIED SQUAD</span>
+                <strong className="text-sm font-race font-bold block" style={{ color: '#ffffff' }}>
                   {user?.team_name || team?.team_name || 'Champion Team'}
                 </strong>
               </div>
-              <span className="px-2.5 py-0.5 rounded-lg bg-cyan-950 border border-cyan-500/50 text-cyan-300 font-mono-code text-[11px] font-bold">
+              <span
+                className="px-2.5 py-0.5 rounded-lg border font-mono-code text-[11px] font-bold"
+                style={{
+                  backgroundColor: 'rgba(8, 51, 68, 0.95)',
+                  borderColor: 'rgba(6, 182, 212, 0.6)',
+                  color: '#67e8f9'
+                }}
+              >
                 {teamId}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-[11px] font-mono-code">
               <div>
-                <span className="text-slate-400 block text-[9px]">CHAMPIONSHIP VENUE:</span>
-                <span className="text-white font-semibold">GM University, Davangere</span>
+                <span className="block text-[9px]" style={{ color: '#94a3b8' }}>CHAMPIONSHIP VENUE:</span>
+                <span className="font-semibold" style={{ color: '#ffffff' }}>GM University, Davangere</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[9px]">EVENT:</span>
-                <span className="text-amber-400 font-semibold">IGNITRON 2K26</span>
+                <span className="block text-[9px]" style={{ color: '#94a3b8' }}>EVENT:</span>
+                <span className="font-semibold" style={{ color: '#fbbf24' }}>IGNITRON 2K26</span>
               </div>
             </div>
             {team?.director_feedback && (
-              <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-[11px] font-mono-code text-cyan-200">
-                <span className="text-[9px] uppercase font-bold text-cyan-400 block mb-0.5">CHIEF STEWARD COMMENDATION:</span>
+              <div
+                className="p-2.5 rounded-lg border text-[11px] font-mono-code leading-relaxed"
+                style={{
+                  backgroundColor: 'rgba(8, 51, 68, 0.55)',
+                  borderColor: 'rgba(6, 182, 212, 0.45)',
+                  color: '#a5f3fc'
+                }}
+              >
+                <span className="text-[9px] uppercase font-bold block mb-0.5 tracking-wider" style={{ color: '#22d3ee' }}>
+                  CHIEF STEWARD COMMENDATION:
+                </span>
                 &ldquo;{cleanCommendation(team.director_feedback)}&rdquo;
               </div>
             )}
@@ -711,30 +824,58 @@ export default function Round3Celebration({
   // =========================================================================
   if (!isAnnounced) {
     return (
-      <div className="celebration-screen-theme p-6 sm:p-8 rounded-2xl border text-center max-w-xl mx-auto space-y-4 bg-slate-950/80 border-amber-500/30">
-        <div className="w-14 h-14 rounded-full border mx-auto flex items-center justify-center shadow-lg bg-slate-900 border-amber-500/40 text-amber-400 shadow-amber-950/40">
+      <div
+        className="celebration-screen-theme p-6 sm:p-8 rounded-2xl border text-center max-w-xl mx-auto space-y-4"
+        style={{
+          backgroundColor: 'rgba(6, 11, 20, 0.95)',
+          borderColor: 'rgba(245, 158, 11, 0.4)',
+          color: '#ffffff'
+        }}
+      >
+        <div
+          className="w-14 h-14 rounded-full border mx-auto flex items-center justify-center shadow-lg"
+          style={{
+            backgroundColor: '#090d16',
+            borderColor: 'rgba(245, 158, 11, 0.5)',
+            color: '#fbbf24'
+          }}
+        >
           <Clock className="w-7 h-7 animate-pulse text-amber-500" />
         </div>
 
         <div className="space-y-1.5">
-          <span className="px-3 py-1 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-300 text-[10px] font-race font-bold tracking-wider uppercase">
+          <span
+            className="px-3 py-1 rounded-full border text-[10px] font-race font-bold tracking-wider uppercase"
+            style={{
+              backgroundColor: 'rgba(69, 26, 3, 0.8)',
+              borderColor: 'rgba(245, 158, 11, 0.4)',
+              color: '#fcd34d'
+            }}
+          >
             EVALUATIONS IN PROGRESS
           </span>
           <h3 className="text-xl sm:text-2xl font-race font-bold text-white mt-2">
             Round 3 Selections Pending Announcement
           </h3>
-          <p className="text-xs text-slate-400 font-mono-code max-w-md mx-auto leading-relaxed pt-1">
+          <p className="text-xs font-mono-code max-w-md mx-auto leading-relaxed pt-1" style={{ color: '#94a3b8' }}>
             Race Control Stewards are currently reviewing all submissions.
             Qualifiers and official podium results will go live as soon as Race Control begins the official announcement countdown.
           </p>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/5 text-xs font-mono-code text-slate-400 max-w-md mx-auto flex items-center justify-between">
+        <div
+          className="p-3.5 rounded-xl border text-xs font-mono-code max-w-md mx-auto flex items-center justify-between"
+          style={{
+            backgroundColor: 'rgba(3, 7, 18, 0.7)',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            color: '#cbd5e1'
+          }}
+        >
           <span>Grid Status:</span>
-          <span className="text-amber-400 font-race font-bold">Awaiting Steward Announcement</span>
+          <span className="font-race font-bold" style={{ color: '#fbbf24' }}>Awaiting Steward Announcement</span>
         </div>
 
-        <div className="pt-2 text-[10px] font-mono-code text-slate-500 border-t border-white/5">
+        <div className="pt-2 text-[10px] font-mono-code border-t border-white/5" style={{ color: '#64748b' }}>
           Team: <strong className="text-white">{user?.team_name || team?.team_name}</strong> ({teamId})
         </div>
       </div>
@@ -751,13 +892,26 @@ export default function Round3Celebration({
 
       <div className="relative z-10 max-w-lg mx-auto text-center space-y-4">
         {/* Finish Icon */}
-        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-950/60 border border-red-500/40 text-red-400 mx-auto flex items-center justify-center shadow-md shadow-red-950/60">
+        <div
+          className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border text-red-400 mx-auto flex items-center justify-center shadow-md"
+          style={{
+            backgroundColor: 'rgba(69, 10, 10, 0.6)',
+            borderColor: 'rgba(239, 68, 68, 0.4)'
+          }}
+        >
           <ShieldAlert className="w-7 h-7 sm:w-8 sm:h-8 text-red-400" />
         </div>
 
         {/* Status Pill */}
         <div>
-          <span className="px-3 py-1 rounded-full bg-red-950/80 border border-red-600/50 text-red-300 text-[10px] font-race font-bold tracking-widest uppercase">
+          <span
+            className="px-3 py-1 rounded-full border text-[10px] font-race font-bold tracking-widest uppercase"
+            style={{
+              backgroundColor: 'rgba(69, 10, 10, 0.8)',
+              borderColor: 'rgba(239, 68, 68, 0.5)',
+              color: '#fca5a5'
+            }}
+          >
             RACE COMPLETED &bull; ROUND 2 FINISH
           </span>
         </div>
@@ -772,38 +926,59 @@ export default function Round3Celebration({
             Try again next time! All the best!
           </p>
 
-          <p className="text-xs text-slate-400 font-mono-code max-w-md mx-auto leading-relaxed pt-1">
+          <p className="text-xs font-mono-code max-w-md mx-auto leading-relaxed pt-1" style={{ color: '#94a3b8' }}>
             Thank you for participating with great passion in the <strong className="text-slate-200">CLOUDNEX 2K26 Championship</strong>.
             Your technical architecture and sprint execution demonstrated commendable talent.
           </p>
         </div>
 
         {/* Team Record Card */}
-        <div className="p-3.5 rounded-xl bg-slate-950/80 border border-white/5 text-left max-w-md mx-auto space-y-2">
+        <div
+          className="p-3.5 rounded-xl border text-left max-w-md mx-auto space-y-2"
+          style={{
+            backgroundColor: 'rgba(6, 11, 20, 0.9)',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            color: '#ffffff'
+          }}
+        >
           <div className="flex items-center justify-between pb-1.5 border-b border-white/5">
             <div>
-              <span className="text-[9px] font-mono-code text-slate-500 uppercase block">TEAM</span>
+              <span className="text-[9px] font-mono-code uppercase block" style={{ color: '#94a3b8' }}>TEAM</span>
               <strong className="text-xs font-race text-white">{user?.team_name || team?.team_name}</strong>
             </div>
-            <span className="px-2 py-0.5 rounded bg-slate-900 border border-white/10 text-slate-400 font-mono-code text-[11px]">
+            <span
+              className="px-2 py-0.5 rounded border font-mono-code text-[11px]"
+              style={{
+                backgroundColor: '#090d16',
+                borderColor: 'rgba(255, 255, 255, 0.15)',
+                color: '#cbd5e1'
+              }}
+            >
               {teamId}
             </span>
           </div>
 
-          <div className="text-[11px] font-mono-code text-slate-400 flex items-center justify-between">
+          <div className="text-[11px] font-mono-code flex items-center justify-between" style={{ color: '#94a3b8' }}>
             <span>Institution:</span>
             <strong className="text-cyan-300">GM University, Davangere</strong>
           </div>
 
           {team?.director_feedback && (
-            <div className="p-2 rounded-lg bg-red-950/30 border border-red-500/20 text-[11px] font-mono-code text-red-300">
+            <div
+              className="p-2 rounded-lg border text-[11px] font-mono-code leading-relaxed"
+              style={{
+                backgroundColor: 'rgba(69, 10, 10, 0.4)',
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                color: '#fca5a5'
+              }}
+            >
               <span className="text-[9px] uppercase font-bold text-red-400 block mb-0.5">STEWARD NOTES:</span>
               &ldquo;{cleanCommendation(team.director_feedback)}&rdquo;
             </div>
           )}
         </div>
 
-        <div className="pt-1 text-[11px] font-mono-code text-slate-500 flex items-center justify-center space-x-1.5">
+        <div className="pt-1 text-[11px] font-mono-code flex items-center justify-center space-x-1.5" style={{ color: '#64748b' }}>
           <Heart className="w-3.5 h-3.5 text-red-400" />
           <span>Keep building, innovating, and reaching for the championship podium!</span>
         </div>

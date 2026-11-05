@@ -115,6 +115,18 @@ export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
   }));
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const celebrationCanvasRef = useRef(null);
+
+  // Allow pressing Escape to dismiss the winner broadcast and return to cockpit
+  useEffect(() => {
+    if (!winnerAnnouncement?.is_announced || announcementDismissed) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setAnnouncementDismissed(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [winnerAnnouncement?.is_announced, announcementDismissed]);
   const [startingRoundNum, setStartingRoundNum] = useState(null);
 
   // High-performance concurrency guard & background reload debouncer
@@ -4255,7 +4267,7 @@ export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
 
                   {/* OFFICIAL LIVE ANIMATED ANNOUNCEMENT — FULLSCREEN OVERLAY */}
                   {isResultsAnnounced && !announcementDismissed && (
-                    <div className="fixed inset-0 z-[9999] flex flex-col overflow-hidden bg-[#02030a] select-none">
+                    <div className="celebration-screen-theme fixed inset-0 z-[9999] flex flex-col overflow-hidden bg-[#02030a] select-none" style={{ colorScheme: 'dark', color: '#ffffff' }}>
                       {/* ── Multi-layer ambient glows for depth ── */}
                       <div className="absolute -right-40 -top-40 w-[600px] h-[600px] bg-amber-500/20 rounded-full blur-[120px] pointer-events-none animate-pulse" />
                       <div className="absolute -left-40 -bottom-40 w-[600px] h-[600px] bg-fuchsia-600/15 rounded-full blur-[120px] pointer-events-none animate-pulse" />
@@ -4277,9 +4289,9 @@ export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
                           {/* ── MEGA CLOUDNEX HEADER (Styled to match reference design) ── */}
                           <div className="text-center space-y-1">
                             {/* Outline badge with trophies (subtle clean glow) */}
-                            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#030d1d]/85 border border-cyan-400/80 shadow-[0_0_8px_rgba(34,211,238,0.4)] backdrop-blur-md">
+                            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#030d1d]/90 border border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.5)] backdrop-blur-md">
                               <span className="text-xs">🏆</span>
-                              <span className="text-white font-race font-bold text-[10px] sm:text-xs tracking-[0.22em] uppercase">
+                              <span className="font-race font-bold text-[10px] sm:text-xs tracking-[0.22em] uppercase" style={{ color: '#ffffff' }}>
                                 OFFICIAL GRAND PRIX FINAL RESULTS
                               </span>
                               <span className="text-xs">🏆</span>
@@ -4289,7 +4301,7 @@ export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
                             <div className="relative mt-1 mb-0.5">
                               {/* Soft ambient backlight aura */}
                               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-72 sm:w-[420px] h-12 bg-cyan-400/15 blur-2xl rounded-full" />
+                                <div className="w-72 sm:w-[420px] h-12 bg-cyan-400/20 blur-2xl rounded-full" />
                               </div>
                               <p className="font-race text-5xl sm:text-7xl font-black tracking-[0.06em] uppercase leading-none relative"
                                 style={{
@@ -4303,7 +4315,9 @@ export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
                                 CLOUDNEX 2K26
                               </p>
                               {/* Subtitle with dashes */}
-                              <p className="font-race text-[10px] sm:text-xs uppercase tracking-[0.45em] text-cyan-100 font-extrabold mt-1 drop-shadow-[0_0_4px_rgba(56,189,248,0.4)]">
+                              <p className="font-race text-[10px] sm:text-xs uppercase tracking-[0.45em] font-extrabold mt-1"
+                                style={{ color: '#e0f2fe', textShadow: '0 0 10px rgba(56,189,248,0.7)' }}
+                              >
                                 — THE CHAMPIONSHIP HAS SPOKEN —
                               </p>
                             </div>
@@ -4311,7 +4325,9 @@ export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
                             {/* WINNER headline — Gold Champions + 3D Golden WINNERS with subtle clean glow */}
                             <div className="mt-1">
                               <h2 className="font-race leading-none select-none">
-                                <span className="block text-sm sm:text-lg font-black uppercase tracking-[0.16em] text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-200 drop-shadow-[0_0_6px_rgba(250,204,21,0.5)]">
+                                <span className="block text-sm sm:text-lg font-black uppercase tracking-[0.16em]"
+                                  style={{ color: '#fde047', textShadow: '0 0 12px rgba(250,204,21,0.6)' }}
+                                >
                                   🏆 CONGRATULATIONS, CHAMPIONS!
                                 </span>
                                 <span className="block text-4xl sm:text-6xl font-black uppercase tracking-wider my-1"
@@ -4331,16 +4347,17 @@ export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
                             </div>
                           </div>
 
-                          {/* ── WINNER CARD (simple in gold color like runner section) ── */}
+                          {/* ── WINNER CARD (Grand Champion) ── */}
                           <div className="rounded-2xl overflow-hidden relative"
                             style={{
-                              background: 'linear-gradient(135deg,rgba(120,53,15,0.6) 0%,rgba(2,6,23,1) 50%,rgba(15,23,42,0.7) 100%)',
-                              boxShadow: '0 0 40px rgba(245,158,11,0.35), inset 0 1px 0 rgba(245,158,11,0.2)'
+                              background: 'linear-gradient(135deg,rgba(120,53,15,0.7) 0%,rgba(2,6,23,0.98) 50%,rgba(15,23,42,0.85) 100%)',
+                              boxShadow: '0 0 40px rgba(245,158,11,0.4), inset 0 1px 0 rgba(245,158,11,0.3)',
+                              color: '#ffffff'
                             }}
                           >
-                            <div className="absolute inset-0 rounded-2xl border-2 border-amber-400/75 pointer-events-none" />
+                            <div className="absolute inset-0 rounded-2xl border-2 border-amber-400 pointer-events-none" />
 
-                            <div className="flex items-center gap-3 p-3.5 sm:p-4 border-b border-amber-400/25 relative">
+                            <div className="flex items-center gap-3 p-3.5 sm:p-4 border-b border-amber-400/30 relative">
                               {/* Trophy icon with spinning ring */}
                               <div className="relative shrink-0">
                                 <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-yellow-300 via-amber-400 to-amber-600 flex items-center justify-center shadow-xl shadow-amber-500/40">
@@ -4352,40 +4369,34 @@ export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
                                 <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-200 text-slate-950 text-[9px] font-race font-black uppercase tracking-wider inline-flex items-center gap-1 shadow-sm">
                                   👑 1ST PLACE · GRAND CHAMPION
                                 </span>
-                                <h3 className="font-race text-xl sm:text-3xl font-black mt-0.5 tracking-wide uppercase truncate"
+                                <h3 className="font-race text-2xl sm:text-4xl font-black mt-0.5 tracking-wide uppercase truncate"
                                   style={{
-                                    background: 'linear-gradient(90deg,#fef08a,#fbbf24,#fde68a,#f59e0b)',
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    backgroundClip: 'text',
-                                    filter: 'drop-shadow(0 0 12px rgba(245,158,11,0.6))'
+                                    color: '#fef08a',
+                                    textShadow: '0 0 20px rgba(250,204,21,0.85), 0 2px 4px rgba(0,0,0,0.95)'
                                   }}
                                 >
                                   {winner ? winner.team_name : 'Grand Champion'}
                                 </h3>
-
                               </div>
                             </div>
                             <div className="p-3.5 sm:p-4 space-y-1.5">
                               <p className="font-race text-sm font-black tracking-wide"
                                 style={{
-                                  background: 'linear-gradient(90deg,#fde047,#fbbf24,#f59e0b)',
-                                  WebkitBackgroundClip: 'text',
-                                  WebkitTextFillColor: 'transparent',
-                                  backgroundClip: 'text'
+                                  color: '#fde047',
+                                  textShadow: '0 0 8px rgba(250,204,21,0.5)'
                                 }}
                               >
                                 🌟 Crowned. Undisputed. Unstoppable.
                               </p>
-                              <p className="text-xs text-amber-100/90 font-sans leading-relaxed">
+                              <p className="text-xs sm:text-sm font-sans leading-relaxed" style={{ color: '#fef3c7' }}>
                                 From the very first keystroke to the final deployment,{' '}
-                                <span className="font-bold text-yellow-300">{winner ? winner.team_name : 'this team'}</span>{' '}
+                                <strong className="font-black" style={{ color: '#facc15' }}>{winner ? winner.team_name : 'this team'}</strong>{' '}
                                 demonstrated what true cloud mastery looks like under pressure.
                                 Their architecture didn't just survive the storm —{' '}
-                                <span className="italic font-semibold text-amber-300">it became the storm.</span>
+                                <strong className="italic font-bold" style={{ color: '#fbbf24' }}>it became the storm.</strong>
                               </p>
-                              <p className="text-[9px] text-amber-400/70 font-mono-code italic border-l-2 border-amber-500/40 pl-2">
-                                "Excellence isn't a moment. It's a mindset."
+                              <p className="text-[10px] sm:text-xs font-mono-code italic border-l-2 pl-2.5" style={{ color: '#fde68a', borderColor: '#f59e0b' }}>
+                                &ldquo;Excellence isn't a moment. It's a mindset.&rdquo;
                               </p>
                             </div>
                           </div>
@@ -4393,13 +4404,14 @@ export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
                           {/* ── RUNNER UP CARD ── */}
                           <div className="rounded-2xl overflow-hidden relative"
                             style={{
-                              background: 'linear-gradient(135deg,rgba(6,182,212,0.3) 0%,rgba(30,27,75,0.8) 40%,rgba(2,6,23,0.95) 75%,rgba(236,72,153,0.2) 100%)',
-                              boxShadow: '0 0 50px rgba(6,182,212,0.4), 0 0 80px rgba(168,85,247,0.3), inset 0 1px 0 rgba(6,182,212,0.3)'
+                              background: 'linear-gradient(135deg,rgba(6,182,212,0.4) 0%,rgba(30,27,75,0.85) 40%,rgba(2,6,23,0.98) 75%,rgba(236,72,153,0.25) 100%)',
+                              boxShadow: '0 0 50px rgba(6,182,212,0.45), 0 0 80px rgba(168,85,247,0.35), inset 0 1px 0 rgba(6,182,212,0.35)',
+                              color: '#ffffff'
                             }}
                           >
-                            <div className="absolute inset-0 rounded-2xl border-2 border-cyan-400/75 pointer-events-none" />
+                            <div className="absolute inset-0 rounded-2xl border-2 border-cyan-400 pointer-events-none" />
 
-                            <div className="flex items-center gap-3 p-3.5 sm:p-4 border-b border-cyan-400/25 relative">
+                            <div className="flex items-center gap-3 p-3.5 sm:p-4 border-b border-cyan-400/30 relative">
                               <div className="relative shrink-0">
                                 <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-cyan-300 via-blue-500 to-purple-600 flex items-center justify-center shadow-xl shadow-cyan-500/40">
                                   <Award className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
@@ -4410,40 +4422,33 @@ export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
                                 <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-cyan-400 via-teal-200 to-purple-400 text-slate-950 text-[9px] font-race font-black uppercase tracking-wider inline-flex items-center gap-1 shadow-sm">
                                   🥈 1ST RUNNER UP
                                 </span>
-                                <h3 className="font-race text-xl sm:text-3xl font-black mt-0.5 tracking-wide uppercase truncate"
+                                <h3 className="font-race text-2xl sm:text-4xl font-black mt-0.5 tracking-wide uppercase truncate"
                                   style={{
-                                    background: 'linear-gradient(90deg,#67e8f9 0%,#a855f7 35%,#f472b6 70%,#38bdf8 100%)',
-                                    backgroundSize: '250% 100%',
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    backgroundClip: 'text',
-                                    filter: 'drop-shadow(0 0 15px rgba(6,182,212,0.7)) drop-shadow(0 0 30px rgba(168,85,247,0.5))'
+                                    color: '#67e8f9',
+                                    textShadow: '0 0 20px rgba(6,182,212,0.85), 0 2px 4px rgba(0,0,0,0.95)'
                                   }}
                                 >
                                   {runnerUp ? runnerUp.team_name : '1st Runner Up'}
                                 </h3>
-
                               </div>
                             </div>
                             <div className="p-3.5 sm:p-4 space-y-1.5">
                               <p className="font-race text-sm font-black tracking-wide"
                                 style={{
-                                  background: 'linear-gradient(90deg,#67e8f9,#c084fc,#f472b6)',
-                                  WebkitBackgroundClip: 'text',
-                                  WebkitTextFillColor: 'transparent',
-                                  backgroundClip: 'text'
+                                  color: '#a5f3fc',
+                                  textShadow: '0 0 8px rgba(6,182,212,0.5)'
                                 }}
                               >
                                 👏 Brilliant. Resilient. Remarkable.
                               </p>
-                              <p className="text-xs text-cyan-100/88 font-sans leading-relaxed">
+                              <p className="text-xs sm:text-sm font-sans leading-relaxed" style={{ color: '#e0f2fe' }}>
                                 The race was fierce, and{' '}
-                                <span className="font-bold text-cyan-300">{runnerUp ? runnerUp.team_name : 'this team'}</span>{' '}
+                                <strong className="font-black" style={{ color: '#38bdf8' }}>{runnerUp ? runnerUp.team_name : 'this team'}</strong>{' '}
                                 gave everything on the grid. Runner Up at CLOUDNEX is no small feat —{' '}
-                                <span className="italic font-semibold text-teal-300">it's a testament to world-class talent.</span>
+                                <strong className="italic font-bold" style={{ color: '#2dd4bf' }}>it's a testament to world-class talent.</strong>
                               </p>
-                              <p className="text-[9px] text-cyan-400/70 font-mono-code italic border-l-2 border-cyan-500/40 pl-2">
-                                "Second place proves they pushed the champion to their absolute limit."
+                              <p className="text-[10px] sm:text-xs font-mono-code italic border-l-2 pl-2.5" style={{ color: '#a5f3fc', borderColor: '#06b6d4' }}>
+                                &ldquo;Second place proves they pushed the champion to their absolute limit.&rdquo;
                               </p>
                             </div>
                           </div>
@@ -4464,16 +4469,22 @@ export default function AdminDashboard({ initialTab = 'rounds', onLogout }) {
                         </button>
                       </div>
 
-                      {/* ── BACK TO COCKPIT BUTTON (Bottom-right) ── */}
+                      {/* ── BACK TO COCKPIT BUTTON (Bottom-right) — Stealth dark & hidden by default ── */}
                       <div className="absolute bottom-3 right-4 z-30">
                         <button
                           type="button"
                           onClick={() => setAnnouncementDismissed(true)}
-                          className="px-3.5 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-white/20 hover:border-amber-400/60 text-xs font-mono-code transition-all flex items-center space-x-1.5 cursor-pointer shadow-lg hover:shadow-amber-500/10 group"
-                          title="Back to Cockpit • Hold Announcement"
+                          className="px-3.5 py-1.5 rounded-xl text-xs font-mono-code transition-all duration-300 flex items-center space-x-1.5 cursor-pointer shadow-lg opacity-0 hover:opacity-100 group border"
+                          style={{
+                            backgroundColor: 'rgba(9, 13, 22, 0.92)',
+                            borderColor: 'rgba(255, 255, 255, 0.18)',
+                            color: '#cbd5e1',
+                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.6)'
+                          }}
+                          title="Back to Cockpit • Hold Announcement (or press Esc)"
                         >
                           <ArrowLeft className="w-3.5 h-3.5 text-amber-400 group-hover:-translate-x-0.5 transition-transform" />
-                          <span>Back to Cockpit &bull; Hold Announcement</span>
+                          <span style={{ color: '#cbd5e1' }}>Back to Cockpit &bull; Hold Announcement</span>
                         </button>
                       </div>
                     </div>

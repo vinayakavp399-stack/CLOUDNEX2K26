@@ -917,31 +917,31 @@ export default function ParticipantDashboard({ onLogout }) {
 
           {/* Championship Winner Countdown Banner (Shown when countdown timer is active before announcement) */}
           {winnerAnnouncement?.is_timer_active && !isWinnerAnnounced && !winnerAnnouncement?.held && (winnerSecondsLeft === null || winnerSecondsLeft > 0) && !isWinnerTimerExpired && (
-            <div className="mt-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-red-950/90 via-slate-900 to-amber-950/70 border-2 border-red-500/80 shadow-2xl shadow-red-500/20 text-white flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+            <div className="celebration-screen-theme mt-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-red-950/90 via-slate-900 to-amber-950/70 border-2 border-red-500/80 shadow-2xl shadow-red-500/20 text-white flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in" style={{ color: '#ffffff' }}>
               <div className="flex items-center space-x-3.5">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-amber-500 flex items-center justify-center shrink-0 shadow-xl shadow-red-500/50">
                   <Clock className="w-6 h-6 text-white animate-spin" />
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-race font-black uppercase tracking-wider shadow-sm">
+                    <span className="px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-race font-black uppercase tracking-wider shadow-sm" style={{ color: '#ffffff', backgroundColor: '#dc2626' }}>
                       👑 OFFICIAL CHAMPIONSHIP RESULTS
                     </span>
-                    <span className="text-[10px] text-amber-300 font-race font-bold uppercase tracking-wider">
+                    <span className="text-[10px] font-race font-bold uppercase tracking-wider" style={{ color: '#fcd34d' }}>
                       IGNITRON 2K26
                     </span>
                   </div>
-                  <h3 className="text-base sm:text-lg font-race font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-amber-300 to-yellow-100 mt-1">
+                  <h3 className="text-base sm:text-lg font-race font-black mt-1" style={{ color: '#fde047', textShadow: '0 0 10px rgba(250,204,21,0.5)' }}>
                     CHAMPIONSHIP WINNERS ANNOUNCEMENT IN PROGRESS
                   </h3>
-                  <p className="text-xs text-slate-300 font-mono-code">
+                  <p className="text-xs font-mono-code" style={{ color: '#cbd5e1' }}>
                     Race Stewards are finalizing the official podium. Winners reveal is imminent!
                   </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-2.5 px-4 py-2 rounded-xl bg-red-950/90 border border-red-500/60 text-red-300 font-race shadow-lg shadow-red-950/50">
-                <Timer className="w-4 h-4 text-amber-400 animate-spin" />
-                <span className="font-mono-code text-amber-300 text-lg font-black tracking-widest">
+              <div className="flex items-center space-x-2.5 px-4 py-2 rounded-xl border font-race shadow-lg" style={{ backgroundColor: 'rgba(69, 10, 10, 0.9)', borderColor: 'rgba(239, 68, 68, 0.6)', color: '#fca5a5' }}>
+                <Timer className="w-4 h-4 animate-spin" style={{ color: '#fbbf24' }} />
+                <span className="font-mono-code text-lg font-black tracking-widest" style={{ color: '#fde047' }}>
                   00:{String(Math.max(0, winnerSecondsLeft ?? (winnerAnnouncement?.timer_seconds || 10))).padStart(2, '0')}
                 </span>
               </div>
@@ -951,28 +951,31 @@ export default function ParticipantDashboard({ onLogout }) {
           {/* Championship Winner Broadcast Banner (Shown only when overall championship winner is live) */}
           {isWinnerAnnounced && (() => {
             const myTeamId = String(teamId || team?._id || user?.team_id || '');
+            const myTeamName = (team?.team_name || user?.team_name || team?.name || '').toLowerCase().trim();
             const isMyTeamWinner = Boolean(
               (winnerAnnouncement?.winner?.team_id && String(winnerAnnouncement.winner.team_id) === myTeamId) ||
-              (winnerAnnouncement?.winner?.team_name && team?.name && winnerAnnouncement.winner.team_name.toLowerCase().trim() === team.name.toLowerCase().trim())
+              (winnerAnnouncement?.winner?.team_name && myTeamName && winnerAnnouncement.winner.team_name.toLowerCase().trim() === myTeamName)
             );
             const isMyTeamRunnerUp = Boolean(
               (winnerAnnouncement?.runner_up?.team_id && String(winnerAnnouncement.runner_up.team_id) === myTeamId) ||
-              (winnerAnnouncement?.runner_up?.team_name && team?.name && winnerAnnouncement.runner_up.team_name.toLowerCase().trim() === team.name.toLowerCase().trim())
+              (winnerAnnouncement?.runner_up?.team_name && myTeamName && winnerAnnouncement.runner_up.team_name.toLowerCase().trim() === myTeamName)
             );
+            const displaySquadName = user?.team_name || team?.team_name || team?.name || 'SQUAD';
 
             return (
-              <div className="mt-6 rounded-2xl overflow-hidden relative"
+              <div className="celebration-screen-theme mt-6 rounded-2xl overflow-hidden relative"
                 style={{
                   background: isMyTeamWinner 
                     ? 'linear-gradient(135deg,rgba(120,53,15,0.95) 0%,rgba(20,15,5,1) 50%,rgba(217,119,6,0.3) 100%)'
                     : isMyTeamRunnerUp
                     ? 'linear-gradient(135deg,rgba(12,74,110,0.95) 0%,rgba(15,23,42,1) 50%,rgba(14,165,233,0.3) 100%)'
-                    : 'linear-gradient(135deg,rgba(30,41,59,0.95) 0%,rgba(15,23,42,1) 50%,rgba(51,65,85,0.4) 100%)',
+                    : 'linear-gradient(135deg,rgba(15,23,42,0.98) 0%,rgba(9,13,22,1) 50%,rgba(30,41,59,0.7) 100%)',
                   boxShadow: isMyTeamWinner
                     ? '0 0 50px rgba(245,158,11,0.45), 0 0 80px rgba(236,72,153,0.15)'
                     : isMyTeamRunnerUp
                     ? '0 0 50px rgba(56,189,248,0.45), 0 0 80px rgba(147,51,234,0.15)'
-                    : '0 0 40px rgba(59,130,246,0.25)'
+                    : '0 0 40px rgba(59,130,246,0.3)',
+                  color: '#ffffff'
                 }}
               >
                 {/* Border highlight */}
@@ -1023,34 +1026,36 @@ export default function ParticipantDashboard({ onLogout }) {
                             : isQualifiedR3
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                             : 'bg-slate-800 text-slate-300 border border-slate-700'
-                        }`}>
+                        }`}
+                        style={isQualifiedR3 ? { backgroundColor: 'rgba(2, 44, 34, 0.85)', borderColor: 'rgba(16, 185, 129, 0.6)', color: '#6ee7b7' } : {}}
+                        >
                           {isMyTeamWinner ? '👑 GRAND CHAMPION' : isMyTeamRunnerUp ? '🥈 1ST RUNNER UP' : isQualifiedR3 ? '🏁 R3 GRAND PRIX FINALIST' : '⭐ CLOUDNEX CONTENDER'}
                         </span>
-                        <span className="text-[10px] text-amber-300/80 font-race font-bold uppercase tracking-wider">IGNITRON 2K26</span>
+                        <span className="text-[10px] font-race font-bold uppercase tracking-wider" style={{ color: '#fcd34d' }}>IGNITRON 2K26</span>
                       </div>
 
                       {/* Team Personal Standing Headline */}
-                      <h3 className="text-lg sm:text-2xl font-race font-black tracking-wide text-white">
+                      <h3 className="text-lg sm:text-2xl font-race font-black tracking-wide" style={{ color: '#ffffff' }}>
                         {isMyTeamWinner ? (
                           <span className="bg-gradient-to-r from-yellow-200 via-amber-300 to-orange-400 bg-clip-text text-transparent">
-                            CONGRATULATIONS {team?.name || 'SQUAD'}! YOU WON 1ST PLACE! 🏆
+                            CONGRATULATIONS {displaySquadName}! YOU WON 1ST PLACE! 🏆
                           </span>
                         ) : isMyTeamRunnerUp ? (
                           <span className="bg-gradient-to-r from-cyan-200 via-sky-300 to-indigo-300 bg-clip-text text-transparent">
-                            CONGRATULATIONS {team?.name || 'SQUAD'}! YOU SECURED 2ND PLACE! 🥈
+                            CONGRATULATIONS {displaySquadName}! YOU SECURED 2ND PLACE! 🥈
                           </span>
                         ) : isQualifiedR3 ? (
-                          <span>
-                            GREAT RUN, {team?.name || 'SQUAD'}! FINAL ROUND COMPLETED! 🏁
+                          <span style={{ color: '#ffffff', textShadow: '0 0 16px rgba(255,255,255,0.4)' }}>
+                            GREAT RUN, {displaySquadName}! FINAL ROUND COMPLETED! 🏁
                           </span>
                         ) : (
-                          <span>
+                          <span style={{ color: '#ffffff', textShadow: '0 0 16px rgba(255,255,255,0.4)' }}>
                             CHAMPIONSHIP RESULTS ANNOUNCED ⭐
                           </span>
                         )}
                       </h3>
 
-                      <p className="text-xs text-slate-300 mt-1 font-mono-code">
+                      <p className="text-xs mt-1 font-mono-code" style={{ color: '#cbd5e1' }}>
                         {isMyTeamWinner 
                           ? 'Your engineering excellence conquered all 3 stages of CLOUDNEX 2K26!'
                           : isMyTeamRunnerUp
@@ -1063,10 +1068,15 @@ export default function ParticipantDashboard({ onLogout }) {
                   <button
                     type="button"
                     onClick={() => setShowWinnerModal(true)}
-                    className="px-5 py-3 rounded-xl bg-gradient-to-r from-yellow-400 via-amber-300 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 font-race font-black text-xs uppercase tracking-wider shadow-xl shadow-amber-500/40 shrink-0 transition-transform active:scale-95 cursor-pointer flex items-center space-x-2"
+                    className="px-5 py-3 rounded-xl font-race font-black text-xs uppercase tracking-wider shadow-xl shrink-0 transition-transform active:scale-95 cursor-pointer flex items-center space-x-2"
+                    style={{
+                      background: 'linear-gradient(to right, #facc15, #f59e0b, #d97706)',
+                      color: '#020617',
+                      boxShadow: '0 0 25px rgba(245, 158, 11, 0.45)'
+                    }}
                   >
-                    <Sparkles className="w-4 h-4 text-slate-950" />
-                    <span>Open Podium 🎉</span>
+                    <Sparkles className="w-4 h-4" style={{ color: '#020617' }} />
+                    <span style={{ color: '#020617' }}>Open Podium 🎉</span>
                   </button>
                 </div>
               </div>
@@ -1800,7 +1810,12 @@ export default function ParticipantDashboard({ onLogout }) {
 
               <button
                 onClick={() => setShowWinnerModal(false)}
-                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-white/10 font-race font-bold text-xs uppercase transition-all cursor-pointer"
+                className="w-full py-2.5 rounded-xl font-race font-bold text-xs uppercase transition-all cursor-pointer border"
+                style={{
+                  backgroundColor: '#090d16',
+                  color: '#cbd5e1',
+                  borderColor: 'rgba(255, 255, 255, 0.15)'
+                }}
               >
                 Back to Dashboard
               </button>

@@ -403,10 +403,67 @@ html.light .bg-red-950\/80 * {
 
 /* Ensure winner celebration screen & podium modal remain in their glorious dark championship theme in BOTH light and dark mode */
 html.light .celebration-screen-theme,
-html.light .celebration-screen-theme *,
-html.light .winner-modal-podium,
-html.light .winner-modal-podium * {
-  color: initial;
+html.light .winner-modal-podium {
+  color-scheme: dark !important;
+}
+
+/* Force dark inner backgrounds inside celebration & podium screens in light mode */
+html.light .celebration-screen-theme .bg-slate-950,
+html.light .celebration-screen-theme .bg-slate-950\/95,
+html.light .celebration-screen-theme .bg-slate-950\/90,
+html.light .celebration-screen-theme .bg-slate-950\/85,
+html.light .celebration-screen-theme .bg-slate-950\/80,
+html.light .celebration-screen-theme .bg-slate-950\/70,
+html.light .celebration-screen-theme .bg-slate-950\/60,
+html.light .celebration-screen-theme .bg-slate-950\/50,
+html.light .celebration-screen-theme .bg-slate-950\/40,
+html.light .celebration-screen-theme .bg-slate-900,
+html.light .celebration-screen-theme .bg-slate-900\/90,
+html.light .celebration-screen-theme .bg-slate-900\/80,
+html.light .celebration-screen-theme .bg-slate-900\/70,
+html.light .winner-modal-podium .bg-slate-950,
+html.light .winner-modal-podium .bg-slate-950\/90,
+html.light .winner-modal-podium .bg-slate-950\/85,
+html.light .winner-modal-podium .bg-slate-950\/80,
+html.light .winner-modal-podium .bg-slate-900 {
+  background-color: rgba(9, 13, 22, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.light .celebration-screen-theme .bg-amber-950,
+html.light .celebration-screen-theme .bg-amber-950\/90,
+html.light .celebration-screen-theme .bg-amber-950\/80,
+html.light .celebration-screen-theme .bg-amber-950\/70,
+html.light .celebration-screen-theme .bg-amber-950\/60,
+html.light .celebration-screen-theme .bg-amber-950\/50,
+html.light .celebration-screen-theme .bg-amber-950\/40,
+html.light .winner-modal-podium .bg-amber-950,
+html.light .winner-modal-podium .bg-amber-950\/80 {
+  background-color: #451a03 !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  color: #fcd34d !important;
+}
+
+html.light .celebration-screen-theme .bg-cyan-950,
+html.light .celebration-screen-theme .bg-cyan-950\/90,
+html.light .celebration-screen-theme .bg-cyan-950\/80,
+html.light .celebration-screen-theme .bg-cyan-950\/50,
+html.light .celebration-screen-theme .bg-cyan-950\/40,
+html.light .winner-modal-podium .bg-cyan-950 {
+  background-color: #083344 !important;
+  border-color: rgba(6, 182, 212, 0.4) !important;
+  color: #67e8f9 !important;
+}
+
+html.light .celebration-screen-theme .bg-emerald-950,
+html.light .celebration-screen-theme .bg-emerald-950\/90,
+html.light .celebration-screen-theme .bg-emerald-950\/80,
+html.light .celebration-screen-theme .bg-emerald-950\/50,
+html.light .celebration-screen-theme .bg-emerald-950\/40,
+html.light .winner-modal-podium .bg-emerald-950 {
+  background-color: #022c22 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: #6ee7b7 !important;
 }
 
 html.light .celebration-screen-theme .text-white,
@@ -501,6 +558,13 @@ html.light .border-white\/10,
 html.light .border-white\/5,
 html.light .border-white\/20 {
   border-color: rgba(203, 213, 225, 0.7) !important;
+}
+
+html.light .celebration-screen-theme .border-white\/10,
+html.light .celebration-screen-theme .border-white\/5,
+html.light .celebration-screen-theme .border-white\/20,
+html.light .winner-modal-podium .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 html.light .divide-white\/5 > * + *,
