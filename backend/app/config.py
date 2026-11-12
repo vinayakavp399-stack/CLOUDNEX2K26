@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     
     # MongoDB settings
     MONGODB_URI: str = os.getenv("MONGODB_URI", "")
-    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "cloudnex2026")
+    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "cloudnex")
     
     # Storage
     UPLOAD_DIR: Path = BASE_DIR / "uploads"
