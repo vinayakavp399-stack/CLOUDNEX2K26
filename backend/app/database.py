@@ -378,7 +378,9 @@ class DatabaseManager:
             pass
 
     def _sync_offline_and_atlas(self):
-        """Bi-directional synchronization between local JSON store and MongoDB Atlas to guarantee zero data loss."""
+        """Mirror current Atlas state to local backup files for offline resilience.
+        Atlas is ALWAYS the single source of truth. We NEVER re-insert deleted teams/users into Atlas.
+        """
         if not self.is_atlas or self.db is None:
             return
         try:
@@ -388,51 +390,27 @@ class DatabaseManager:
             atlas_teams_col = self.db["teams"]
             atlas_users_col = self.db["users"]
 
-            # 1. Sync teams from JSON to Atlas if missing
-            if teams_file.exists():
-                with open(teams_file, "r", encoding="utf-8") as f:
-                    local_teams = json.load(f)
-                for t in local_teams:
-                    tid = t.get("team_id")
-                    if tid and not atlas_teams_col.find_one({"team_id": tid}):
-                        clean_t = {k: v for k, v in t.items() if k != "_id"}
-                        atlas_teams_col.insert_one(clean_t)
-                        logger.info(f"Synced team '{t.get('team_name')}' ({tid}) from local store to MongoDB Atlas.")
-
-            # 2. Sync users from JSON to Atlas if missing
-            if users_file.exists():
-                with open(users_file, "r", encoding="utf-8") as f:
-                    local_users = json.load(f)
-                for u in local_users:
-                    un = u.get("username")
-                    if un and not atlas_users_col.find_one({"username": un}):
-                        clean_u = {k: v for k, v in u.items() if k != "_id"}
-                        atlas_users_col.insert_one(clean_u)
-                        logger.info(f"Synced user '{un}' from local store to MongoDB Atlas.")
-
-            # 3. Pull all Atlas teams to local JSON backup
+            # Pull current Atlas teams to local JSON backup (mirror whatever Atlas has, even if empty)
             atlas_all_teams = list(atlas_teams_col.find())
-            if atlas_all_teams and teams_file.exists():
-                clean_teams = []
-                for t in atlas_all_teams:
-                    d = dict(t)
-                    if "_id" in d:
-                        d["_id"] = str(d["_id"])
-                    clean_teams.append(d)
-                with open(teams_file, "w", encoding="utf-8") as f:
-                    json.dump(clean_teams, f, indent=2, default=str)
+            clean_teams = []
+            for t in atlas_all_teams:
+                d = dict(t)
+                if "_id" in d:
+                    d["_id"] = str(d["_id"])
+                clean_teams.append(d)
+            with open(teams_file, "w", encoding="utf-8") as f:
+                json.dump(clean_teams, f, indent=2, default=str)
 
-            # 4. Pull all Atlas users to local JSON backup
+            # Pull current Atlas users to local JSON backup
             atlas_all_users = list(atlas_users_col.find())
-            if atlas_all_users and users_file.exists():
-                clean_users = []
-                for u in atlas_all_users:
-                    d = dict(u)
-                    if "_id" in d:
-                        d["_id"] = str(d["_id"])
-                    clean_users.append(d)
-                with open(users_file, "w", encoding="utf-8") as f:
-                    json.dump(clean_users, f, indent=2, default=str)
+            clean_users = []
+            for u in atlas_all_users:
+                d = dict(u)
+                if "_id" in d:
+                    d["_id"] = str(d["_id"])
+                clean_users.append(d)
+            with open(users_file, "w", encoding="utf-8") as f:
+                json.dump(clean_users, f, indent=2, default=str)
         except Exception as e:
             logger.warning(f"Offline-Atlas sync warning: {e}")
 
