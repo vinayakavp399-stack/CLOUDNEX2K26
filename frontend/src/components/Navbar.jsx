@@ -11,8 +11,8 @@ export default function Navbar({ currentView, setView }) {
 
   return (
     <header className={`${isLanding ? 'absolute top-0 left-0 right-0' : 'relative'} z-50 ${isDark ? 'bg-slate-950/40 border-white/5' : 'bg-white/80 border-slate-200/80 shadow-sm'} backdrop-blur-md border-b transition-all`}>
-      {/* Top institutional strip */}
-      <div className={`border-b ${isDark ? 'bg-transparent border-white/5' : 'bg-slate-50/70 border-slate-200'} py-1 transition-colors`}>
+      {/* Top institutional strip (hidden on mobile to save vertical space) */}
+      <div className={`hidden sm:block border-b ${isDark ? 'bg-transparent border-white/5' : 'bg-slate-50/70 border-slate-200'} py-1 transition-colors`}>
         <div className="w-full px-3 sm:px-8 lg:px-12 flex items-center justify-between text-[10px] sm:text-[11px] font-race tracking-wider">
           <div className="flex items-center space-x-1.5 sm:space-x-2 text-cyan-500 font-bold truncate">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />

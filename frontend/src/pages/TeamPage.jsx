@@ -7,7 +7,7 @@ export default function TeamPage({ onBack }) {
   const { isLight } = useTheme();
 
   return (
-    <div className={`h-[calc(100dvh-68px)] sm:min-h-[calc(100vh-80px)] py-1.5 sm:py-4 transition-colors duration-300 flex flex-col justify-between overflow-hidden ${
+    <div className={`min-h-[calc(100dvh-68px)] sm:min-h-[calc(100vh-80px)] py-1.5 sm:py-4 transition-colors duration-300 flex flex-col justify-between overflow-x-hidden ${
       isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#030610] text-white'
     }`}>
       {/* Top Header / Breadcrumb navigation */}
@@ -35,7 +35,7 @@ export default function TeamPage({ onBack }) {
       </div>
 
       {/* Render the core single-page no-scroll TeamSection */}
-      <div className="flex-1 flex flex-col justify-center w-full my-auto overflow-hidden">
+      <div className="flex-1 flex flex-col justify-center w-full my-auto">
         <TeamSection embedded={false} />
       </div>
     </div>
