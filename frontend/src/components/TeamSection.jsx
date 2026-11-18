@@ -66,14 +66,50 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
     }
   ];
 
-  // Volunteers Data (Name + Dept)
+  // Volunteers Data (Name + Dept + Role + Initials + Institution)
   const volunteers = [
-    { name: 'Kiran Kumar S', department: 'Dept. of Cloud Computing and Business Systems' },
-    { name: 'Sneha Patil', department: 'Dept. of Cloud Computing and Business Systems' },
-    { name: 'Mohammed Yusuf', department: 'Dept. of Cloud Computing and Business Systems' },
-    { name: 'Ananya Hegde', department: 'Dept. of Cloud Computing and Business Systems' },
-    { name: 'Rohan Deshmukh', department: 'Dept. of Cloud Computing and Business Systems' },
-    { name: 'Priyanka R', department: 'Dept. of Cloud Computing and Business Systems' }
+    {
+      name: 'Kiran Kumar S',
+      role: 'Student Volunteer',
+      department: 'Dept. of Cloud Computing and Business Systems',
+      institution: 'GM University, Davangere',
+      initials: 'KS'
+    },
+    {
+      name: 'Sneha Patil',
+      role: 'Student Volunteer',
+      department: 'Dept. of Cloud Computing and Business Systems',
+      institution: 'GM University, Davangere',
+      initials: 'SP'
+    },
+    {
+      name: 'Mohammed Yusuf',
+      role: 'Student Volunteer',
+      department: 'Dept. of Cloud Computing and Business Systems',
+      institution: 'GM University, Davangere',
+      initials: 'MY'
+    },
+    {
+      name: 'Ananya Hegde',
+      role: 'Student Volunteer',
+      department: 'Dept. of Cloud Computing and Business Systems',
+      institution: 'GM University, Davangere',
+      initials: 'AH'
+    },
+    {
+      name: 'Rohan Deshmukh',
+      role: 'Student Volunteer',
+      department: 'Dept. of Cloud Computing and Business Systems',
+      institution: 'GM University, Davangere',
+      initials: 'RD'
+    },
+    {
+      name: 'Priyanka R',
+      role: 'Student Volunteer',
+      department: 'Dept. of Cloud Computing and Business Systems',
+      institution: 'GM University, Davangere',
+      initials: 'PR'
+    }
   ];
 
   const renderFacultyCard = (faculty, idx) => (
@@ -253,6 +289,72 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
     </div>
   );
 
+  const renderVolunteerCard = (vol, idx) => (
+    <div
+      key={idx}
+      onClick={() => setSelectedCoordinator(vol)}
+      className={`rounded-2xl p-3.5 sm:p-4.5 border transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group cursor-pointer ${
+        isLight
+          ? 'bg-white border-emerald-300 shadow-sm shadow-slate-200/80 hover:border-emerald-500 hover:shadow-lg'
+          : 'bg-gradient-to-br from-slate-900/95 via-[#081816] to-slate-950 border-emerald-500/30 hover:border-emerald-400/60 hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] shadow-black/40'
+      }`}
+    >
+      <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl pointer-events-none transition-all ${
+        isLight ? 'bg-emerald-400/10 group-hover:bg-emerald-400/20' : 'bg-emerald-500/10 group-hover:bg-emerald-500/20'
+      }`} />
+
+      {/* Top right hint */}
+      <div className="absolute top-3 right-3 opacity-60 group-hover:opacity-100 transition-opacity">
+        <span className={`text-[9px] font-mono-code font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
+          isLight ? 'bg-emerald-100 text-emerald-900' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/30'
+        }`}>
+          <span>Card</span>
+          <Maximize2 className="w-2.5 h-2.5" />
+        </span>
+      </div>
+
+      <div className="flex items-start space-x-3 sm:space-x-3.5 relative z-10">
+        {/* Profile Avatar with Emerald Gradient */}
+        <div className="relative shrink-0">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-300 shadow-md shadow-emerald-500/30 overflow-hidden">
+            <div className={`w-full h-full rounded-[14px] flex items-center justify-center font-race font-black text-sm sm:text-lg ${
+              isLight ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' : 'bg-slate-950 text-emerald-300'
+            }`}>
+              {vol.initials}
+            </div>
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[9px] shadow font-bold">
+            <UserCheck className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+          </div>
+        </div>
+
+        {/* Information */}
+        <div className="min-w-0 flex-1">
+          <span className={`text-[9px] font-race font-black uppercase tracking-wider block ${
+            isLight ? 'text-emerald-800' : 'text-emerald-400'
+          }`}>
+            {vol.role}
+          </span>
+          <h4 className={`font-race text-sm sm:text-base font-black truncate mt-0.5 group-hover:text-emerald-500 transition-colors ${
+            isLight ? 'text-slate-900' : 'text-white'
+          }`}>
+            {vol.name}
+          </h4>
+          <p className={`text-[9px] sm:text-[11px] font-mono-code mt-0.5 truncate ${
+            isLight ? 'text-slate-600 font-semibold' : 'text-slate-400'
+          }`}>
+            {vol.department}
+          </p>
+          <p className={`text-[9px] sm:text-[10px] font-mono-code mt-0.5 truncate font-bold ${
+            isLight ? 'text-emerald-700' : 'text-emerald-400'
+          }`}>
+            {vol.institution}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <section id="team" className={`${embedded ? 'py-6' : 'py-3 sm:py-5'} max-w-6xl mx-auto px-4 sm:px-6 transition-colors`}>
       {/* Section Header */}
@@ -270,11 +372,15 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
         }`}>
           ORGANIZING <span className={isLight ? 'text-gradient-blue' : 'text-gradient-cloud'}>COMMITTEE</span>
         </h2>
-        <p className={`text-[11px] sm:text-xs mt-1 leading-relaxed font-mono-code font-semibold ${
+        <div className={`text-[11px] sm:text-xs mt-1 leading-relaxed font-mono-code font-semibold ${
           isLight ? 'text-slate-700' : 'text-slate-400'
         }`}>
-          Dept. of Cloud Computing and Business Systems, GM University &bull; IGNITRON 2K26
-        </p>
+          <span className="block sm:inline">Dept. of Cloud Computing and Business Systems</span>
+          <span className="hidden sm:inline">, </span>
+          <span className="block sm:inline mt-0.5 sm:mt-0 font-bold sm:font-semibold">
+            <span className="whitespace-nowrap">GM University</span> &bull; IGNITRON 2K26
+          </span>
+        </div>
 
         {/* Interactive Tabs: Coordinators | Volunteers */}
         <div className="flex items-center justify-center gap-2.5 mt-3 sm:mt-4">
@@ -376,7 +482,7 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
       )}
 
       {/* ════════════════════════════════════════════════════════════════════════
-          VIEW 2: ONLY VOLUNTEERS (NAME + DEPARTMENT)
+          VIEW 2: ONLY VOLUNTEERS (CARD VIEW)
          ════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'volunteers' && (
         <div className="space-y-3 animate-fade-in">
@@ -392,47 +498,23 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
                 <span className={`text-[9px] font-mono-code font-black px-2 py-0.5 rounded-full border ${
                   isLight ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-emerald-500/10 text-emerald-300 border-emerald-400/30'
                 }`}>
-                  EVENT SUPPORT
+                  EVENT OPERATIONS &amp; SUPPORT
                 </span>
               </h3>
             </div>
+            <span className="text-[10px] font-mono-code text-slate-500 hidden sm:inline">
+              Tap card to view ID badge
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {volunteers.map((vol, idx) => (
-              <div
-                key={idx}
-                className={`p-3 sm:p-3.5 rounded-xl border flex items-center space-x-3 transition-all duration-200 hover:-translate-y-0.5 ${
-                  isLight
-                    ? 'bg-white hover:bg-emerald-50/50 border-slate-200 hover:border-emerald-400 shadow-sm shadow-slate-200/60'
-                    : 'bg-slate-900/80 hover:bg-slate-800/80 border-white/10 hover:border-emerald-500/30 shadow-sm'
-                }`}
-              >
-                <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center font-race font-black text-xs shrink-0 ${
-                  isLight ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/30'
-                }`}>
-                  <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className={`block font-race text-xs sm:text-sm font-black tracking-wide truncate ${
-                    isLight ? 'text-slate-900' : 'text-white'
-                  }`}>
-                    {vol.name}
-                  </span>
-                  <span className={`block text-[10px] sm:text-[11px] font-mono-code font-semibold truncate mt-0.5 ${
-                    isLight ? 'text-slate-600' : 'text-slate-400'
-                  }`}>
-                    {vol.department}
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {volunteers.map(renderVolunteerCard)}
           </div>
         </div>
       )}
 
       {/* ════════════════════════════════════════════════════════════════════════
-          COORDINATOR BIG NAME CARD / ID BADGE MODAL
+          COORDINATOR & VOLUNTEER BIG NAME CARD / ID BADGE MODAL
          ════════════════════════════════════════════════════════════════════════ */}
       {selectedCoordinator && (
         <div
@@ -469,19 +551,23 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
 
             {/* Official Header Strip */}
             <div className="text-center mb-3.5">
-              <div className="flex items-center justify-center space-x-1.5 text-[9px] sm:text-[10px] font-race font-bold tracking-widest text-cyan-500 uppercase">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              <div className="flex items-center justify-center space-x-1.5 text-[9px] sm:text-[10px] font-race font-bold tracking-widest text-cyan-500 uppercase whitespace-nowrap">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
                 <span>GM UNIVERSITY &bull; IGNITRON 2K26</span>
               </div>
               <p className={`text-[9px] sm:text-[10px] font-mono-code font-bold tracking-wider uppercase mt-0.5 ${
                 isLight ? 'text-slate-500' : 'text-slate-400'
               }`}>
-                Official Paddock Pass &bull; Coordinator
+                Official Paddock Pass &bull; {selectedCoordinator.role?.includes('Volunteer') ? 'Volunteer' : 'Coordinator'}
               </p>
             </div>
 
             {/* Big High-Resolution Photo */}
-            <div className="relative mx-auto w-36 h-44 sm:w-44 sm:h-52 rounded-2xl sm:rounded-3xl overflow-hidden border-2 shadow-2xl p-0.5 bg-gradient-to-tr from-cyan-500 via-sky-400 to-amber-300 mb-3.5">
+            <div className={`relative mx-auto w-36 h-44 sm:w-44 sm:h-52 rounded-2xl sm:rounded-3xl overflow-hidden border-2 shadow-2xl p-0.5 ${
+              selectedCoordinator.role?.includes('Volunteer')
+                ? 'bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-300'
+                : 'bg-gradient-to-tr from-cyan-500 via-sky-400 to-amber-300'
+            } mb-3.5`}>
               {selectedCoordinator.image ? (
                 <img
                   src={selectedCoordinator.image}
@@ -490,7 +576,9 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
                 />
               ) : (
                 <div className={`w-full h-full rounded-[14px] sm:rounded-[20px] flex flex-col items-center justify-center font-race font-black ${
-                  isLight ? 'bg-amber-50 text-amber-900' : 'bg-slate-950 text-cyan-300'
+                  selectedCoordinator.role?.includes('Volunteer')
+                    ? isLight ? 'bg-emerald-50 text-emerald-900' : 'bg-slate-950 text-emerald-300'
+                    : isLight ? 'bg-amber-50 text-amber-900' : 'bg-slate-950 text-cyan-300'
                 }`}>
                   <span className="text-5xl">{selectedCoordinator.initials}</span>
                   <span className="text-[9px] font-mono-code mt-1 tracking-widest uppercase opacity-75">
@@ -500,7 +588,11 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
               )}
 
               {/* Holographic Seal Pill */}
-              <div className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-cyan-400/50 text-cyan-300 font-race font-bold text-[8px] uppercase tracking-wider">
+              <div className={`absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border ${
+                selectedCoordinator.role?.includes('Volunteer')
+                  ? 'border-emerald-400/50 text-emerald-300'
+                  : 'border-cyan-400/50 text-cyan-300'
+              } font-race font-bold text-[8px] uppercase tracking-wider`}>
                 VERIFIED
               </div>
             </div>
@@ -508,10 +600,14 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
             {/* Details */}
             <div className="text-center space-y-1 mb-4">
               <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-race font-black uppercase tracking-wider border ${
-                selectedCoordinator.role.includes('Faculty')
+                selectedCoordinator.role?.includes('Faculty')
                   ? isLight
                     ? 'bg-amber-100 text-amber-900 border-amber-300'
                     : 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                  : selectedCoordinator.role?.includes('Volunteer')
+                  ? isLight
+                    ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
                   : isLight
                   ? 'bg-sky-100 text-sky-900 border-sky-300'
                   : 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40'
@@ -539,32 +635,40 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
                 {selectedCoordinator.department}
               </p>
 
-              <p className={`text-[10px] font-mono-code ${
-                isLight ? 'text-slate-500' : 'text-slate-500'
+              <p className={`text-[11px] font-mono-code font-bold mt-1 whitespace-nowrap ${
+                isLight ? 'text-cyan-700' : 'text-cyan-400'
               }`}>
                 {selectedCoordinator.institution}
               </p>
             </div>
 
-            {/* Contact Action: Direct Call Button */}
+            {/* Contact Action or Official Badge */}
             <div className="flex items-center justify-center pt-2.5 border-t border-slate-200 dark:border-white/10">
-              <a
-                href={`tel:${selectedCoordinator.phone}`}
-                className={`w-full inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl font-mono-code font-bold text-xs uppercase tracking-wider transition-all hover:scale-105 active:scale-95 shadow-md ${
-                  isLight
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200'
-                    : 'bg-gradient-to-r from-amber-600 to-yellow-600 text-white shadow-amber-950/80 border border-amber-400/40'
-                }`}
-              >
-                <Phone className="w-3.5 h-3.5" />
-                <span>Call {selectedCoordinator.displayPhone}</span>
-              </a>
+              {selectedCoordinator.phone ? (
+                <a
+                  href={`tel:${selectedCoordinator.phone}`}
+                  className={`w-full inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl font-mono-code font-bold text-xs uppercase tracking-wider transition-all hover:scale-105 active:scale-95 shadow-md ${
+                    isLight
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200'
+                      : 'bg-gradient-to-r from-amber-600 to-yellow-600 text-white shadow-amber-950/80 border border-amber-400/40'
+                  }`}
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>Call {selectedCoordinator.displayPhone}</span>
+                </a>
+              ) : (
+                <div className={`w-full py-2.5 px-3 rounded-xl border text-center text-xs font-mono-code font-bold ${
+                  isLight ? 'bg-emerald-50 text-emerald-900 border-emerald-300 shadow-sm' : 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
+                }`}>
+                  Official Event Operations &bull; GM University
+                </div>
+              )}
             </div>
 
             {/* Bottom NFC Barcode / Paddock Pass Strip */}
             <div className="mt-3 pt-2 border-t border-dashed border-slate-300 dark:border-white/10 text-center">
               <p className="text-[8px] font-mono-code tracking-[0.2em] text-slate-400 uppercase">
-                /// PASS ID: CLOUDNEX-2026-COORDINATOR ///
+                /// PASS ID: CLOUDNEX-2026-{selectedCoordinator.role?.includes('Volunteer') ? 'VOLUNTEER' : 'COORDINATOR'} ///
               </p>
             </div>
           </div>

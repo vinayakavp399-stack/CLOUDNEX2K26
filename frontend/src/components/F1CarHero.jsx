@@ -242,8 +242,8 @@ export default function F1CarHero({ onParticipantLogin, onAdminLogin, onGoToDash
       <div className="relative z-10 flex flex-col flex-1 w-full pt-20 sm:pt-28 pb-8 sm:pb-10 px-3 sm:px-8 lg:px-12 justify-between">
 
         {/* ── TOP HEADER BADGE ── */}
-        <div className="flex items-center justify-center mb-4 sm:mb-6 px-2">
-          <div className={`flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full border backdrop-blur-md shadow-sm transition-all hover:scale-105 cursor-default max-w-full ${
+        <div className="w-full flex items-center justify-center mb-4 sm:mb-6 px-3">
+          <div className={`inline-flex items-center justify-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-1.5 rounded-full border backdrop-blur-md shadow-sm transition-all text-center ${
             isLight
               ? 'bg-white/85 border-sky-300 text-slate-700 shadow-sky-100'
               : 'bg-slate-950/75 border-cyan-500/30 text-slate-200 shadow-[0_0_15px_rgba(0,245,255,0.15)]'
@@ -252,9 +252,13 @@ export default function F1CarHero({ onParticipantLogin, onAdminLogin, onGoToDash
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
-            <span className="font-mono-code font-bold text-[9px] sm:text-[11px] tracking-wider sm:tracking-widest uppercase truncate text-center">
-              IGNITRON 2K26 &bull; GM UNIVERSITY &bull; NATIONAL CLOUD HACKATHON
-            </span>
+            <div className="font-mono-code font-bold text-[10px] sm:text-[11px] tracking-wider sm:tracking-widest uppercase text-center flex items-center justify-center gap-1.5 shrink-0">
+              <span className="whitespace-nowrap">IGNITRON 2K26</span>
+              <span className="text-cyan-500">&bull;</span>
+              <span className="whitespace-nowrap">GM UNIVERSITY</span>
+              <span className="text-cyan-500 hidden sm:inline">&bull;</span>
+              <span className="hidden sm:inline whitespace-nowrap">NATIONAL CLOUD HACKATHON</span>
+            </div>
           </div>
         </div>
 
