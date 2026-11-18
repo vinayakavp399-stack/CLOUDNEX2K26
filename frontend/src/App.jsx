@@ -11,8 +11,9 @@ import ParticipantDashboard from './pages/ParticipantDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import TeamsPage from './pages/TeamsPage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import TeamPage from './pages/TeamPage';
 
-const VALID_VIEWS = ['landing', 'login-participant', 'login-admin', 'participant', 'admin', 'teams', 'leaderboard'];
+const VALID_VIEWS = ['landing', 'login-participant', 'login-admin', 'participant', 'admin', 'teams', 'leaderboard', 'team'];
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -224,6 +225,18 @@ function AppContent() {
             )
           )}
 
+          {currentView === 'team' && (
+            <TeamPage
+              onBack={() => {
+                if (isAuthenticated) {
+                  handleSetView(isAdmin ? 'admin' : 'participant');
+                } else {
+                  handleSetView('landing');
+                }
+              }}
+            />
+          )}
+
           {!VALID_VIEWS.includes(currentView) && (
             <LandingPage
               onParticipantLogin={() => handleSetView('login-participant')}
@@ -234,8 +247,8 @@ function AppContent() {
         </ErrorBoundary>
       </main>
 
-      {/* Hide footer on admin/teams console so announcement and race control stay clean */}
-      {currentView !== 'admin' && currentView !== 'teams' && <Footer />}
+      {/* Hide footer on admin/teams/team console so announcement, race control & team views stay single-page clean */}
+      {currentView !== 'admin' && currentView !== 'teams' && currentView !== 'team' && <Footer />}
     </div>
   );
 }

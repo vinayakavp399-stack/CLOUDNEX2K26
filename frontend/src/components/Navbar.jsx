@@ -64,13 +64,50 @@ export default function Navbar({ currentView, setView }) {
             </div>
           </div>
 
-          {/* Navigation Links (only for logged-in users) */}
-          <nav className="hidden md:flex items-center space-x-1">
+          {/* Navigation Links */}
+          <nav className="flex items-center space-x-1 sm:space-x-2">
+            {/* Team tab: visible everywhere */}
+            <button
+              onClick={() => setView('team')}
+              className={`flex items-center space-x-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors cursor-pointer ${
+                currentView === 'team'
+                  ? isDark
+                    ? 'text-white bg-amber-600/30 border border-amber-400/50 shadow-sm'
+                    : 'text-amber-900 bg-amber-100 border border-amber-300 shadow-sm font-bold'
+                  : isDark
+                  ? 'text-slate-300 hover:text-white hover:bg-white/5'
+                  : 'text-slate-700 hover:text-amber-700 hover:bg-slate-100'
+              }`}
+              title="Organizing Committee & Coordinators"
+            >
+              <Users className="w-4 h-4 text-amber-500" />
+              <span>Team</span>
+            </button>
+
+            {/* Authenticated Participant Cockpit Link */}
+            {isAuthenticated && !isAdmin && (
+              <button
+                onClick={() => setView('participant')}
+                className={`hidden sm:flex items-center space-x-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors cursor-pointer ${
+                  currentView === 'participant'
+                    ? isDark
+                      ? 'text-white bg-cyan-600/30 border border-cyan-400/50 shadow-sm'
+                      : 'text-cyan-900 bg-cyan-100 border border-cyan-300 shadow-sm font-bold'
+                    : isDark
+                    ? 'text-slate-300 hover:text-white hover:bg-white/5'
+                    : 'text-slate-700 hover:text-cyan-700 hover:bg-slate-100'
+                }`}
+              >
+                <span>Cockpit</span>
+              </button>
+            )}
+
+            {/* Admin Console Tabs */}
             {isAdmin && (
               <>
                 <button
                   onClick={() => setView('admin')}
-                  className={`flex items-center space-x-1.5 px-3.5 py-2 text-sm font-semibold rounded-lg transition-colors cursor-pointer ${
+                  className={`hidden sm:flex items-center space-x-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors cursor-pointer ${
                     currentView === 'admin'
                       ? isDark
                         ? 'text-white bg-red-600/30 border border-red-500/50 shadow-sm'
@@ -81,11 +118,11 @@ export default function Navbar({ currentView, setView }) {
                   }`}
                 >
                   <Shield className="w-4 h-4 text-red-500" />
-                  <span>Admin Console</span>
+                  <span>Admin</span>
                 </button>
                 <button
                   onClick={() => setView('teams')}
-                  className={`flex items-center space-x-1.5 px-3.5 py-2 text-sm font-semibold rounded-lg transition-colors cursor-pointer ${
+                  className={`hidden md:flex items-center space-x-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors cursor-pointer ${
                     currentView === 'teams'
                       ? isDark
                         ? 'text-white bg-cyan-600/30 border border-cyan-400/50 shadow-sm'

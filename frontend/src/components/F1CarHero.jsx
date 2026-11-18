@@ -308,98 +308,10 @@ export default function F1CarHero({ onParticipantLogin, onAdminLogin, onGoToDash
           </p>
         </div>
 
-        {/* ── BOTTOM ROW: Coordinators (Left) + Login (Right) ── */}
-        <div className="flex flex-col lg:flex-row items-start justify-between gap-6 mt-auto">
-
-          {/* LEFT: Event Coordinators */}
-          <div className="flex flex-col gap-2.5 w-full sm:w-72 lg:w-80">
-            <div className={`text-[10px] font-race font-bold tracking-widest uppercase flex items-center gap-1.5 px-1 ${
-              isLight ? 'text-sky-700' : 'text-cyan-400'
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full animate-pulse shrink-0 ${isLight ? 'bg-sky-500' : 'bg-cyan-400'}`} />
-              <span>Event Coordinators</span>
-            </div>
-
-            {/* Faculty box */}
-            <div className={`rounded-xl px-3.5 py-2.5 shadow-lg text-left w-full border backdrop-blur-md transition-all hover:border-amber-400/60 ${
-              isLight 
-                ? 'bg-white/95 border-amber-200 shadow-slate-200/60'
-                : 'cloud-card'
-            }`}>
-              <div className={`text-[10px] font-mono-code uppercase tracking-wider mb-2 font-bold flex items-center gap-1.5 ${
-                isLight ? 'text-amber-800' : 'text-cyan-400'
-              }`}>
-                <div className="w-1.5 h-3 rounded-full bg-amber-500 animate-pulse" />
-                Faculty Coordinators
-              </div>
-              <div className="space-y-1.5 font-mono-code text-[11px]">
-                {[
-                  { name: 'Usha T M',   tel: '6361736961', display: '63617 36961' },
-                  { name: 'Pooja K R',  tel: '6363725690', display: '63637 25690' },
-                ].map(c => (
-                  <div key={c.name} className="flex items-center justify-between gap-2">
-                    <span className={`font-race font-bold text-xs ${isLight ? 'text-slate-800' : 'text-white'}`}>{c.name}</span>
-                    <a
-                      href={`tel:${c.tel}`}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-mono-code font-bold transition-all hover:scale-105 ${
-                        isLight
-                          ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 shadow-sm'
-                          : 'bg-amber-500/10 hover:bg-amber-500/25 border-amber-400/40 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-                      }`}
-                    >
-                      <Phone className="w-2.5 h-2.5" />
-                      <span>{c.display}</span>
-                    </a>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Student box */}
-            <div className={`rounded-xl px-3.5 py-2.5 shadow-lg text-left w-full border backdrop-blur-md transition-all hover:border-cyan-400/60 ${
-              isLight 
-                ? 'bg-white/95 border-sky-200 shadow-slate-200/60'
-                : 'cloud-card'
-            }`}>
-              <div className={`text-[10px] font-mono-code uppercase tracking-wider mb-2 font-bold flex items-center gap-1.5 ${
-                isLight ? 'text-sky-800' : 'text-cyan-400'
-              }`}>
-                <div className="w-1.5 h-3 rounded-full bg-cyan-500 animate-pulse" />
-                Student Coordinators
-              </div>
-              <div className="space-y-1.5 font-mono-code text-[11px]">
-                {[
-                  { name: 'Vinayak Pujar', tel: '8088079573', display: '80880 79573' },
-                  { name: 'Darshan G M',   tel: '7676566133', display: '76765 66133' },
-                ].map(c => (
-                  <div key={c.name} className="flex items-center justify-between gap-2">
-                    <span className={`font-race font-bold text-xs ${isLight ? 'text-slate-800' : 'text-white'}`}>{c.name}</span>
-                    <a
-                      href={`tel:${c.tel}`}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-mono-code font-bold transition-all hover:scale-105 ${
-                        isLight
-                          ? 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100 shadow-sm'
-                          : 'bg-cyan-500/10 hover:bg-cyan-500/25 border-cyan-400/40 text-cyan-300 shadow-[0_0_10px_rgba(0,245,255,0.2)]'
-                      }`}
-                    >
-                      <Phone className="w-2.5 h-2.5 text-cyan-500" />
-                      <span>{c.display}</span>
-                    </a>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT: Login / Dashboard */}
-          <div className="flex flex-col gap-3 w-full sm:w-80 lg:w-96">
-            <div className={`text-[11px] font-race font-bold tracking-widest uppercase flex items-center justify-between px-1 ${
-              isLight ? 'text-sky-700' : 'text-cyan-400'
-            }`}>
-              <span>{isAuthenticated ? 'ACTIVE SESSION' : 'ACCESS COMPETITION DASHBOARD'}</span>
-            </div>
-
-            {isAuthenticated ? (
+        {/* ── BOTTOM ROW: Login Options (Participant & Organizer) ── */}
+        <div className="w-full mt-auto pt-6">
+          {isAuthenticated ? (
+            <div className="w-full max-w-xl mx-auto">
               <button
                 id="btn-active-dashboard"
                 onClick={onGoToDashboard}
@@ -409,90 +321,90 @@ export default function F1CarHero({ onParticipantLogin, onAdminLogin, onGoToDash
                     : 'neon-border-pulse bg-gradient-to-r from-emerald-900/80 via-cyan-900/80 to-slate-900/90 hover:from-emerald-600 hover:to-cyan-600 border-emerald-400/50'
                 }`}
               >
-                <div className="flex items-center gap-3.5">
+                <div className="flex items-center gap-3.5 min-w-0">
                   <div className="w-11 h-11 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center text-white group-hover:scale-110 transition-all shrink-0">
                     <Gauge className="w-5 h-5" />
                   </div>
-                  <div>
-                    <div className="font-race font-black text-sm tracking-wider text-white uppercase flex items-center gap-2">
+                  <div className="min-w-0">
+                    <div className="font-race font-black text-xs sm:text-sm tracking-wider text-white uppercase flex items-center gap-2">
                       <span>{isAdmin ? 'Race Control' : 'Enter Dashboard'}</span>
-                      <span className="text-[9px] font-mono-code px-1.5 py-0.5 bg-white/20 text-white rounded">ACTIVE</span>
+                      <span className="text-[9px] font-mono-code px-1.5 py-0.5 bg-white/20 text-white rounded font-bold">ACTIVE</span>
                     </div>
-                    <p className="text-[10px] font-mono-code text-white/80 truncate max-w-[170px]">
+                    <p className="text-[10px] font-mono-code text-white/80 truncate">
                       {isAdmin ? 'Chief Steward' : user?.team_name || teamId}
                     </p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-white group-hover:translate-x-1.5 transition-transform shrink-0 ml-2" />
               </button>
-            ) : (
-              <>
-                {/* Participant Login */}
-                <button
-                  id="btn-participant-login"
-                  onClick={onParticipantLogin}
-                  className={`group flex items-center justify-between p-4 rounded-2xl backdrop-blur-md border shadow-2xl transition-all duration-150 hover:-translate-y-1 active:scale-95 text-left w-full cursor-pointer ${
-                    isLight
-                      ? 'bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white border-sky-400 shadow-sky-200 hover:shadow-sky-300'
-                      : 'neon-border-pulse bg-gradient-to-r from-cyan-900/80 via-blue-900/80 to-slate-900/90 hover:from-cyan-600 hover:to-blue-600 border-cyan-400/40 text-white shadow-[0_0_20px_rgba(0,245,255,0.25)]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-110 group-hover:bg-cyan-400 group-hover:text-black transition-all shrink-0">
-                      <Zap className="w-5 h-5 animate-pulse" />
-                    </div>
-                    <div>
-                      <div className="font-race font-black text-sm tracking-wider text-white uppercase flex items-center gap-2">
-                        <span>Participant Login</span>
-                        <span className="text-[10px] font-mono-code px-1.5 py-0.5 bg-cyan-500/30 text-cyan-200 rounded font-bold">TEAM</span>
-                      </div>
-                      <p className="text-[10px] font-mono-code text-white/80">
-                        Access challenge laps, blueprints &amp; submission
-                      </p>
-                    </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full max-w-5xl mx-auto">
+              {/* Participant Login */}
+              <button
+                id="btn-participant-login"
+                onClick={onParticipantLogin}
+                className={`group flex items-center justify-between p-4 sm:p-5 rounded-2xl backdrop-blur-md border shadow-2xl transition-all duration-150 hover:-translate-y-1 active:scale-95 text-left w-full cursor-pointer ${
+                  isLight
+                    ? 'bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white border-sky-400 shadow-sky-200 hover:shadow-sky-300'
+                    : 'neon-border-pulse bg-gradient-to-r from-cyan-900/85 via-blue-900/85 to-slate-900/90 hover:from-cyan-600 hover:to-blue-600 border-cyan-400/40 text-white shadow-[0_0_20px_rgba(0,245,255,0.25)]'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-110 group-hover:bg-cyan-400 group-hover:text-black transition-all shrink-0">
+                    <Zap className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-cyan-300 group-hover:text-white group-hover:translate-x-1.5 transition-transform shrink-0 ml-2" />
-                </button>
+                  <div className="min-w-0">
+                    <div className="font-race font-black text-xs sm:text-sm tracking-wider text-white uppercase flex items-center gap-2">
+                      <span>Participant Login</span>
+                      <span className="text-[9px] font-mono-code px-1.5 py-0.5 bg-cyan-500/30 text-cyan-200 rounded font-bold">TEAM</span>
+                    </div>
+                    <p className="text-[10px] sm:text-[11px] font-mono-code text-white/80 mt-0.5 truncate">
+                      Access challenge laps, blueprints &amp; telemetry
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-cyan-300 group-hover:text-white group-hover:translate-x-1.5 transition-transform shrink-0 ml-2" />
+              </button>
 
-                {/* Organizer Login */}
-                <button
-                  id="btn-admin-login"
-                  onClick={onAdminLogin}
-                  className={`group flex items-center justify-between p-4 rounded-2xl backdrop-blur-md border shadow-md transition-all duration-150 hover:-translate-y-1 active:scale-95 text-left w-full cursor-pointer ${
+              {/* Organizer Login */}
+              <button
+                id="btn-admin-login"
+                onClick={onAdminLogin}
+                className={`group flex items-center justify-between p-4 sm:p-5 rounded-2xl backdrop-blur-md border shadow-md transition-all duration-150 hover:-translate-y-1 active:scale-95 text-left w-full cursor-pointer ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-50 border-slate-200 hover:border-red-400 shadow-slate-100'
+                    : 'bg-slate-950/80 hover:bg-slate-900/90 border-white/15 hover:border-red-500/50 shadow-slate-950'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all shrink-0 ${
                     isLight
-                      ? 'bg-white hover:bg-slate-50 border-slate-200 hover:border-red-400 shadow-slate-100'
-                      : 'bg-slate-950/80 hover:bg-slate-900/90 border-white/15 hover:border-red-500/50 shadow-slate-950'
-                  }`}
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all shrink-0 ${
-                      isLight
-                        ? 'bg-red-50 border border-red-200 text-red-600 group-hover:scale-110 group-hover:bg-red-600 group-hover:text-white'
-                        : 'bg-red-950/40 border border-red-500/40 text-red-400 group-hover:scale-110 group-hover:bg-red-600 group-hover:text-white'
-                    }`}>
-                      <Shield className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className={`font-race font-black text-sm tracking-wider uppercase flex items-center gap-2 ${
-                        isLight ? 'text-slate-800' : 'text-white'
-                      }`}>
-                        <span>Organizer Login</span>
-                        <span className={`text-[10px] font-mono-code px-1.5 py-0.5 rounded font-bold ${
-                          isLight ? 'bg-red-100 text-red-700' : 'bg-red-500/30 text-red-300'
-                        }`}>ADMIN</span>
-                      </div>
-                      <p className={`text-[10px] font-mono-code ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                        Race Stewards, Problem Publisher &amp; Marks Desk
-                      </p>
-                    </div>
+                      ? 'bg-red-50 border border-red-200 text-red-600 group-hover:scale-110 group-hover:bg-red-600 group-hover:text-white'
+                      : 'bg-red-950/40 border border-red-500/40 text-red-400 group-hover:scale-110 group-hover:bg-red-600 group-hover:text-white'
+                  }`}>
+                    <Shield className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <ChevronRight className={`w-5 h-5 group-hover:translate-x-1.5 transition-transform shrink-0 ml-2 ${
-                    isLight ? 'text-slate-400 group-hover:text-red-600' : 'text-slate-400 group-hover:text-red-400'
-                  }`} />
-                </button>
-              </>
-            )}
-          </div>
+                  <div className="min-w-0">
+                    <div className={`font-race font-black text-xs sm:text-sm tracking-wider uppercase flex items-center gap-2 ${
+                      isLight ? 'text-slate-800' : 'text-white'
+                    }`}>
+                      <span>Organizer Login</span>
+                      <span className={`text-[9px] font-mono-code px-1.5 py-0.5 rounded font-bold ${
+                        isLight ? 'bg-red-100 text-red-700' : 'bg-red-500/30 text-red-300'
+                      }`}>ADMIN</span>
+                    </div>
+                    <p className={`text-[10px] sm:text-[11px] font-mono-code mt-0.5 truncate ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Race Stewards, Problem Desk &amp; Marks Console
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className={`w-5 h-5 group-hover:translate-x-1.5 transition-transform shrink-0 ml-2 ${
+                  isLight ? 'text-slate-400 group-hover:text-red-600' : 'text-slate-400 group-hover:text-red-400'
+                }`} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
