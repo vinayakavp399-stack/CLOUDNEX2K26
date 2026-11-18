@@ -7,12 +7,12 @@ export default function TeamPage({ onBack }) {
   const { isLight } = useTheme();
 
   return (
-    <div className={`min-h-[calc(100vh-80px)] py-2 sm:py-4 transition-colors duration-300 flex flex-col ${
+    <div className={`h-[calc(100dvh-68px)] sm:min-h-[calc(100vh-80px)] py-1.5 sm:py-4 transition-colors duration-300 flex flex-col justify-between overflow-hidden ${
       isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#030610] text-white'
     }`}>
       {/* Top Header / Breadcrumb navigation */}
-      <div className="max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 mb-2 sm:mb-3">
-        <div className="flex items-center justify-between gap-2 pb-2 border-b border-cyan-500/20">
+      <div className="max-w-7xl mx-auto w-full px-2.5 sm:px-6 lg:px-8 mb-1 sm:mb-3 shrink-0">
+        <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-cyan-500/20">
           <button
             onClick={onBack}
             className={`inline-flex items-center space-x-1.5 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-xl text-xs font-race font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm shrink-0 ${
@@ -27,7 +27,7 @@ export default function TeamPage({ onBack }) {
           </button>
 
           <div className="flex items-center space-x-1.5 truncate">
-            <span className={`text-[10px] sm:text-[11px] font-mono-code truncate ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            <span className={`text-[9px] sm:text-[11px] font-mono-code truncate ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               CLOUDNEX 2K26 &bull; GM UNIVERSITY
             </span>
           </div>
@@ -35,7 +35,7 @@ export default function TeamPage({ onBack }) {
       </div>
 
       {/* Render the core single-page no-scroll TeamSection */}
-      <div className="flex-1 flex flex-col justify-center w-full">
+      <div className="flex-1 flex flex-col justify-center w-full my-auto overflow-hidden">
         <TeamSection embedded={false} />
       </div>
     </div>

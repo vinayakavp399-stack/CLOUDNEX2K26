@@ -116,18 +116,18 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
     <div
       key={idx}
       onClick={() => setSelectedCoordinator(faculty)}
-      className={`rounded-2xl p-3.5 sm:p-4.5 border transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group cursor-pointer ${
+      className={`rounded-xl sm:rounded-2xl p-2 sm:p-4.5 border transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group cursor-pointer ${
         isLight
           ? 'bg-white border-amber-300 shadow-sm shadow-slate-200/80 hover:border-amber-500 hover:shadow-lg'
           : 'bg-gradient-to-br from-slate-900/95 via-[#0d1322] to-slate-950 border-amber-500/30 hover:border-amber-400/60 hover:shadow-[0_0_25px_rgba(245,158,11,0.25)] shadow-black/40'
       }`}
     >
-      <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl pointer-events-none transition-all ${
+      <div className={`absolute top-0 right-0 w-16 sm:w-24 h-16 sm:h-24 rounded-full blur-2xl pointer-events-none transition-all ${
         isLight ? 'bg-amber-400/10 group-hover:bg-amber-400/20' : 'bg-amber-500/10 group-hover:bg-amber-500/20'
       }`} />
 
-      {/* Top right hint */}
-      <div className="absolute top-3 right-3 opacity-60 group-hover:opacity-100 transition-opacity">
+      {/* Top right hint (hidden on mobile to save space) */}
+      <div className="absolute top-2 sm:top-3 right-2 sm:right-3 opacity-60 group-hover:opacity-100 transition-opacity hidden sm:block">
         <span className={`text-[9px] font-mono-code font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
           isLight ? 'bg-amber-100 text-amber-900' : 'bg-amber-950/60 text-amber-300 border border-amber-500/30'
         }`}>
@@ -136,65 +136,65 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
         </span>
       </div>
 
-      <div className="flex items-start space-x-3 sm:space-x-3.5 relative z-10">
+      <div className="flex items-start space-x-2 sm:space-x-3.5 relative z-10">
         {/* Profile Picture / Avatar */}
         <div className="relative shrink-0">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 shadow-md shadow-amber-500/30 overflow-hidden">
+          <div className="w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl p-0.5 bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 shadow-sm sm:shadow-md shadow-amber-500/30 overflow-hidden">
             {faculty.image ? (
               <img
                 src={faculty.image}
                 alt={faculty.name}
-                className="w-full h-full rounded-[14px] object-cover object-top"
+                className="w-full h-full rounded-[10px] sm:rounded-[14px] object-cover object-top"
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             ) : (
-              <div className={`w-full h-full rounded-[14px] flex items-center justify-center font-race font-black text-sm sm:text-lg ${
+              <div className={`w-full h-full rounded-[10px] sm:rounded-[14px] flex items-center justify-center font-race font-black text-xs sm:text-lg ${
                 isLight ? 'bg-amber-100 text-amber-950 border border-amber-300' : 'bg-slate-950 text-amber-300'
               }`}>
                 {faculty.initials}
               </div>
             )}
           </div>
-          <div className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[9px] shadow font-bold">
-            <Award className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[7px] sm:text-[9px] shadow font-bold">
+            <Award className="w-2 h-2 sm:w-3 sm:h-3" />
           </div>
         </div>
 
         {/* Information */}
         <div className="min-w-0 flex-1">
-          <span className={`text-[9px] font-race font-black uppercase tracking-wider block ${
+          <span className={`text-[7px] sm:text-[9px] font-race font-black uppercase tracking-wider block ${
             isLight ? 'text-amber-800' : 'text-amber-400'
           }`}>
             {faculty.role}
           </span>
-          <h4 className={`font-race text-sm sm:text-base font-black truncate mt-0.5 group-hover:text-amber-500 transition-colors ${
+          <h4 className={`font-race text-[11px] sm:text-base font-black truncate mt-0.5 group-hover:text-amber-500 transition-colors ${
             isLight ? 'text-slate-900' : 'text-white'
           }`}>
             {faculty.name}
           </h4>
-          <p className={`text-[10px] sm:text-[11px] font-mono-code font-bold leading-tight mt-0.5 ${
+          <p className={`text-[8px] sm:text-[11px] font-mono-code font-bold leading-tight mt-0.5 truncate ${
             isLight ? 'text-slate-700' : 'text-slate-300'
           }`}>
             {faculty.designation}
           </p>
-          <p className={`text-[9px] sm:text-[11px] font-mono-code mt-0.5 truncate ${
+          <p className={`text-[7px] sm:text-[11px] font-mono-code mt-0.5 truncate ${
             isLight ? 'text-slate-600 font-semibold' : 'text-slate-400'
           }`}>
             {faculty.department}
           </p>
 
           {/* Direct Phone Call Button */}
-          <div className="mt-2 sm:mt-2.5">
+          <div className="mt-1 sm:mt-2.5">
             <a
               href={`tel:${faculty.phone}`}
               onClick={(e) => e.stopPropagation()}
-              className={`inline-flex items-center space-x-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border text-[10px] sm:text-[11px] font-mono-code font-bold transition-all hover:scale-105 active:scale-95 ${
+              className={`inline-flex items-center space-x-1 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg border text-[8px] sm:text-[11px] font-mono-code font-bold transition-all hover:scale-105 active:scale-95 ${
                 isLight
                   ? 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300 shadow-sm'
                   : 'bg-amber-950/60 hover:bg-amber-900/70 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-950/40'
               }`}
             >
-              <Phone className="w-3 h-3 text-amber-600 dark:text-amber-500 shrink-0" />
+              <Phone className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-600 dark:text-amber-500 shrink-0" />
               <span>{faculty.displayPhone}</span>
             </a>
           </div>
@@ -207,18 +207,18 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
     <div
       key={idx}
       onClick={() => setSelectedCoordinator(student)}
-      className={`rounded-2xl p-3.5 sm:p-4.5 border transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group cursor-pointer ${
+      className={`rounded-xl sm:rounded-2xl p-2 sm:p-4.5 border transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group cursor-pointer ${
         isLight
           ? 'bg-white border-sky-300 shadow-sm shadow-slate-200/80 hover:border-sky-500 hover:shadow-lg'
           : 'bg-gradient-to-br from-slate-900/95 via-[#091424] to-slate-950 border-cyan-500/30 hover:border-cyan-400/60 hover:shadow-[0_0_25px_rgba(0,245,255,0.25)] shadow-black/40'
       }`}
     >
-      <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl pointer-events-none transition-all ${
+      <div className={`absolute top-0 right-0 w-16 sm:w-24 h-16 sm:h-24 rounded-full blur-2xl pointer-events-none transition-all ${
         isLight ? 'bg-sky-400/10 group-hover:bg-sky-400/20' : 'bg-cyan-500/10 group-hover:bg-cyan-500/20'
       }`} />
 
-      {/* Top right hint */}
-      <div className="absolute top-3 right-3 opacity-60 group-hover:opacity-100 transition-opacity">
+      {/* Top right hint (hidden on mobile to save space) */}
+      <div className="absolute top-2 sm:top-3 right-2 sm:right-3 opacity-60 group-hover:opacity-100 transition-opacity hidden sm:block">
         <span className={`text-[9px] font-mono-code font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
           isLight ? 'bg-sky-100 text-sky-900' : 'bg-cyan-950/60 text-cyan-300 border border-cyan-500/30'
         }`}>
@@ -227,60 +227,60 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
         </span>
       </div>
 
-      <div className="flex items-start space-x-3 sm:space-x-3.5 relative z-10">
+      <div className="flex items-start space-x-2 sm:space-x-3.5 relative z-10">
         {/* Profile Picture / Avatar */}
         <div className="relative shrink-0">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 bg-gradient-to-tr from-cyan-500 via-sky-400 to-indigo-300 shadow-md shadow-cyan-500/30 overflow-hidden">
+          <div className="w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl p-0.5 bg-gradient-to-tr from-cyan-500 via-sky-400 to-indigo-300 shadow-sm sm:shadow-md shadow-cyan-500/30 overflow-hidden">
             {student.image ? (
               <img
                 src={student.image}
                 alt={student.name}
-                className="w-full h-full rounded-[14px] object-cover object-top"
+                className="w-full h-full rounded-[10px] sm:rounded-[14px] object-cover object-top"
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             ) : (
-              <div className={`w-full h-full rounded-[14px] flex items-center justify-center font-race font-black text-sm sm:text-lg ${
+              <div className={`w-full h-full rounded-[10px] sm:rounded-[14px] flex items-center justify-center font-race font-black text-xs sm:text-lg ${
                 isLight ? 'bg-sky-100 text-sky-950 border border-sky-300' : 'bg-slate-950 text-cyan-300'
               }`}>
                 {student.initials}
               </div>
             )}
           </div>
-          <div className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[9px] shadow font-bold">
+          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[7px] sm:text-[9px] shadow font-bold">
             ★
           </div>
         </div>
 
         {/* Information */}
         <div className="min-w-0 flex-1">
-          <span className={`text-[9px] font-race font-black uppercase tracking-wider block ${
+          <span className={`text-[7px] sm:text-[9px] font-race font-black uppercase tracking-wider block ${
             isLight ? 'text-sky-800' : 'text-cyan-400'
           }`}>
             {student.role}
           </span>
-          <h4 className={`font-race text-sm sm:text-base font-black truncate mt-0.5 group-hover:text-cyan-400 transition-colors ${
+          <h4 className={`font-race text-[11px] sm:text-base font-black truncate mt-0.5 group-hover:text-cyan-400 transition-colors ${
             isLight ? 'text-slate-900' : 'text-white'
           }`}>
             {student.name}
           </h4>
-          <p className={`text-[9px] sm:text-[11px] font-mono-code mt-0.5 truncate ${
+          <p className={`text-[8px] sm:text-[11px] font-mono-code mt-0.5 truncate ${
             isLight ? 'text-slate-600 font-semibold' : 'text-slate-400'
           }`}>
             {student.department}
           </p>
 
           {/* Direct Phone Call Button */}
-          <div className="mt-2 sm:mt-2.5">
+          <div className="mt-1 sm:mt-2.5">
             <a
               href={`tel:${student.phone}`}
               onClick={(e) => e.stopPropagation()}
-              className={`inline-flex items-center space-x-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border text-[10px] sm:text-[11px] font-mono-code font-bold transition-all hover:scale-105 active:scale-95 ${
+              className={`inline-flex items-center space-x-1 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg border text-[8px] sm:text-[11px] font-mono-code font-bold transition-all hover:scale-105 active:scale-95 ${
                 isLight
                   ? 'bg-sky-50 hover:bg-sky-100 text-sky-950 border-sky-300 shadow-sm'
                   : 'bg-cyan-950/60 hover:bg-cyan-900/70 text-cyan-300 border-cyan-500/40 shadow-sm shadow-cyan-950/40'
               }`}
             >
-              <Phone className="w-3 h-3 text-sky-600 dark:text-cyan-400 shrink-0" />
+              <Phone className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-sky-600 dark:text-cyan-400 shrink-0" />
               <span>{student.displayPhone}</span>
             </a>
           </div>
@@ -293,18 +293,18 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
     <div
       key={idx}
       onClick={() => setSelectedCoordinator(vol)}
-      className={`rounded-2xl p-3.5 sm:p-4.5 border transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group cursor-pointer ${
+      className={`rounded-xl sm:rounded-2xl p-2 sm:p-4.5 border transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group cursor-pointer ${
         isLight
           ? 'bg-white border-emerald-300 shadow-sm shadow-slate-200/80 hover:border-emerald-500 hover:shadow-lg'
           : 'bg-gradient-to-br from-slate-900/95 via-[#081816] to-slate-950 border-emerald-500/30 hover:border-emerald-400/60 hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] shadow-black/40'
       }`}
     >
-      <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl pointer-events-none transition-all ${
+      <div className={`absolute top-0 right-0 w-16 sm:w-24 h-16 sm:h-24 rounded-full blur-2xl pointer-events-none transition-all ${
         isLight ? 'bg-emerald-400/10 group-hover:bg-emerald-400/20' : 'bg-emerald-500/10 group-hover:bg-emerald-500/20'
       }`} />
 
-      {/* Top right hint */}
-      <div className="absolute top-3 right-3 opacity-60 group-hover:opacity-100 transition-opacity">
+      {/* Top right hint (hidden on mobile to save space) */}
+      <div className="absolute top-2 sm:top-3 right-2 sm:right-3 opacity-60 group-hover:opacity-100 transition-opacity hidden sm:block">
         <span className={`text-[9px] font-mono-code font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
           isLight ? 'bg-emerald-100 text-emerald-900' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/30'
         }`}>
@@ -313,39 +313,39 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
         </span>
       </div>
 
-      <div className="flex items-start space-x-3 sm:space-x-3.5 relative z-10">
+      <div className="flex items-start space-x-2 sm:space-x-3.5 relative z-10">
         {/* Profile Avatar with Emerald Gradient */}
         <div className="relative shrink-0">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-300 shadow-md shadow-emerald-500/30 overflow-hidden">
-            <div className={`w-full h-full rounded-[14px] flex items-center justify-center font-race font-black text-sm sm:text-lg ${
+          <div className="w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl p-0.5 bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-300 shadow-sm sm:shadow-md shadow-emerald-500/30 overflow-hidden">
+            <div className={`w-full h-full rounded-[10px] sm:rounded-[14px] flex items-center justify-center font-race font-black text-xs sm:text-lg ${
               isLight ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' : 'bg-slate-950 text-emerald-300'
             }`}>
               {vol.initials}
             </div>
           </div>
-          <div className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[9px] shadow font-bold">
-            <UserCheck className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[7px] sm:text-[9px] shadow font-bold">
+            <UserCheck className="w-2 h-2 sm:w-3 sm:h-3" />
           </div>
         </div>
 
         {/* Information */}
         <div className="min-w-0 flex-1">
-          <span className={`text-[9px] font-race font-black uppercase tracking-wider block ${
+          <span className={`text-[7px] sm:text-[9px] font-race font-black uppercase tracking-wider block ${
             isLight ? 'text-emerald-800' : 'text-emerald-400'
           }`}>
             {vol.role}
           </span>
-          <h4 className={`font-race text-sm sm:text-base font-black truncate mt-0.5 group-hover:text-emerald-500 transition-colors ${
+          <h4 className={`font-race text-[11px] sm:text-base font-black truncate mt-0.5 group-hover:text-emerald-500 transition-colors ${
             isLight ? 'text-slate-900' : 'text-white'
           }`}>
             {vol.name}
           </h4>
-          <p className={`text-[9px] sm:text-[11px] font-mono-code mt-0.5 truncate ${
+          <p className={`text-[7px] sm:text-[11px] font-mono-code mt-0.5 truncate ${
             isLight ? 'text-slate-600 font-semibold' : 'text-slate-400'
           }`}>
             {vol.department}
           </p>
-          <p className={`text-[9px] sm:text-[10px] font-mono-code mt-0.5 truncate font-bold ${
+          <p className={`text-[7px] sm:text-[10px] font-mono-code mt-0.5 truncate font-bold ${
             isLight ? 'text-emerald-700' : 'text-emerald-400'
           }`}>
             {vol.institution}
@@ -356,23 +356,23 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
   );
 
   return (
-    <section id="team" className={`${embedded ? 'py-6' : 'py-3 sm:py-5'} max-w-6xl mx-auto px-4 sm:px-6 transition-colors`}>
+    <section id="team" className={`${embedded ? 'py-4' : 'py-1 sm:py-5'} max-w-6xl mx-auto px-2 sm:px-6 transition-colors w-full`}>
       {/* Section Header */}
-      <div className="text-center max-w-3xl mx-auto mb-4 sm:mb-6">
-        <div className={`inline-flex items-center space-x-1.5 text-[9px] sm:text-[10px] font-race font-bold tracking-widest uppercase mb-1 px-2.5 py-0.5 rounded-full border shadow-sm ${
+      <div className="text-center max-w-3xl mx-auto mb-2 sm:mb-6">
+        <div className={`inline-flex items-center space-x-1.5 text-[8px] sm:text-[10px] font-race font-bold tracking-widest uppercase mb-0.5 px-2 py-0.5 rounded-full border shadow-sm ${
           isLight
             ? 'bg-amber-100/80 border-amber-300 text-amber-900'
             : 'bg-amber-950/50 border-amber-500/30 text-amber-400'
         }`}>
-          <Sparkles className="w-3 h-3 text-amber-500 dark:text-amber-400" />
+          <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-500 dark:text-amber-400" />
           <span>CLOUDNEX 2K26 CREW</span>
         </div>
-        <h2 className={`text-2xl sm:text-3xl md:text-4xl font-race font-black uppercase tracking-wide ${
+        <h2 className={`text-xl sm:text-3xl md:text-4xl font-race font-black uppercase tracking-wide leading-tight ${
           isLight ? 'text-slate-900' : 'text-white'
         }`}>
           ORGANIZING <span className={isLight ? 'text-gradient-blue' : 'text-gradient-cloud'}>COMMITTEE</span>
         </h2>
-        <div className={`text-[11px] sm:text-xs mt-1 leading-relaxed font-mono-code font-semibold ${
+        <div className={`text-[9px] sm:text-xs mt-0.5 sm:mt-1 leading-tight sm:leading-relaxed font-mono-code font-semibold ${
           isLight ? 'text-slate-700' : 'text-slate-400'
         }`}>
           <span className="block sm:inline">Dept. of Cloud Computing and Business Systems</span>
@@ -383,10 +383,10 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
         </div>
 
         {/* Interactive Tabs: Coordinators | Volunteers */}
-        <div className="flex items-center justify-center gap-2.5 mt-3 sm:mt-4">
+        <div className="flex items-center justify-center gap-1.5 sm:gap-2.5 mt-2 sm:mt-4">
           <button
             onClick={() => setActiveTab('coordinators')}
-            className={`flex items-center space-x-1.5 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-race text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm ${
+            className={`flex items-center space-x-1 sm:space-x-1.5 px-3 sm:px-5 py-1 sm:py-2 rounded-lg sm:rounded-xl font-race text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm ${
               activeTab === 'coordinators'
                 ? isLight
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md shadow-amber-500/30 border border-amber-400'
@@ -396,13 +396,13 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
                 : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-white/10'
             }`}
           >
-            <Award className="w-3.5 h-3.5 text-amber-300" />
+            <Award className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-300" />
             <span>Coordinators</span>
           </button>
 
           <button
             onClick={() => setActiveTab('volunteers')}
-            className={`flex items-center space-x-1.5 px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl font-race text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm ${
+            className={`flex items-center space-x-1 sm:space-x-1.5 px-3 sm:px-5 py-1 sm:py-2 rounded-lg sm:rounded-xl font-race text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm ${
               activeTab === 'volunteers'
                 ? isLight
                   ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-md shadow-emerald-500/30 border border-emerald-500'
@@ -412,7 +412,7 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
                 : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-white/10'
             }`}
           >
-            <UserCheck className="w-3.5 h-3.5 text-emerald-300" />
+            <UserCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-300" />
             <span>Volunteers</span>
           </button>
         </div>
@@ -422,59 +422,59 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
           VIEW 1: ONLY COORDINATORS (Two distinct rows like last time)
          ════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'coordinators' && (
-        <div className="space-y-4 sm:space-y-5 animate-fade-in">
+        <div className="space-y-2.5 sm:space-y-5 animate-fade-in w-full">
           {/* Faculty Coordinators Block */}
-          <div className="space-y-2.5">
-            <div className={`flex items-center justify-between pb-1.5 border-b ${
+          <div className="space-y-1.5 sm:space-y-2.5">
+            <div className={`flex items-center justify-between pb-1 sm:pb-1.5 border-b ${
               isLight ? 'border-amber-300' : 'border-amber-500/25'
             }`}>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-4 rounded-full bg-amber-500 shrink-0" />
-                <h3 className={`font-race text-xs sm:text-sm font-black uppercase tracking-wide flex items-center gap-2 ${
+              <div className="flex items-center space-x-1.5 sm:space-x-2">
+                <div className="w-1.5 sm:w-2 h-3.5 sm:h-4 rounded-full bg-amber-500 shrink-0" />
+                <h3 className={`font-race text-[11px] sm:text-sm font-black uppercase tracking-wide flex items-center gap-1.5 ${
                   isLight ? 'text-slate-900' : 'text-white'
                 }`}>
                   <span>Faculty Coordinators</span>
-                  <span className={`text-[9px] font-mono-code font-black px-2 py-0.5 rounded-full border ${
+                  <span className={`text-[8px] sm:text-[9px] font-mono-code font-black px-1.5 sm:px-2 py-0.5 rounded-full border hidden xs:inline ${
                     isLight ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-amber-500/10 text-amber-300 border-amber-400/30'
                   }`}>
                     CLOUD COMPUTING &amp; BUSINESS SYSTEMS
                   </span>
                 </h3>
               </div>
-              <span className="text-[10px] font-mono-code text-slate-500 hidden sm:inline">
+              <span className="text-[9px] sm:text-[10px] font-mono-code text-slate-500 hidden sm:inline">
                 Tap card to view ID badge
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               {facultyCoordinators.map(renderFacultyCard)}
             </div>
           </div>
 
           {/* Student Coordinators Block */}
-          <div className="space-y-2.5">
-            <div className={`flex items-center justify-between pb-1.5 border-b ${
+          <div className="space-y-1.5 sm:space-y-2.5">
+            <div className={`flex items-center justify-between pb-1 sm:pb-1.5 border-b ${
               isLight ? 'border-sky-300' : 'border-cyan-500/25'
             }`}>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-4 rounded-full bg-sky-500 dark:bg-cyan-400 shrink-0" />
-                <h3 className={`font-race text-xs sm:text-sm font-black uppercase tracking-wide flex items-center gap-2 ${
+              <div className="flex items-center space-x-1.5 sm:space-x-2">
+                <div className="w-1.5 sm:w-2 h-3.5 sm:h-4 rounded-full bg-sky-500 dark:bg-cyan-400 shrink-0" />
+                <h3 className={`font-race text-[11px] sm:text-sm font-black uppercase tracking-wide flex items-center gap-1.5 ${
                   isLight ? 'text-slate-900' : 'text-white'
                 }`}>
                   <span>Student Coordinators</span>
-                  <span className={`text-[9px] font-mono-code font-black px-2 py-0.5 rounded-full border ${
+                  <span className={`text-[8px] sm:text-[9px] font-mono-code font-black px-1.5 sm:px-2 py-0.5 rounded-full border hidden xs:inline ${
                     isLight ? 'bg-sky-100 text-sky-900 border-sky-300' : 'bg-cyan-500/10 text-cyan-300 border-cyan-400/30'
                   }`}>
                     CLOUDNEX PIT WALL
                   </span>
                 </h3>
               </div>
-              <span className="text-[10px] font-mono-code text-slate-500 hidden sm:inline">
+              <span className="text-[9px] sm:text-[10px] font-mono-code text-slate-500 hidden sm:inline">
                 Tap card to view ID badge
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               {studentCoordinators.map(renderStudentCard)}
             </div>
           </div>
@@ -485,29 +485,29 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
           VIEW 2: ONLY VOLUNTEERS (CARD VIEW)
          ════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'volunteers' && (
-        <div className="space-y-3 animate-fade-in">
-          <div className={`flex items-center justify-between pb-1.5 border-b ${
+        <div className="space-y-2 sm:space-y-3 animate-fade-in w-full">
+          <div className={`flex items-center justify-between pb-1 sm:pb-1.5 border-b ${
             isLight ? 'border-emerald-300' : 'border-emerald-500/25'
           }`}>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0" />
-              <h3 className={`font-race text-xs sm:text-sm font-black uppercase tracking-wide flex items-center gap-2 ${
+            <div className="flex items-center space-x-1.5 sm:space-x-2">
+              <div className="w-1.5 sm:w-2 h-3.5 sm:h-4 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0" />
+              <h3 className={`font-race text-[11px] sm:text-sm font-black uppercase tracking-wide flex items-center gap-1.5 ${
                 isLight ? 'text-slate-900' : 'text-white'
               }`}>
                 <span>Volunteers</span>
-                <span className={`text-[9px] font-mono-code font-black px-2 py-0.5 rounded-full border ${
+                <span className={`text-[8px] sm:text-[9px] font-mono-code font-black px-1.5 sm:px-2 py-0.5 rounded-full border hidden xs:inline ${
                   isLight ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-emerald-500/10 text-emerald-300 border-emerald-400/30'
                 }`}>
                   EVENT OPERATIONS &amp; SUPPORT
                 </span>
               </h3>
             </div>
-            <span className="text-[10px] font-mono-code text-slate-500 hidden sm:inline">
+            <span className="text-[9px] sm:text-[10px] font-mono-code text-slate-500 hidden sm:inline">
               Tap card to view ID badge
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
             {volunteers.map(renderVolunteerCard)}
           </div>
         </div>
