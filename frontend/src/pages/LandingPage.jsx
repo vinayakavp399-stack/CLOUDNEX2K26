@@ -18,9 +18,9 @@ export default function LandingPage({ onParticipantLogin, onAdminLogin, onGoToDa
       />
 
       {/* Three-Round Race Track Breakdown */}
-      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className={`inline-flex items-center space-x-2 text-xs font-race font-bold tracking-widest uppercase mb-3 px-3.5 py-1.5 rounded-full border shadow-sm ${
+      <section className="py-12 sm:py-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-16">
+          <div className={`inline-flex items-center space-x-2 text-[10px] sm:text-xs font-race font-bold tracking-widest uppercase mb-2 sm:mb-3 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full border shadow-sm ${
             isLight
               ? 'bg-sky-50 border-sky-300 text-sky-800'
               : 'bg-cyan-950/50 border-cyan-500/25 text-cyan-400'
@@ -28,19 +28,19 @@ export default function LandingPage({ onParticipantLogin, onAdminLogin, onGoToDa
             <Activity className="w-3.5 h-3.5" />
             <span>COMPETITION STRUCTURE</span>
           </div>
-          <h2 className={`text-3xl sm:text-5xl font-race font-black uppercase tracking-wide ${
+          <h2 className={`text-2xl sm:text-5xl font-race font-black uppercase tracking-wide ${
             isLight ? 'text-slate-900' : 'text-white'
           }`}>
             THREE-ROUND <span className={isLight ? 'text-gradient-blue' : 'text-gradient-cloud'}>CHALLENGE</span>
           </h2>
-          <p className={`text-sm mt-3 leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+          <p className={`text-xs sm:text-sm mt-2 sm:mt-3 leading-relaxed px-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
             Work through three rounds that test your architecture thinking, deployment skills, and ability to handle unexpected cloud infrastructure problems.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           {/* Round 1 Card */}
-          <div className={`rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between border transition-all duration-200 hover:-translate-y-1 shadow-xl ${
+          <div className={`rounded-2xl p-4.5 sm:p-6 relative overflow-hidden flex flex-col justify-between border transition-all duration-200 hover:-translate-y-1 shadow-xl ${
             isLight
               ? 'bg-white/95 border-sky-200/90 shadow-slate-200/80'
               : 'cloud-card'
@@ -113,7 +113,7 @@ export default function LandingPage({ onParticipantLogin, onAdminLogin, onGoToDa
           </div>
 
           {/* Round 2 Card */}
-          <div className={`rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between border transition-all duration-200 hover:-translate-y-1 shadow-xl ${
+          <div className={`rounded-2xl p-4.5 sm:p-6 relative overflow-hidden flex flex-col justify-between border transition-all duration-200 hover:-translate-y-1 shadow-xl ${
             isLight
               ? 'bg-white/95 border-red-200/90 shadow-slate-200/80'
               : 'cloud-card'
@@ -186,7 +186,7 @@ export default function LandingPage({ onParticipantLogin, onAdminLogin, onGoToDa
           </div>
 
           {/* Round 3 Card */}
-          <div className={`rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between border transition-all duration-200 hover:-translate-y-1 shadow-xl ${
+          <div className={`rounded-2xl p-4.5 sm:p-6 relative overflow-hidden flex flex-col justify-between border transition-all duration-200 hover:-translate-y-1 shadow-xl ${
             isLight
               ? 'bg-white/95 border-amber-200/90 shadow-slate-200/80'
               : 'racing-card border-amber-500/20'
@@ -257,31 +257,31 @@ export default function LandingPage({ onParticipantLogin, onAdminLogin, onGoToDa
       </section>
 
       {/* Rules & Championship Regulations */}
-      <section className={`py-12 w-full border-t px-4 sm:px-8 lg:px-12 transition-colors ${
+      <section className={`py-8 sm:py-12 w-full border-t px-3 sm:px-8 lg:px-12 transition-colors ${
         isLight ? 'border-slate-200 bg-slate-100/50' : 'border-white/10 bg-slate-950/40'
       }`}>
         <div className="w-full max-w-7xl mx-auto">
-          <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-6 pb-3 border-b ${
+          <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-4 sm:mb-6 pb-3 border-b ${
             isLight ? 'border-slate-200' : 'border-white/10'
           }`}>
             <div className="flex items-center space-x-2">
               <Shield className="w-5 h-5 text-red-500 shrink-0" />
-              <h3 className={`font-race text-lg sm:text-xl font-black tracking-wide uppercase ${
+              <h3 className={`font-race text-base sm:text-xl font-black tracking-wide uppercase ${
                 isLight ? 'text-slate-900' : 'text-white'
               }`}>
                 CloudNex Hackathon &ndash; Rules &amp; Code of Conduct
               </h3>
             </div>
-            <span className={`text-[11px] font-mono-code font-bold uppercase tracking-wider ${
+            <span className={`text-[10px] sm:text-[11px] font-mono-code font-bold uppercase tracking-wider ${
               isLight ? 'text-slate-500' : 'text-slate-400'
             }`}>
               Strict Adherence Required Across All Laps
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs sm:text-sm font-mono-code leading-relaxed">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm font-mono-code leading-relaxed">
             {/* Rule 01 */}
-            <div className={`rounded-xl border p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
+            <div className={`rounded-xl border p-3.5 sm:p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
               isLight
                 ? 'bg-white border-slate-200 hover:border-red-400'
                 : 'bg-slate-900/75 border-white/10 hover:border-red-500/40'
@@ -302,7 +302,7 @@ export default function LandingPage({ onParticipantLogin, onAdminLogin, onGoToDa
             </div>
 
             {/* Rule 02 */}
-            <div className={`rounded-xl border p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
+            <div className={`rounded-xl border p-3.5 sm:p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
               isLight
                 ? 'bg-white border-slate-200 hover:border-red-400'
                 : 'bg-slate-900/75 border-white/10 hover:border-red-500/40'
@@ -323,7 +323,7 @@ export default function LandingPage({ onParticipantLogin, onAdminLogin, onGoToDa
             </div>
 
             {/* Rule 03 */}
-            <div className={`rounded-xl border p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
+            <div className={`rounded-xl border p-3.5 sm:p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
               isLight
                 ? 'bg-white border-slate-200 hover:border-red-400'
                 : 'bg-slate-900/75 border-white/10 hover:border-red-500/40'
@@ -352,7 +352,7 @@ export default function LandingPage({ onParticipantLogin, onAdminLogin, onGoToDa
             </div>
 
             {/* Rule 04 */}
-            <div className={`rounded-xl border p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
+            <div className={`rounded-xl border p-3.5 sm:p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
               isLight
                 ? 'bg-white border-slate-200 hover:border-sky-400'
                 : 'bg-slate-900/75 border-white/10 hover:border-cyan-500/40'
@@ -373,7 +373,7 @@ export default function LandingPage({ onParticipantLogin, onAdminLogin, onGoToDa
             </div>
 
             {/* Rule 05 */}
-            <div className={`rounded-xl border p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
+            <div className={`rounded-xl border p-3.5 sm:p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
               isLight
                 ? 'bg-white border-slate-200 hover:border-sky-400'
                 : 'bg-slate-900/75 border-white/10 hover:border-cyan-500/40'
@@ -394,7 +394,7 @@ export default function LandingPage({ onParticipantLogin, onAdminLogin, onGoToDa
             </div>
 
             {/* Rule 06 */}
-            <div className={`rounded-xl border p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
+            <div className={`rounded-xl border p-3.5 sm:p-4 shadow-md backdrop-blur-sm transition-all flex flex-col justify-between ${
               isLight
                 ? 'bg-white border-slate-200 hover:border-sky-400'
                 : 'bg-slate-900/75 border-white/10 hover:border-cyan-500/40'

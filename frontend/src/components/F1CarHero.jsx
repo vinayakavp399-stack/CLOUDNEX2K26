@@ -239,34 +239,34 @@ export default function F1CarHero({ onParticipantLogin, onAdminLogin, onGoToDash
       <div className="absolute inset-0 holo-scan pointer-events-none" style={{ zIndex: 1 }} />
 
       {/* ── MAIN CONTENT CONTAINER ── */}
-      <div className="relative z-10 flex flex-col flex-1 w-full pt-28 pb-10 px-4 sm:px-8 lg:px-12 justify-between">
+      <div className="relative z-10 flex flex-col flex-1 w-full pt-20 sm:pt-28 pb-8 sm:pb-10 px-3 sm:px-8 lg:px-12 justify-between">
 
         {/* ── TOP HEADER BADGE ── */}
-        <div className="flex items-center justify-center mb-6">
-          <div className={`flex items-center gap-2.5 px-4 py-1.5 rounded-full border backdrop-blur-md shadow-sm transition-all hover:scale-105 cursor-default ${
+        <div className="flex items-center justify-center mb-4 sm:mb-6 px-2">
+          <div className={`flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full border backdrop-blur-md shadow-sm transition-all hover:scale-105 cursor-default max-w-full ${
             isLight
               ? 'bg-white/85 border-sky-300 text-slate-700 shadow-sky-100'
               : 'bg-slate-950/75 border-cyan-500/30 text-slate-200 shadow-[0_0_15px_rgba(0,245,255,0.15)]'
           }`}>
-            <span className="flex h-2 w-2 relative">
+            <span className="flex h-2 w-2 relative shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
-            <span className="font-mono-code font-bold text-[11px] tracking-widest uppercase">
-              IGNITRON 2K26 &nbsp;•&nbsp; GM University, Davangere &nbsp;•&nbsp; National Cloud Hackathon
+            <span className="font-mono-code font-bold text-[9px] sm:text-[11px] tracking-wider sm:tracking-widest uppercase truncate text-center">
+              IGNITRON 2K26 &bull; GM UNIVERSITY &bull; NATIONAL CLOUD HACKATHON
             </span>
           </div>
         </div>
 
         {/* ── CENTRE: ANIMATED CLOUDNEX + NEXT GEN ENGINEERING + 2K26 ── */}
-        <div className="flex flex-col items-center text-center my-auto py-8 sm:py-12 relative">
+        <div className="flex flex-col items-center text-center my-auto py-6 sm:py-12 relative px-2">
 
           {/* Background Ambient Glow Behind Brand */}
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-96 h-32 bg-cyan-400/25 blur-3xl pointer-events-none rounded-full" />
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-72 sm:w-96 h-28 sm:h-32 bg-cyan-400/25 blur-3xl pointer-events-none rounded-full" />
 
           {/* Animated CLOUDNEX Headline with Shimmer & Glowing Cyber Shadow */}
           <h1
-            className={`font-race font-black text-6xl sm:text-8xl lg:text-9xl tracking-tight leading-none mb-4 select-none transition-all duration-300 hover:scale-[1.02] cursor-default`}
+            className={`font-race font-black text-4xl xs:text-5xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tight leading-none mb-3 sm:mb-4 select-none transition-all duration-300 hover:scale-[1.02] cursor-default`}
             style={{
               textShadow: isLight
                 ? '0 10px 30px rgba(14,165,233,0.3), 0 0 45px rgba(56,189,248,0.2)'
@@ -278,29 +278,29 @@ export default function F1CarHero({ onParticipantLogin, onAdminLogin, onGoToDash
           </h1>
 
           {/* Next-Gen Cloud Engineering with Animated Light Line */}
-          <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3 w-full max-w-md relative">
+          <div className="flex items-center justify-center gap-2 sm:gap-4 mb-3 w-full max-w-xs sm:max-w-md relative px-2">
             <div className={`h-px flex-1 ${isLight ? 'bg-gradient-to-r from-transparent via-sky-500 to-transparent' : 'bg-gradient-to-r from-transparent via-cyan-400 to-transparent'}`} />
-            <span className={`font-mono-code font-bold text-xs sm:text-sm tracking-[0.38em] uppercase ${isLight ? 'text-sky-700' : 'text-cyan-400 drop-shadow-[0_0_10px_rgba(0,245,255,0.6)]'}`}>
+            <span className={`font-mono-code font-bold text-[10px] sm:text-xs tracking-[0.16em] sm:tracking-[0.35em] uppercase text-center ${isLight ? 'text-sky-700' : 'text-cyan-400 drop-shadow-[0_0_10px_rgba(0,245,255,0.6)]'}`}>
               Next-Gen Cloud Engineering
             </span>
             <div className={`h-px flex-1 ${isLight ? 'bg-gradient-to-r from-transparent via-sky-500 to-transparent' : 'bg-gradient-to-r from-transparent via-cyan-400 to-transparent'}`} />
           </div>
 
-          {/* 2K26 Badge (Moved Down After Next Gen Engineering) */}
-          <div className="mb-6 animate-float">
-            <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl text-base sm:text-lg font-mono-code font-black tracking-widest border transition-all duration-300 shadow-xl ${
+          {/* 2K26 Badge */}
+          <div className="mb-4 sm:mb-6 animate-float">
+            <span className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 sm:px-4 sm:py-1.5 rounded-xl text-sm sm:text-base font-mono-code font-black tracking-widest border transition-all duration-300 shadow-xl ${
               isLight
                 ? 'bg-gradient-to-r from-sky-100 to-indigo-100 text-sky-900 border-sky-300 shadow-sky-100'
                 : 'bg-gradient-to-r from-cyan-950/90 via-slate-900/90 to-indigo-950/90 text-cyan-300 border-cyan-400/50 shadow-[0_0_25px_rgba(0,245,255,0.35)]'
             }`}>
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400 animate-pulse" />
               <span>2K26</span>
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-400 animate-pulse" />
             </span>
           </div>
 
           {/* Championship Catchy Pitch */}
-          <p className={`text-sm sm:text-base font-sans max-w-2xl leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+          <p className={`text-xs sm:text-base font-sans max-w-2xl leading-relaxed px-2 ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
             A 3-lap competitive cloud engineering championship testing{' '}
             <strong className={isLight ? 'text-slate-900 font-semibold' : 'text-white'}>architecture design</strong>,{' '}
             <strong className={isLight ? 'text-slate-900 font-semibold' : 'text-white'}>live deployment</strong>, and{' '}
@@ -339,58 +339,58 @@ export default function F1CarHero({ onParticipantLogin, onAdminLogin, onGoToDash
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6 w-full max-w-5xl mx-auto">
               {/* Participant Login */}
               <button
                 id="btn-participant-login"
                 onClick={onParticipantLogin}
-                className={`group flex items-center justify-between p-4 sm:p-5 rounded-2xl backdrop-blur-md border shadow-2xl transition-all duration-150 hover:-translate-y-1 active:scale-95 text-left w-full cursor-pointer ${
+                className={`group flex items-center justify-between p-3.5 sm:p-5 rounded-2xl backdrop-blur-md border shadow-2xl transition-all duration-150 hover:-translate-y-1 active:scale-95 text-left w-full cursor-pointer ${
                   isLight
                     ? 'bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white border-sky-400 shadow-sky-200 hover:shadow-sky-300'
                     : 'neon-border-pulse bg-gradient-to-r from-cyan-900/85 via-blue-900/85 to-slate-900/90 hover:from-cyan-600 hover:to-blue-600 border-cyan-400/40 text-white shadow-[0_0_20px_rgba(0,245,255,0.25)]'
                 }`}
               >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-110 group-hover:bg-cyan-400 group-hover:text-black transition-all shrink-0">
+                <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-110 group-hover:bg-cyan-400 group-hover:text-black transition-all shrink-0">
                     <Zap className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="font-race font-black text-xs sm:text-sm tracking-wider text-white uppercase flex items-center gap-2">
                       <span>Participant Login</span>
-                      <span className="text-[9px] font-mono-code px-1.5 py-0.5 bg-cyan-500/30 text-cyan-200 rounded font-bold">TEAM</span>
+                      <span className="text-[9px] font-mono-code px-1.5 py-0.5 bg-cyan-500/30 text-cyan-200 rounded font-bold shrink-0">TEAM</span>
                     </div>
                     <p className="text-[10px] sm:text-[11px] font-mono-code text-white/80 mt-0.5 truncate">
                       Access challenge laps, blueprints &amp; telemetry
                     </p>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-cyan-300 group-hover:text-white group-hover:translate-x-1.5 transition-transform shrink-0 ml-2" />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-300 group-hover:text-white group-hover:translate-x-1.5 transition-transform shrink-0 ml-2" />
               </button>
 
               {/* Organizer Login */}
               <button
                 id="btn-admin-login"
                 onClick={onAdminLogin}
-                className={`group flex items-center justify-between p-4 sm:p-5 rounded-2xl backdrop-blur-md border shadow-md transition-all duration-150 hover:-translate-y-1 active:scale-95 text-left w-full cursor-pointer ${
+                className={`group flex items-center justify-between p-3.5 sm:p-5 rounded-2xl backdrop-blur-md border shadow-md transition-all duration-150 hover:-translate-y-1 active:scale-95 text-left w-full cursor-pointer ${
                   isLight
                     ? 'bg-white hover:bg-slate-50 border-slate-200 hover:border-red-400 shadow-slate-100'
                     : 'bg-slate-950/80 hover:bg-slate-900/90 border-white/15 hover:border-red-500/50 shadow-slate-950'
                 }`}
               >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all shrink-0 ${
+                <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all shrink-0 ${
                     isLight
                       ? 'bg-red-50 border border-red-200 text-red-600 group-hover:scale-110 group-hover:bg-red-600 group-hover:text-white'
                       : 'bg-red-950/40 border border-red-500/40 text-red-400 group-hover:scale-110 group-hover:bg-red-600 group-hover:text-white'
                   }`}>
                     <Shield className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className={`font-race font-black text-xs sm:text-sm tracking-wider uppercase flex items-center gap-2 ${
                       isLight ? 'text-slate-800' : 'text-white'
                     }`}>
                       <span>Organizer Login</span>
-                      <span className={`text-[9px] font-mono-code px-1.5 py-0.5 rounded font-bold ${
+                      <span className={`text-[9px] font-mono-code px-1.5 py-0.5 rounded font-bold shrink-0 ${
                         isLight ? 'bg-red-100 text-red-700' : 'bg-red-500/30 text-red-300'
                       }`}>ADMIN</span>
                     </div>
@@ -399,7 +399,7 @@ export default function F1CarHero({ onParticipantLogin, onAdminLogin, onGoToDash
                     </p>
                   </div>
                 </div>
-                <ChevronRight className={`w-5 h-5 group-hover:translate-x-1.5 transition-transform shrink-0 ml-2 ${
+                <ChevronRight className={`w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1.5 transition-transform shrink-0 ml-2 ${
                   isLight ? 'text-slate-400 group-hover:text-red-600' : 'text-slate-400 group-hover:text-red-400'
                 }`} />
               </button>

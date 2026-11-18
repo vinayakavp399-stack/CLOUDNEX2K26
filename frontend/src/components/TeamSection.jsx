@@ -80,7 +80,7 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
     <div
       key={idx}
       onClick={() => setSelectedCoordinator(faculty)}
-      className={`rounded-2xl p-4 sm:p-4.5 border transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group cursor-pointer ${
+      className={`rounded-2xl p-3.5 sm:p-4.5 border transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group cursor-pointer ${
         isLight
           ? 'bg-white border-amber-300 shadow-sm shadow-slate-200/80 hover:border-amber-500 hover:shadow-lg'
           : 'bg-gradient-to-br from-slate-900/95 via-[#0d1322] to-slate-950 border-amber-500/30 hover:border-amber-400/60 hover:shadow-[0_0_25px_rgba(245,158,11,0.25)] shadow-black/40'
@@ -100,10 +100,10 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
         </span>
       </div>
 
-      <div className="flex items-start space-x-3.5 relative z-10">
+      <div className="flex items-start space-x-3 sm:space-x-3.5 relative z-10">
         {/* Profile Picture / Avatar */}
         <div className="relative shrink-0">
-          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl p-0.5 bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 shadow-md shadow-amber-500/30 overflow-hidden">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 shadow-md shadow-amber-500/30 overflow-hidden">
             {faculty.image ? (
               <img
                 src={faculty.image}
@@ -112,15 +112,15 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             ) : (
-              <div className={`w-full h-full rounded-[14px] flex items-center justify-center font-race font-black text-base sm:text-lg ${
+              <div className={`w-full h-full rounded-[14px] flex items-center justify-center font-race font-black text-sm sm:text-lg ${
                 isLight ? 'bg-amber-100 text-amber-950 border border-amber-300' : 'bg-slate-950 text-amber-300'
               }`}>
                 {faculty.initials}
               </div>
             )}
           </div>
-          <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[9px] shadow font-bold">
-            <Award className="w-3 h-3" />
+          <div className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[9px] shadow font-bold">
+            <Award className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
           </div>
         </div>
 
@@ -136,12 +136,12 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
           }`}>
             {faculty.name}
           </h4>
-          <p className={`text-[11px] font-mono-code font-bold leading-tight mt-0.5 ${
+          <p className={`text-[10px] sm:text-[11px] font-mono-code font-bold leading-tight mt-0.5 ${
             isLight ? 'text-slate-700' : 'text-slate-300'
           }`}>
             {faculty.designation}
           </p>
-          <p className={`text-[10px] sm:text-[11px] font-mono-code mt-0.5 truncate ${
+          <p className={`text-[9px] sm:text-[11px] font-mono-code mt-0.5 truncate ${
             isLight ? 'text-slate-600 font-semibold' : 'text-slate-400'
           }`}>
             {faculty.department}
@@ -152,7 +152,7 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
             <a
               href={`tel:${faculty.phone}`}
               onClick={(e) => e.stopPropagation()}
-              className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg border text-[11px] font-mono-code font-bold transition-all hover:scale-105 active:scale-95 ${
+              className={`inline-flex items-center space-x-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border text-[10px] sm:text-[11px] font-mono-code font-bold transition-all hover:scale-105 active:scale-95 ${
                 isLight
                   ? 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300 shadow-sm'
                   : 'bg-amber-950/60 hover:bg-amber-900/70 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-950/40'
@@ -171,7 +171,7 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
     <div
       key={idx}
       onClick={() => setSelectedCoordinator(student)}
-      className={`rounded-2xl p-4 sm:p-4.5 border transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group cursor-pointer ${
+      className={`rounded-2xl p-3.5 sm:p-4.5 border transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group cursor-pointer ${
         isLight
           ? 'bg-white border-sky-300 shadow-sm shadow-slate-200/80 hover:border-sky-500 hover:shadow-lg'
           : 'bg-gradient-to-br from-slate-900/95 via-[#091424] to-slate-950 border-cyan-500/30 hover:border-cyan-400/60 hover:shadow-[0_0_25px_rgba(0,245,255,0.25)] shadow-black/40'
@@ -191,10 +191,10 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
         </span>
       </div>
 
-      <div className="flex items-start space-x-3.5 relative z-10">
+      <div className="flex items-start space-x-3 sm:space-x-3.5 relative z-10">
         {/* Profile Picture / Avatar */}
         <div className="relative shrink-0">
-          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl p-0.5 bg-gradient-to-tr from-cyan-500 via-sky-400 to-indigo-300 shadow-md shadow-cyan-500/30 overflow-hidden">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl p-0.5 bg-gradient-to-tr from-cyan-500 via-sky-400 to-indigo-300 shadow-md shadow-cyan-500/30 overflow-hidden">
             {student.image ? (
               <img
                 src={student.image}
@@ -203,14 +203,14 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             ) : (
-              <div className={`w-full h-full rounded-[14px] flex items-center justify-center font-race font-black text-base sm:text-lg ${
+              <div className={`w-full h-full rounded-[14px] flex items-center justify-center font-race font-black text-sm sm:text-lg ${
                 isLight ? 'bg-sky-100 text-sky-950 border border-sky-300' : 'bg-slate-950 text-cyan-300'
               }`}>
                 {student.initials}
               </div>
             )}
           </div>
-          <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[9px] shadow font-bold">
+          <div className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[9px] shadow font-bold">
             ★
           </div>
         </div>
@@ -227,7 +227,7 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
           }`}>
             {student.name}
           </h4>
-          <p className={`text-[10px] sm:text-[11px] font-mono-code mt-0.5 truncate ${
+          <p className={`text-[9px] sm:text-[11px] font-mono-code mt-0.5 truncate ${
             isLight ? 'text-slate-600 font-semibold' : 'text-slate-400'
           }`}>
             {student.department}
@@ -238,7 +238,7 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
             <a
               href={`tel:${student.phone}`}
               onClick={(e) => e.stopPropagation()}
-              className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg border text-[11px] font-mono-code font-bold transition-all hover:scale-105 active:scale-95 ${
+              className={`inline-flex items-center space-x-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border text-[10px] sm:text-[11px] font-mono-code font-bold transition-all hover:scale-105 active:scale-95 ${
                 isLight
                   ? 'bg-sky-50 hover:bg-sky-100 text-sky-950 border-sky-300 shadow-sm'
                   : 'bg-cyan-950/60 hover:bg-cyan-900/70 text-cyan-300 border-cyan-500/40 shadow-sm shadow-cyan-950/40'
@@ -440,7 +440,7 @@ export default function TeamSection({ embedded = false, initialTab = 'coordinato
           onClick={() => setSelectedCoordinator(null)}
         >
           <div
-            className={`relative w-full max-w-xs sm:max-w-sm rounded-3xl border shadow-2xl p-5 sm:p-6 transition-all ${
+            className={`relative w-full max-w-[320px] sm:max-w-sm max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl p-4 sm:p-6 transition-all ${
               isLight
                 ? 'bg-gradient-to-b from-white via-slate-50 to-slate-100 border-slate-300 text-slate-900 shadow-2xl'
                 : 'bg-gradient-to-b from-[#0c1626] via-[#08101e] to-[#040812] border-cyan-500/50 text-white shadow-[0_0_50px_rgba(0,245,255,0.3)]'
